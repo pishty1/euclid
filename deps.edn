@@ -1,0 +1,8 @@
+{:paths ["src" "resources" "target"]
+
+ :deps  {org.clojure/clojure       {:mvn/version "1.11.1"}
+         com.bhauman/figwheel-main {:mvn/version "0.2.18"}
+         quil                      {:mvn/version "4.3.1323"}}
+
+ :aliases {:build-dev {:main-opts ["-m" "figwheel.main" "-b" "dev" "-r"]}}}
+
