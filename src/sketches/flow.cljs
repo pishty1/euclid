@@ -107,3 +107,5 @@
 
 ;; (enable-console-print!)
 (defonce sketchy (create "sketch"))
+(defn startup []
+  (create "sketch"))
