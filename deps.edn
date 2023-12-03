@@ -4,7 +4,9 @@
          com.bhauman/figwheel-main {:mvn/version "0.2.18"}
          quil                      {:mvn/version "4.3.1323"}}
 
- :aliases {:build {:main-opts
+ :aliases {:min {:main-opts
+                           ["-m" "figwheel.main" "-co" "min.cljs.edn" "-c" "-r"]}
+           :build {:main-opts
                            ["-m" "figwheel.main" "-co" "min.cljs.edn" "-c"]}
 
            :build-dev {:main-opts ["-m" "figwheel.main" "-b" "dev" "-r"]}}

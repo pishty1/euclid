@@ -3,7 +3,6 @@
  :output-dir "resources/public/js/compiled/min"
  :asset-path "js/compiled/min"
  :source-map "resources/public/js/compiled/main.js.map"
- :optimizations :advanced
  :pretty-print false
  ;; Additional advanced optimizations options as needed
 }
