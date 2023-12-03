@@ -49,10 +49,10 @@ return (((2) * Math.PI) * (quil.core.noise.cljs$core$IFn$_invoke$arity$2((x * sk
  */
 sketches.flow.sketch_update = (function sketches$flow$sketch_update(particles){
 return cljs.core.map.cljs$core$IFn$_invoke$arity$2((function (p){
-return cljs.core.assoc.cljs$core$IFn$_invoke$arity$variadic(p,cljs.core.cst$kw$x,sketches.flow.position(cljs.core.cst$kw$x.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$vx.cljs$core$IFn$_invoke$arity$1(p),sketches.flow.w),cljs.core.prim_seq.cljs$core$IFn$_invoke$arity$2([cljs.core.cst$kw$y,sketches.flow.position(cljs.core.cst$kw$y.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$vy.cljs$core$IFn$_invoke$arity$1(p),sketches.flow.h),cljs.core.cst$kw$direction,sketches.flow.direction(cljs.core.cst$kw$x.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$y.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$id.cljs$core$IFn$_invoke$arity$1(p)),cljs.core.cst$kw$vx,sketches.flow.velocity(cljs.core.cst$kw$vx.cljs$core$IFn$_invoke$arity$1(p),(function (){var G__7971 = cljs.core.cst$kw$direction.cljs$core$IFn$_invoke$arity$1(p);
-return Math.cos(G__7971);
-})()),cljs.core.cst$kw$vy,sketches.flow.velocity(cljs.core.cst$kw$vy.cljs$core$IFn$_invoke$arity$1(p),(function (){var G__7972 = cljs.core.cst$kw$direction.cljs$core$IFn$_invoke$arity$1(p);
-return Math.sin(G__7972);
+return cljs.core.assoc.cljs$core$IFn$_invoke$arity$variadic(p,cljs.core.cst$kw$x,sketches.flow.position(cljs.core.cst$kw$x.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$vx.cljs$core$IFn$_invoke$arity$1(p),sketches.flow.w),cljs.core.prim_seq.cljs$core$IFn$_invoke$arity$2([cljs.core.cst$kw$y,sketches.flow.position(cljs.core.cst$kw$y.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$vy.cljs$core$IFn$_invoke$arity$1(p),sketches.flow.h),cljs.core.cst$kw$direction,sketches.flow.direction(cljs.core.cst$kw$x.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$y.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$id.cljs$core$IFn$_invoke$arity$1(p)),cljs.core.cst$kw$vx,sketches.flow.velocity(cljs.core.cst$kw$vx.cljs$core$IFn$_invoke$arity$1(p),(function (){var G__14122 = cljs.core.cst$kw$direction.cljs$core$IFn$_invoke$arity$1(p);
+return Math.cos(G__14122);
+})()),cljs.core.cst$kw$vy,sketches.flow.velocity(cljs.core.cst$kw$vy.cljs$core$IFn$_invoke$arity$1(p),(function (){var G__14123 = cljs.core.cst$kw$direction.cljs$core$IFn$_invoke$arity$1(p);
+return Math.sin(G__14123);
 })())], 0));
 }),particles);
 });
@@ -62,57 +62,57 @@ return Math.sin(G__7972);
 sketches.flow.sketch_draw = (function sketches$flow$sketch_draw(particles){
 quil.core.no_stroke();
 
-var seq__7973 = cljs.core.seq(particles);
-var chunk__7974 = null;
-var count__7975 = (0);
-var i__7976 = (0);
+var seq__14124 = cljs.core.seq(particles);
+var chunk__14125 = null;
+var count__14126 = (0);
+var i__14127 = (0);
 while(true){
-if((i__7976 < count__7975)){
-var p = chunk__7974.cljs$core$IIndexed$_nth$arity$2(null,i__7976);
+if((i__14127 < count__14126)){
+var p = chunk__14125.cljs$core$IIndexed$_nth$arity$2(null,i__14127);
 cljs.core.apply.cljs$core$IFn$_invoke$arity$2(quil.core.fill,cljs.core.conj.cljs$core$IFn$_invoke$arity$2(cljs.core.cst$kw$color.cljs$core$IFn$_invoke$arity$1(p),(5)));
 
 quil.core.ellipse(cljs.core.cst$kw$x.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$y.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$size.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$size.cljs$core$IFn$_invoke$arity$1(p));
 
 
-var G__7977 = seq__7973;
-var G__7978 = chunk__7974;
-var G__7979 = count__7975;
-var G__7980 = (i__7976 + (1));
-seq__7973 = G__7977;
-chunk__7974 = G__7978;
-count__7975 = G__7979;
-i__7976 = G__7980;
+var G__14128 = seq__14124;
+var G__14129 = chunk__14125;
+var G__14130 = count__14126;
+var G__14131 = (i__14127 + (1));
+seq__14124 = G__14128;
+chunk__14125 = G__14129;
+count__14126 = G__14130;
+i__14127 = G__14131;
 continue;
 } else {
-var temp__5804__auto__ = cljs.core.seq(seq__7973);
+var temp__5804__auto__ = cljs.core.seq(seq__14124);
 if(temp__5804__auto__){
-var seq__7973__$1 = temp__5804__auto__;
-if(cljs.core.chunked_seq_QMARK_(seq__7973__$1)){
-var c__4556__auto__ = cljs.core.chunk_first(seq__7973__$1);
-var G__7981 = cljs.core.chunk_rest(seq__7973__$1);
-var G__7982 = c__4556__auto__;
-var G__7983 = cljs.core.count(c__4556__auto__);
-var G__7984 = (0);
-seq__7973 = G__7981;
-chunk__7974 = G__7982;
-count__7975 = G__7983;
-i__7976 = G__7984;
+var seq__14124__$1 = temp__5804__auto__;
+if(cljs.core.chunked_seq_QMARK_(seq__14124__$1)){
+var c__4556__auto__ = cljs.core.chunk_first(seq__14124__$1);
+var G__14132 = cljs.core.chunk_rest(seq__14124__$1);
+var G__14133 = c__4556__auto__;
+var G__14134 = cljs.core.count(c__4556__auto__);
+var G__14135 = (0);
+seq__14124 = G__14132;
+chunk__14125 = G__14133;
+count__14126 = G__14134;
+i__14127 = G__14135;
 continue;
 } else {
-var p = cljs.core.first(seq__7973__$1);
+var p = cljs.core.first(seq__14124__$1);
 cljs.core.apply.cljs$core$IFn$_invoke$arity$2(quil.core.fill,cljs.core.conj.cljs$core$IFn$_invoke$arity$2(cljs.core.cst$kw$color.cljs$core$IFn$_invoke$arity$1(p),(5)));
 
 quil.core.ellipse(cljs.core.cst$kw$x.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$y.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$size.cljs$core$IFn$_invoke$arity$1(p),cljs.core.cst$kw$size.cljs$core$IFn$_invoke$arity$1(p));
 
 
-var G__7985 = cljs.core.next(seq__7973__$1);
-var G__7986 = null;
-var G__7987 = (0);
-var G__7988 = (0);
-seq__7973 = G__7985;
-chunk__7974 = G__7986;
-count__7975 = G__7987;
-i__7976 = G__7988;
+var G__14136 = cljs.core.next(seq__14124__$1);
+var G__14137 = null;
+var G__14138 = (0);
+var G__14139 = (0);
+seq__14124 = G__14136;
+chunk__14125 = G__14137;
+count__14126 = G__14138;
+i__14127 = G__14139;
 continue;
 }
 } else {
