@@ -87,11 +87,7 @@
     (q/ellipse (:x p) (:y p) (:size p) (:size p))))
 
 
-(defn hello []
-  "uuuuuuuuu")
-
 (defn create [canvas]
-  (println (hello))
   (q/sketch
    :host canvas
    :size [w h]
