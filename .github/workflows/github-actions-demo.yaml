@@ -27,22 +27,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install clojure tools
-        uses: DeLaGuardo/setup-clojure@12.1
+      - name: Setup Clojure
+        uses: DeLaGuardo/setup-clojure@11.0
         with:
-          # Install just one or all simultaneously
-          # The value must indicate a particular version of the tool, or use 'latest'
-          # to always provision the latest version
-          cli: latest              # Clojure CLI based on tools.deps
-          # lein: 2.9.1                  # Leiningen
-          # boot: 2.8.3                  # Boot.clj
-          # bb: 0.7.8                    # Babashka
-          # clj-kondo: 2022.05.31        # Clj-kondo
-          # cljfmt: 0.10.2               # cljfmt
-          # cljstyle: 0.15.0             # cljstyle
-          # cmd-exe-workaround: 'latest' # Replaces `clojure` with `deps.clj` on Windows
-          # zprint: 1.2.3                # zprint
-          
+          cli: latest
+          bb: latest
       # Optional step:
 
       - name: Execute clojure code
