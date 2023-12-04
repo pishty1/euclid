@@ -30,4 +30,7 @@ jobs:
         with:
           cli: latest
       - name: Compiling clojurescript 
-        run: clojure -M:fig:bb
+        run: | 
+          java --version
+          clojure --version
+          clojure -M:fig:bb
