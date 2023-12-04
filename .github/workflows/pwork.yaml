@@ -3,14 +3,8 @@ name: Example workflow
 on: [push]
 
 jobs:
-
   clojure:
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
