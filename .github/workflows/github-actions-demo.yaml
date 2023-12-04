@@ -45,13 +45,13 @@ jobs:
 
       - name: Execute clojure code
         run: clojure -M:fig:bb
-      - name: Commit changes
+      - name: Push New Compiled Code
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
         run: |
           git config --global user.name '@github-ci'
           git config --global user.email 'actions@github.com'
           git add -A
           git commit -m "compiled source"
-      - name: Push changes
-        uses: ad-m/github-push-action@main
-        with:
-          branch: ${{ github.head_ref }}
+          git push origin main
+      
