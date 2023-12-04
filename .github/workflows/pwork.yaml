@@ -1,11 +1,11 @@
-name: Clojure Build and Push
+name: Clojure Workflow
 
 on:
   push:
     branches:
       - main
     paths-ignore:
-      - 'docs/**' # Ignores any changes in the 'docs' directory
+      - 'docs/**'
 
 jobs:
   build:
@@ -21,6 +21,11 @@ jobs:
         distribution: 'adopt'
         java-version: '11'
 
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@2.0
+      with:
+        tools-deps: '1.10.x'  # Specify the version of Clojure tools-deps
+
     - name: Cache Clojure Dependencies
       uses: actions/cache@v2
       with:
@@ -28,7 +33,7 @@ jobs:
         key: ${{ runner.os }}-build-${{ hashFiles('**/deps.edn') }}
         restore-keys: ${{ runner.os }}-build-${{ hashFiles('**/deps.edn') }}-
 
-    - name: Build with Clojure CLI
+    - name: Run Clojure Command
       run: clojure -M:fig:bb
 
     # - name: Commit and Push Changes
