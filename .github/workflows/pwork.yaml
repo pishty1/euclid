@@ -22,9 +22,9 @@ jobs:
         java-version: '11'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@2.0
+      uses: DeLaGuardo/setup-clojure@12.1
       with:
-        tools-deps: '1.10.x'  # Specify the version of Clojure tools-deps
+        cli: latest  # Specify the version of Clojure tools-deps
 
     - name: Cache Clojure Dependencies
       uses: actions/cache@v2
