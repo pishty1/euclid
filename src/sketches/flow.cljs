@@ -90,7 +90,7 @@
 
 
 (defn create [canvas]
-  (println "version 0.0.5")
+  (println "version 0.0.6")
   (q/sketch
    :host canvas
    :size [w h]
