@@ -1,1 +1,4 @@
+^{:watch-dirs ["test" "src"]
+  :auto-testing true
+   }
 {:main sketches.flow}

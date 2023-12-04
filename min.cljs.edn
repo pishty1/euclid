@@ -1,5 +1,5 @@
 {:main sketches.flow
- :output-to "docs/cljs-out/main.js"
+ :output-to "docs/js/main.js"
  :optimizations :advanced
  :pretty-print false
  ;; Additional advanced optimizations options as needed

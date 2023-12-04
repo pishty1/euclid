@@ -10,6 +10,8 @@
   "Noise zoom level."
   0.045)
 
+(defn add [x y]
+  (+ x y))
 
 (def palette
   {:name       "purple haze"

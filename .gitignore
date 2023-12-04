@@ -3,3 +3,6 @@
 .cpcache
 .lsp
 target
+.nrepl-port
+.rebel_readline_history
+todo.md
