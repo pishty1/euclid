@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_TOKEN }}
 
       # It is important to install java before installing clojure tools which needs java
       # exclusions: babashka, clj-kondo and cljstyle
@@ -57,8 +59,11 @@ jobs:
         run: | 
           java --version
           clojure -version
+          git checkout -b publish
           clojure -M:fig:bb
-          ls -ltrh
+          git add -A
+          git commit -m "Build artifacts [skip ci]" || echo "No changes to commit"
+          git push --force origin publish
 
     # - name: Commit and Push Changes
     #   run: |
