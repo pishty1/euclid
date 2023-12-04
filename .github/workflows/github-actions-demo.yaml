@@ -6,12 +6,7 @@ jobs:
 
   clojure:
 
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-      fail-fast: false
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
