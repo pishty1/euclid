@@ -59,7 +59,11 @@ jobs:
           restore-keys: cljdeps-
 
       - name: Execute clojure code
-        run: clojure -M:fig:bb
+        run: | 
+          java --version
+          clojure --version
+          clojure -M:fig:bb
+          ls -ltrh
 
     # - name: Commit and Push Changes
     #   run: |
