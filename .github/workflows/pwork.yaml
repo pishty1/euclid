@@ -59,8 +59,9 @@ jobs:
         run: | 
           java --version
           clojure -version
-          git checkout -b publish
           clojure -M:fig:bb
+          git checkout -b publish
+          git status
           git add . 
           git commit -m "Build artifacts [skip ci]" || echo "No changes to commit"
           git push --force origin publish
