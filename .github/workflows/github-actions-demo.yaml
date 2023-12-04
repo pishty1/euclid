@@ -1,4 +1,4 @@
-name: Compile source and deploy to docs folder 
+name: Primary Workflow 
 
 on:
   push:
