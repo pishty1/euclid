@@ -9,7 +9,7 @@
                   com.bhauman/figwheel-main {:mvn/version "0.2.18"}}
                  :extra-paths ["target" "test"]}
            :build {:main-opts ["-m" "figwheel.main" "-b" "dev" "-r"]}
-           :bb {:main-opts ["-m" "figwheel.main" "--compile" "sketches.flow" "--repl"]}
+           :bb {:main-opts ["-m" "figwheel.main" "-b" "min"]}
            :min   {:main-opts ["-m" "figwheel.main" "-O" "advanced" "-bo" "dev"]}
            :test  {:main-opts ["-m" "figwheel.main" "-co" "test.cljs.edn" "-m" "sketches.test-runner"]}}}
 
