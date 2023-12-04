@@ -45,5 +45,5 @@ jobs:
 
       - name: Execute clojure code
         run: clojure -M:fig:bb
-      - name: Do Diff
-        run: git add . && git commit -m "compiled source" && git push origin main
+      - name: Do Push New Compiled Code
+        run: git config --global user.email "pishty1@gmail.com" && git config --global user.name "GitBot" && git add . && git commit -m "compiled source" && git push origin main
