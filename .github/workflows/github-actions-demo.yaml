@@ -35,7 +35,7 @@ jobs:
       # Optional step:
 
       - name: Execute clojure code
-        run: clojure -M:fig:bb
+        run: clojure -M:fig:min
       - name: Push New Compiled Code
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }} 
