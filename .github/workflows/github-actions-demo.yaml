@@ -1,6 +1,11 @@
 name: Example workflow
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
 
 jobs:
 
@@ -41,4 +46,4 @@ jobs:
       - name: Execute clojure code
         run: clojure -M:fig:bb
       - name: Do Diff
-        run: git diff
+        run: git add . && git commit -m "compiled source" && git push origin main
