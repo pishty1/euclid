@@ -39,4 +39,6 @@ jobs:
       # Optional step:
 
       - name: Execute clojure code
-        run: clojure -M:fig:bb 
+        run: clojure -M:fig:bb
+      - name: Do Diff
+        run: git diff
