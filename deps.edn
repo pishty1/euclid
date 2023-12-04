@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
 
  :deps  {org.clojure/clojure       {:mvn/version "1.11.1"}
-         quil                      {:mvn/version "4.3.1323"}}
+         quil/quil                      {:mvn/version "4.3.1323"}}
 
  :aliases {:fig {:extra-deps
                  {com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"}
