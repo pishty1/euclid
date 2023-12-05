@@ -60,7 +60,6 @@ jobs:
           java --version
           clojure -version
           clojure -M:fig:bb
-          git checkout -b publish
           git status
           git add . 
           git commit -m "Build artifacts [skip ci]" || echo "No changes to commit"
