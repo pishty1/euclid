@@ -62,16 +62,14 @@ jobs:
           clojure -M:fig:bb
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git diff --name-only
-          git diff --cached
-          git status
           git add -A 
-          git status
           git commit -m "Build artifacts [skip ci]" || echo "No changes to commit"
-          git status
           git checkout -b publish
-          git status
           git push --force origin publish
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     # - name: Commit and Push Changes
     #   run: |
