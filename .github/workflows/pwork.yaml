@@ -66,6 +66,7 @@ jobs:
           git diff --cached
           git status
           git add -A 
+          git status
           git commit -m "Build artifacts [skip ci]" || echo "No changes to commit"
           git status
           git push --force origin publish
