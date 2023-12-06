@@ -1,5 +1,0 @@
-{:main sketches.flow
- :output-to "docs/js/main.js"
- :pretty-print false
- ;; Additional advanced optimizations options as needed
-}
