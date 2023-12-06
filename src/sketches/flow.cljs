@@ -71,6 +71,7 @@
   [particles]
   (map (fn [p]
          (assoc p
+                :mx        100 
                 :x         (position (:x p) (:vx p) w)
                 :y         (position (:y p) (:vy p) h)
                 :direction (direction (:x p) (:y p) (:id p))
@@ -86,6 +87,7 @@
   (q/no-stroke)
   (doseq [p particles]
     (apply q/fill (conj (:color p) 5))
+    (q/ellipse (q/mouse-x) (q/mouse-y) (q/random 100) (q/random 100))
     (q/ellipse (:x p) (:y p) (:size p) (:size p))))
 
 
