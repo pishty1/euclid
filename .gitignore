@@ -6,3 +6,7 @@ target
 .nrepl-port
 .rebel_readline_history
 todo.md
+.shadow-cljs
+node_modules
+package-lock.json
+resources/public/js

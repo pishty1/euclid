@@ -90,7 +90,7 @@
 
 
 (defn create [canvas]
-  (println "version 0.0.22")
+  (println "version 0.0.1")
   (q/sketch
    :host canvas
    :size [w h]
@@ -106,5 +106,9 @@
 
 ;; (enable-console-print!)
 (defonce sketchy (create "sketch"))
-;; (defn startup []
-;;   (create "sketch"))
+
+(defn reload! []
+  (println "Code updated."))
+
+(defn startup []
+  (create "sketch"))

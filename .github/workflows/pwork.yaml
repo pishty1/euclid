@@ -55,11 +55,23 @@ jobs:
           # key: cljdeps-${{ hashFiles('build.boot') }}
           restore-keys: cljdeps-
 
+      - name: install node 
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install shadow cljs
+        run: | 
+          npm install --save-dev shadow-cljs
+          shadow-cljs compile prod
+        
       - name: Execute clojure code
         run: | 
           java --version
           clojure -version
           clojure -M:fig:bb
+          
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
           git add docs/js/main.js 

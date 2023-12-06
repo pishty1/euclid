@@ -1,0 +1,30 @@
+{
+  "name": "shadow-reagent",
+  "version": "0.0.1",
+  "description": "Template for shadow-cljs and reagent projects",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jacekschae/shadow-reagent"
+  },
+  "author": {
+    "name": "Pishty",
+    "email": "pishty1@email.com"
+  },
+  "license": "EPL-2.0",
+  "scripts": {
+    "dev": "shadow-cljs watch app",
+    "release": "shadow-cljs release app",
+    "server": "shadow-cljs server",
+    "clean": "rm -rf target && rm -rf public/js",
+    "clean-win": "rmdir /s /q public/js & rmdir /s /q target"
+  },
+  "dependencies": {
+    "create-react-class": "^15.7.0",
+    "p5": "^1.9.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "shadow-cljs": "^2.26.2"
+  }
+}

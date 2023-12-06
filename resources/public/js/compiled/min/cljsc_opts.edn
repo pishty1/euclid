@@ -1,1 +1,0 @@
-{:main sketches.flow, :output-to "resources/public/js/compiled/main.js", :output-dir "resources/public/js/compiled/min", :asset-path "js/compiled/min", :source-map "resources/public/js/compiled/main.js.map", :optimizations :advanced, :pretty-print false, :aot-cache false}
