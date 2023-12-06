@@ -64,7 +64,7 @@ jobs:
       - name: Install shadow cljs
         run: | 
           npm install
-          npm install --save-dev shadow-cljs
+          npm install -g shadow-cljs
           shadow-cljs compile prod
         
       - name: Execute clojure code
