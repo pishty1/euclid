@@ -88,11 +88,12 @@
 (defn sketch-draw
   "Draws the current state to the canvas. Called on each iteration after sketch-update."
   [particles]
-  ;;(apply q/background (:background palette))
   (q/no-stroke)
+  (q/fill 255 255 255)
+  (q/rect (/ w 2) (/ h 2) 80 40)
+  (q/rect (q/mouse-x) (q/mouse-y) 80 40)
   (doseq [p particles]
     (apply q/fill (conj (:color p) 5))
-    (q/ellipse (q/mouse-x) (q/mouse-y) (q/random 100) (q/random 100))
     (q/ellipse (:x p) (:y p) (:size p) (:size p))))
 
 

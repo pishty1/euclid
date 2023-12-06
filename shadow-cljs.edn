@@ -7,7 +7,7 @@
                  :output-dir "resources/public/js/"
                  :asset-path "."
                  :target :browser
-                 :modules {:main {:entries [sketches.flow]}}
+                 :modules {:main {:entries [sketches.entry]}}
                  :devtools {:after-load sketches.flow/reload!}}
           :prod {:output-to "docs/js/main.js"
                  :output-dir "docs/js/"
