@@ -6,6 +6,11 @@
 (def w (.-clientWidth body))
 (def h (.-clientHeight body))
 
+(defn prevent-behavior [e]
+  (.preventDefault e))
+
+(.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
+
 (def noise-zoom
   "Noise zoom level."
   0.045)
