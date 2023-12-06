@@ -1,4 +1,4 @@
-{:source-paths ["src"]
+{:source-paths ["src" "test"]
  :dependencies [[reagent "1.2.0"]
                 [quil/quil "4.3.1323"]
                 [thheller/shadow-cljs "2.26.2"]]
@@ -15,4 +15,11 @@
                  :target :browser
                  :compiler-options {:optimizations :advanced}
                  :js-options {:minimize-require true}
-                 :modules {:main {:entries [sketches.flow]}}}}}
+                 :modules {:main {:entries [sketches.flow]}}}
+          :min {:output-to "resources/public/js/main.js"
+                :target :browser
+                :output-dir "resources/public/js/"
+                :asset-path "."
+                :compiler-options {:optimizations :simple}
+                :js-options {:minimize-require true}
+                :modules {:main {:entries [sketches.flow]}}}}}

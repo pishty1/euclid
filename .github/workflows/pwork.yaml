@@ -65,7 +65,7 @@ jobs:
         run: | 
           npm install
           npm install -g shadow-cljs
-          shadow-cljs compile prod
+          shadow-cljs release prod
         
       - name: Execute clojure code
         run: | 
