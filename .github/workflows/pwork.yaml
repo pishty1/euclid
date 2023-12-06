@@ -63,6 +63,7 @@ jobs:
 
       - name: Install shadow cljs
         run: | 
+          npm install
           npm install --save-dev shadow-cljs
           shadow-cljs compile prod
         
