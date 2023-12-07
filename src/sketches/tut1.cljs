@@ -66,6 +66,7 @@
 
 
 (defn start []
+  (println "version 0.0.5")
   (q/sketch
    :host "sketch"
    :title "Cross with circle"
