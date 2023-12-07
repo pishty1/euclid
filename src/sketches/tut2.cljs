@@ -49,6 +49,6 @@
   (q/sketch
    :host "sketch"
    :size [500 500]
-   :mouse-released menu/printlick
+   :mouse-released menu/mouse-released
    :setup setup
    :draw draw))

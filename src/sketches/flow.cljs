@@ -108,7 +108,7 @@
    :setup #'sketch-setup
    :update #'sketch-update
    :mouse-pressed menu/mouse-pressed
-   :mouse-released menu/printlick
+   :mouse-released menu/mouse-released
    :middleware [middleware/fun-mode]
    :settings (fn []
                (q/pixel-density 1)

@@ -40,11 +40,10 @@
     (q/line right bottom left top)
 
     (q/fill 255 150)
-    (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)))
+    (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
+  {:key1 1 :key2 2})
 
-(defn draw []
-  (when (q/mouse-pressed?)
-    (println "++++++++++ Mouse pressed at " (q/mouse-x) (q/mouse-y))))
+(defn draw [])
 
 
 (defn start []
@@ -53,7 +52,8 @@
    :title "Cross with circle"
    :setup setup
    :draw draw
-   :mouse-released menu/printlick
+   :mouse-pressed menu/mouse-pressed
+   :mouse-released menu/mouse-released
    :size [w h]
    :renderer :p2d
    :middleware [m/fun-mode]))

@@ -16,11 +16,11 @@
                  :target :browser
                  :compiler-options {:optimizations :advanced}
                  :js-options {:minimize-require true}
-                 :modules {:main {:entries [sketches.flow]}}}
+                 :modules {:main {:init-fn sketches.entry/randomizer}}}
           :min {:output-to "resources/public/js/main.js"
                 :target :browser
                 :output-dir "resources/public/js/"
                 :asset-path "."
                 :compiler-options {:optimizations :simple}
                 :js-options {:minimize-require true}
-                :modules {:main {:entries [sketches.flow]}}}}}
+                :modules {:main {:init-fn sketches.entry/randomizer}}}}}

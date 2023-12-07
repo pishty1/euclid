@@ -22,7 +22,7 @@
     ))
 
 (defn randomizer []
-  (if (< (rand-int 10) 10)
+  (if (> (rand-int 10) 10)
     (flow/start)
     (tut1/start)))
 

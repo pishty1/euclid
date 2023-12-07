@@ -1,14 +1,16 @@
 (ns sketches.menu
   (:require [quil.core :as q]))
 
-(defn mouse-pressed []
-  (q/fill 255 (rand-int 255) 0)
+(defn mouse-pressed [state event]
   (q/rect 0 0 100 100)
-  (println "++++++++++ Mouse pressed at " (q/mouse-x) (q/mouse-y)))
+  (q/fill 255 (rand-int 255) 0)
+  (println "++++++++++ Mouse pressed at " (q/mouse-x) (q/mouse-y))
+  state)
 
-(defn printlick [state event]
+(defn mouse-released [state event]
 ;;   (q/background 255 255 255)
   (println "---------xxxxxx--------")
   (println state event)
   (q/no-fill)
-  (println "Released at " (q/mouse-x) (q/mouse-y)))
+  (println "Released at " (q/mouse-x) (q/mouse-y))
+  state)
