@@ -45,6 +45,8 @@
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
+  (when (q/mouse-pressed?)
+    (menu/draw-box))
   (q/line left bottom right top)
   (q/line right bottom left top)
   (q/fill 255 150)
@@ -63,7 +65,7 @@
    :setup setup
    :update update-state
    :draw draw
-   :mouse-clicked menu/mouse-pressed
+;;    :mouse-clicked menu/mouse-pressed
 ;;    :mouse-pressed menu/mouse-pressed
    :mouse-released menu/mouse-released
    :size [w h]
