@@ -11,10 +11,14 @@
         height: 100%;
         padding: 0;
         margin: 0;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
       }
     </style>
   </head>
-  <body id="myapp" onmousedown="return false" onselectstart="return false">
+  <body id="myapp" onmousedown="return false" onselectstart="return false" oncopy="return false">
     <div id="sketch"></div>
     <script src="js/main.js"></script>
   </body>
