@@ -29,6 +29,12 @@
 ;; (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
 ;; (set! (.-disabled (.getElementById js/document "myapp")) true)
 
+(defn is-mobile-browser? []
+  (let [user-agent (or (.-userAgent js/navigator)
+                       (.-vendor js/navigator)
+                       (.-opera js/window))]
+    (boolean (re-find #"(Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini)" user-agent))))
+
 (defn setup []
   (q/smooth)
   (q/background 230 230 230)
@@ -42,14 +48,14 @@
         right           (+ canvas-x-center cross-size)
         top             (+ canvas-y-center cross-size)
         bottom          (- canvas-y-center cross-size)
-        is-mobile (nil? (.-orientation js/screen))]
+        is-mobile (is-mobile-browser?)]
     (println "is mobile :" is-mobile)
-    {:is-mobile? is-mobile
+    {:is-mobile is-mobile
      :cross-size cross-size :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
      :left left :right right :top top :bottom bottom}))
 
-(defn draw-state [{:keys [:is-mobile? left right top bottom
+(defn draw-state [{:keys [is-mobile left right top bottom
                     canvas-x-center canvas-y-center circ-size]:as state} ]
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
@@ -58,7 +64,7 @@
     (menu/draw-menu))
   (q/line left bottom right top)
   (q/line right bottom left top)
-  (q/fill (if is-mobile? 255 0) 150)
+  (q/fill (if is-mobile 255 0) 150)
   (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
 
 (defn update-state [state]
