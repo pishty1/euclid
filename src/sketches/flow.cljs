@@ -12,6 +12,8 @@
   (.preventDefault e))
 
 (.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
+;; document.addEventListener('contextmenu', event => event.preventDefault());
+(.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
 
 (def noise-zoom
   "Noise zoom level."
