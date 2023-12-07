@@ -8,7 +8,7 @@
 
 
 (defn draw-menu []
-  (q/with-translation [(/ (q/width) 4) (/ (q/height) 4)]
-    (doseq [x (range 0 500 100)
-            y (range 0 500 100)]
+  (q/with-translation [0 0]
+    (doseq [x (range (q/mouse-x) (+ (q/mouse-x) 500) 100)
+            y (range (q/mouse-y) (+ (q/mouse-y) 500) 100)]
       (draw-menu-item x y 255 255 0))))
