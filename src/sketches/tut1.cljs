@@ -26,8 +26,8 @@
   (.preventDefault e))
 
 (.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
-(.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
-(set! (.-disabled (.getElementById js/document "myapp")) true)
+;; (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
+;; (set! (.-disabled (.getElementById js/document "myapp")) true)
 
 (defn setup []
   (q/smooth)
@@ -41,12 +41,15 @@
         left            (- canvas-x-center cross-size)
         right           (+ canvas-x-center cross-size)
         top             (+ canvas-y-center cross-size)
-        bottom          (- canvas-y-center cross-size)]
-  {:cross-size cross-size :circ-size circ-size
-   :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
-   :left left :right right :top top :bottom bottom}))
+        bottom          (- canvas-y-center cross-size)
+        is-mobile (nil? (.-orientation js/screen))]
+    (println "is mobile :" is-mobile)
+    {:is-mobile? is-mobile
+     :cross-size cross-size :circ-size circ-size
+     :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
+     :left left :right right :top top :bottom bottom}))
 
-(defn draw-state [{:keys [left right top bottom
+(defn draw-state [{:keys [:is-mobile? left right top bottom
                     canvas-x-center canvas-y-center circ-size]:as state} ]
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
@@ -55,7 +58,7 @@
     (menu/draw-menu))
   (q/line left bottom right top)
   (q/line right bottom left top)
-  (q/fill 255 150)
+  (q/fill (if is-mobile? 255 0) 150)
   (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
 
 (defn update-state [state]
