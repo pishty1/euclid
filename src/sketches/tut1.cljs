@@ -1,5 +1,8 @@
 (ns sketches.tut1
-  (:require [quil.core :as q]))
+  (:require
+   [quil.core :as q]
+   [sketches.menu :as menu]
+   ))
 
 ;; Example 1 - Cross with Circle
 ;; Taken from Section 2.2.1, p20
@@ -38,11 +41,16 @@
     (q/fill 255 150)
     (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)))
 
-(defn gen-art-1 []
+(defn draw [])
+
+
+(defn start []
   (q/sketch
    :host "sketch"
    :title "Cross with circle"
+   :mouse-released menu/printlick
    :setup setup
+   :draw draw
    :size [w h]))
 
-(defonce sketchy (gen-art-1))
+(defonce sketchy (start))

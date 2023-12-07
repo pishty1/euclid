@@ -1,16 +1,2 @@
 {:paths ["src" "resources"]
-
- :deps  {org.clojure/clojure       {:mvn/version "1.11.1"}
-         }
-
-
- :aliases {:fig {:extra-deps
-                 {com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"}
-                  org.slf4j/slf4j-nop {:mvn/version "1.7.30"}
-                  com.bhauman/figwheel-main {:mvn/version "0.2.18"}}
-                 :extra-paths ["target" "test"]}
-           :build {:main-opts ["-m" "figwheel.main" "-b" "dev" "-r"]}
-           :bb {:main-opts ["-m" "figwheel.main" "-O" "advanced" "-bo" "min"]}
-           :min   {:main-opts ["-m" "figwheel.main" "-O" "advanced" "-bo" "min"]}
-           :test  {:main-opts ["-m" "figwheel.main" "-co" "test.cljs.edn" "-m" "sketches.test-runner"]}}}
-
+ :deps  {org.clojure/clojure       {:mvn/version "1.11.1"}}}

@@ -118,5 +118,5 @@
 (defn reload! []
   (println "Code updated."))
 
-(defn startup []
+(defn start []
   (create "sketch"))

@@ -1,60 +1,56 @@
 (ns sketches.tut2
-  (:require [quil.core :as q]
-            [quil.helpers.seqs :refer [seq->stream range-incl]]))
-
-                 ;; Example 2 - Growing Circle
-                 ;; Taken from Listing 2.1, p28
-
-                 ;; int diam = 10;
-                 ;; float centX, centY;
-
-                 ;; void setup() {
-                 ;;   size(500, 300);
-                 ;;   frameRate(24);
-                 ;;   smooth();
-                 ;;   background(180);
-                 ;;   centX = width/2;
-                 ;;   centY = height/2;
-                 ;;   stroke(0);
-                 ;;   strokeWeight(5);
-                 ;;   fill(255, 50);
-                 ;; }
-
-                 ;; void draw() {
-                 ;;   if(diam <= 400) {
-                 ;;     background(180);
-                 ;;     ellipse(centX, centY, diam, diam);
-                 ;;     diam += 10;
-                 ;;   }
-                 ;; }
+  (:require [quil.core :as q :include-macros true]
+            [sketches.menu :as menu]))
 
 (defn setup []
-  (q/frame-rate 24)
-  (q/smooth)
-  (q/background 180)
-  (q/stroke 0)
-  (q/stroke-weight 5)
-  (q/fill 255 25)
-  (let [diams (range-incl 10 400 10)]
-    (q/set-state! :diam (seq->stream diams)
-                  :cent-x (/ (q/width) 2)
-                  :cent-y (/ (q/height) 2))))
+  (q/frame-rate 30))
 
+(defn pulse [low high rate]
+  (let [diff (- high low)
+        half (/ diff 2)
+        mid (+ low half)
+        s (/ (q/millis) 1000.0)
+        x (q/sin (* s (/ 1.0 rate)))]
+    (+ mid (* x half))))
+
+(defn t []
+  (* 0.001 (q/millis)))
+
+(def speed 0.5)
+
+(defn stem [base-x]
+  (let [magic (/ 8 (q/width))
+        x-max (/ (q/width) 4)
+        x-max-top (/ x-max 2)
+        y-max (/ (q/height) 2)
+
+        x (+ base-x
+             (pulse (- x-max-top) x-max-top 1.0))
+        y (+ (- y-max)
+             (* 0.5 y-max
+                (q/sin (+ (* speed (t))
+                          (* magic base-x))))
+             (* (/ 3) y-max (q/sin (* 2 (t)))))]
+    (q/bezier base-x 0 base-x 0
+              0 (- x-max) x y)))
 (defn draw []
-  (let [cent-x (q/state :cent-x)
-        cent-y (q/state :cent-y)
-        diam   ((q/state :diam))]
-    (when diam
-      (q/background 180)
-      (q/ellipse cent-x cent-y diam diam))))
+  (q/background 255)
+  (q/stroke 0)
+  (q/stroke-weight 1)
+  (q/no-fill)
+  (let [size (q/width)
+        x-max (/ size 4)]
+    (q/with-translation [(/ size 2) (q/height)]
+      (doseq [x (range (- x-max) x-max 2)]
+        (stem x)))))
+
 
 (defn start []
   (q/sketch
    :host "sketch"
-   :title "Growing circle"
+   :size [500 500]
+   :mouse-released menu/printlick
    :setup setup
-   :draw draw
-   :size [500 300]
-   :keep-on-top true))
+   :draw draw))
 
-(defonce startup (start))
+;; (defonce startup (start))

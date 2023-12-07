@@ -1,5 +1,5 @@
 (ns sketches.tut3
-   (:require [quil.core :as q]))
+  (:require [quil.core :as q]))
 
 
  (def body (.-body js/document))
@@ -23,13 +23,11 @@
                     ;; You struggle to beat the golden ratio
 
 
-(defn startup []
+(defn start []
   (q/sketch                   ;; Define a new sketch named example
-    :host "sketch"                      ;; Set the host to sketch
-    :title "Oh so many grey circles"    ;; Set the title of the sketch
-    :settings #(q/smooth 2)             ;; Turn on anti-aliasing
-    :setup setup                        ;; Specify the setup fn
-    :draw draw                          ;; Specify the draw fn
-    :size [w h]))
-
-(defonce sketchy (startup))
+   :host "sketch"                      ;; Set the host to sketch
+   :title "Oh so many grey circles"    ;; Set the title of the sketch
+   :settings #(q/smooth 2)             ;; Turn on anti-aliasing
+   :setup setup                        ;; Specify the setup fn
+   :draw draw                          ;; Specify the draw fn
+   :size [w h]))
