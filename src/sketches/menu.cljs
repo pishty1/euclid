@@ -1,19 +1,11 @@
 (ns sketches.menu
   (:require [quil.core :as q]))
 
-(defn draw-box []
-  (q/fill 255 255 0)
-  (q/rect 0 0 100 100)
-  (println "++++++++++ PRESSED at " (q/mouse-x) (q/mouse-y)))
+(defn draw-menu-item [x y c1 c2 c3]
+  (q/fill c1 c2 c3)
+  (q/rect x y 100 100))
 
-(defn mouse-pressed [state event]
-  (draw-box)
-  state)
-
-(defn mouse-released [state event]
-;;   (q/background 255 255 255)
-  (println "---------RELEASED--------")
-  (println state event)
-;;   (q/no-fill)
-  (println "Released at " (q/mouse-x) (q/mouse-y))
-  state)
+(defn draw-menu []
+  (doseq [x (range 0 500 100)
+          y (range 0 500 100)]
+    (draw-menu-item x y 255 255 0)))
