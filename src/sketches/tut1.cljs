@@ -2,7 +2,8 @@
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]
-   ))
+   [quil.middleware :as m]
+   [quil.middlewares.deprecated-options :as do]))
 
 ;; Example 1 - Cross with Circle
 ;; Taken from Section 2.2.1, p20
@@ -41,16 +42,18 @@
     (q/fill 255 150)
     (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)))
 
-(defn draw [])
+(defn draw []
+  (when (q/mouse-pressed?)
+    (println "++++++++++ Mouse pressed at " (q/mouse-x) (q/mouse-y))))
 
 
 (defn start []
   (q/sketch
    :host "sketch"
    :title "Cross with circle"
-   :mouse-released menu/printlick
    :setup setup
    :draw draw
-   :size [w h]))
-
-(defonce sketchy (start))
+   :mouse-released menu/printlick
+   :size [w h]
+   :renderer :p2d
+   :middleware [m/fun-mode]))

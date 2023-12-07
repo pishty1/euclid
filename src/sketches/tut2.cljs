@@ -52,5 +52,3 @@
    :mouse-released menu/printlick
    :setup setup
    :draw draw))
-
-;; (defonce startup (start))

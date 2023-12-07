@@ -1,6 +1,8 @@
 (ns sketches.flow
   (:require [quil.core :as q :include-macros true]
-            [quil.middleware :as middleware]))
+            [quil.middleware :as middleware]
+            [sketches.menu :as menu]
+            ))
 
 (def body (.-body js/document))
 (def w (.-clientWidth body))
@@ -91,7 +93,7 @@
   (q/no-stroke)
   (q/fill 255 255 255)
   (q/rect (/ w 2) (/ h 2) 80 40)
-  (q/rect (q/mouse-x) (q/mouse-y) 80 40)
+  (q/ellipse (q/mouse-x) (q/mouse-y) 80 80)
   (doseq [p particles]
     (apply q/fill (conj (:color p) 5))
     (q/ellipse (:x p) (:y p) (:size p) (:size p))))
@@ -105,6 +107,8 @@
    :draw #'sketch-draw
    :setup #'sketch-setup
    :update #'sketch-update
+   :mouse-pressed menu/mouse-pressed
+   :mouse-released menu/printlick
    :middleware [middleware/fun-mode]
    :settings (fn []
                (q/pixel-density 1)
@@ -113,8 +117,6 @@
 
 
 ;; (enable-console-print!)
-(defonce sketchy (create "sketch"))
-
 (defn reload! []
   (println "Code updated."))
 

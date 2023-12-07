@@ -7,9 +7,6 @@
             ))
 
 
-(defonce sketchy
-  (tut1/start))
-
 ;; (defonce sketchy
 ;;   (if (< (rand-int 10) 5)
 ;;     (tut1/gen-art-1)
@@ -23,10 +20,13 @@
     3 (tut3/start)
     4 (tut4/start)
     ))
-(comment
-  (chooser 2) 
 
-  (defn randomizer []
-    (if (< (rand-int 10) 5)
-      (println "Less than 5")
-      (println "Greater than 5"))))
+(defn randomizer []
+  (if (< (rand-int 10) 10)
+    (flow/start)
+    (tut1/start)))
+
+(comment
+  (chooser 1)
+
+  )
