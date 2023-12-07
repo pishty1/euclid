@@ -7,6 +7,17 @@
             ))
 
 
+(def body (.-body js/document))
+(def w (.-clientWidth body))
+(def h (.-clientHeight body))
+
+(defn prevent-behavior [e]
+  (.preventDefault e))
+
+(.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
+;; document.addEventListener('contextmenu', event => event.preventDefault());
+(.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
+
 ;; (defonce sketchy
 ;;   (if (< (rand-int 10) 5)
 ;;     (tut1/gen-art-1)

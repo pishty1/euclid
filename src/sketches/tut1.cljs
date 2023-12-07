@@ -23,6 +23,12 @@
 (def w (.-clientWidth body))
 (def h (.-clientHeight body))
 
+(defn prevent-behavior [e]
+  (.preventDefault e))
+
+(.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
+(.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
+
 (defn setup []
   (q/smooth)
   (q/background 230 230 230)
