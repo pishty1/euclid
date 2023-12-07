@@ -41,7 +41,7 @@
    :left left :right right :top top :bottom bottom}))
 
 (defn draw [{:keys [left right top bottom
-                    canvas-x-center canvas-y-center circ-size]} state]
+                    canvas-x-center canvas-y-center circ-size]:as state} ]
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
@@ -50,14 +50,21 @@
   (q/fill 255 150)
   (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
 
+(defn update-state [state]
+  (assoc state 
+         :left (q/mouse-x)
+         :right (q/mouse-y)))
+
 
 (defn start []
   (q/sketch
    :host "sketch"
    :title "Cross with circle"
    :setup setup
+   :update update-state
    :draw draw
-   :mouse-pressed menu/mouse-pressed
+   :mouse-clicked menu/mouse-pressed
+;;    :mouse-pressed menu/mouse-pressed
    :mouse-released menu/mouse-released
    :size [w h]
    :renderer :p2d
