@@ -2,8 +2,7 @@
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]
-   [quil.middleware :as m]
-   [quil.middlewares.deprecated-options :as do]))
+   [quil.middleware :as m]))
 
 ;; Example 1 - Cross with Circle
 ;; Taken from Section 2.2.1, p20
@@ -28,7 +27,7 @@
 
 (.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
 (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
-(set! (.-disabled (.getElementById js/document "sketch")) true)
+(set! (.-disabled (.getElementById js/document "myapp")) true)
 
 (defn setup []
   (q/smooth)
