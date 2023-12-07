@@ -36,14 +36,19 @@
         right           (+ canvas-x-center cross-size)
         top             (+ canvas-y-center cross-size)
         bottom          (- canvas-y-center cross-size)]
-    (q/line left bottom right top)
-    (q/line right bottom left top)
+  {:cross-size cross-size :circ-size circ-size
+   :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
+   :left left :right right :top top :bottom bottom}))
 
-    (q/fill 255 150)
-    (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
-  {:key1 1 :key2 2})
-
-(defn draw [])
+(defn draw [{:keys [left right top bottom
+                    canvas-x-center canvas-y-center circ-size]} state]
+  (q/background 230 230 230)
+  (q/stroke 130, 0 0)
+  (q/stroke-weight 4)
+  (q/line left bottom right top)
+  (q/line right bottom left top)
+  (q/fill 255 150)
+  (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
 
 
 (defn start []

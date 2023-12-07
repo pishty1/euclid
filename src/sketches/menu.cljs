@@ -2,8 +2,8 @@
   (:require [quil.core :as q]))
 
 (defn mouse-pressed [state event]
-  (q/rect 0 0 100 100)
   (q/fill 255 (rand-int 255) 0)
+  (q/rect 0 0 100 100)
   (println "++++++++++ Mouse pressed at " (q/mouse-x) (q/mouse-y))
   state)
 
