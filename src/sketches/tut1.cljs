@@ -61,7 +61,7 @@
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
   (when (q/mouse-pressed?)
-    (menu/draw-menu))
+    (menu/draw-menu is-mobile))
   (q/line left bottom right top)
   (q/line right bottom left top)
   (q/fill (if is-mobile 255 0) 150)

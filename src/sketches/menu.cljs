@@ -7,8 +7,10 @@
 
 
 
-(defn draw-menu []
-  (q/with-translation [0 0]
-    (doseq [x (range (q/mouse-x) (+ (q/mouse-x) 500) 100)
-            y (range (q/mouse-y) (+ (q/mouse-y) 500) 100)]
-      (draw-menu-item x y 255 255 0))))
+(defn draw-menu [is-mobile?]
+  (let [distance (if is-mobile? 300 500)
+        increments (if is-mobile? 70 100)]
+    (q/with-translation [0 0]
+      (doseq [x (range (q/mouse-x) (+ (q/mouse-x) distance ) increments)
+              y (range (q/mouse-y) (+ (q/mouse-y) distance) increments)]
+        (draw-menu-item x y 255 255 0)))))
