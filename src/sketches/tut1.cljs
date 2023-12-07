@@ -28,6 +28,7 @@
 
 (.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
 (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
+(set! (.-disabled (.getElementById js/document "sketch")) true)
 
 (defn setup []
   (q/smooth)
