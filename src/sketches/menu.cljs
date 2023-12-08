@@ -10,13 +10,21 @@
    :menu-list [{:label "Hello"
                 :color 255}
                {:label "World"
-                :color 155}]})
+                :color 155}
+               {:label "Baby"
+                :color 15}]})
 
-(defn draw-menu [is-mobile?]
-  (let [distance (if is-mobile? 300 500)
+(defn generate-menu [num]
+  (map (fn [x] {:label (str "Item " x)
+                :color (rand-int (rand-int 255))})
+       (range num)))
+
+(defn draw-menu [is-mobile? number-of-items]
+  (let [gen-menu (generate-menu number-of-items)
+        distance (if is-mobile? 300 500)
         increments (if is-mobile? 70 100)]
     (loop [index 1
-           menu-list (:menu-list menu-items)]
+           menu-list (generate-menu number-of-items)]
 
       (when (seq menu-list)
         (let [item (first menu-list)

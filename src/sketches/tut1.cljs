@@ -62,7 +62,7 @@
   (q/stroke-weight 4)
 
   (when (q/mouse-pressed?)
-    (menu/draw-menu is-mobile))
+    (menu/draw-menu is-mobile 4))
 
   (q/line left bottom right top)
   (q/line right bottom left top)
