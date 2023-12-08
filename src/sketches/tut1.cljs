@@ -50,18 +50,20 @@
         bottom          (- canvas-y-center cross-size)
         is-mobile (is-mobile-browser?)]
     (println "is mobile :" is-mobile)
-    {:is-mobile is-mobile
-     :cross-size cross-size :circ-size circ-size
+    {:is-mobile is-mobile :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
      :left left :right right :top top :bottom bottom}))
 
 (defn draw-state [{:keys [is-mobile left right top bottom
-                    canvas-x-center canvas-y-center circ-size]:as state} ]
+                    canvas-x-center canvas-y-center circ-size]} ]
+
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
+
   (when (q/mouse-pressed?)
     (menu/draw-menu is-mobile))
+
   (q/line left bottom right top)
   (q/line right bottom left top)
   (q/fill (if is-mobile 255 0) 150)

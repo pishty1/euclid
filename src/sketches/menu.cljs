@@ -5,12 +5,41 @@
   (q/fill c1 c2 c3)
   (q/rect x y 100 100))
 
-
+(def menu-items
+  {:padding 10
+   :menu-list [{:label "Hello"
+                :color 255}
+               {:label "World"
+                :color 155}]})
 
 (defn draw-menu [is-mobile?]
   (let [distance (if is-mobile? 300 500)
         increments (if is-mobile? 70 100)]
-    (q/with-translation [0 0]
-      (doseq [x (range (q/mouse-x) (+ (q/mouse-x) distance ) increments)
-              y (range (q/mouse-y) (+ (q/mouse-y) distance) increments)]
-        (draw-menu-item x y 255 255 0)))))
+    (loop [index 1
+           menu-list (:menu-list menu-items)]
+
+      (when (seq menu-list)
+        (let [item (first menu-list)
+              {:keys [label color]} item
+              new-x increments
+              new-y (* index increments)]
+          (draw-menu-item new-x new-y color color color)
+          (recur (inc index) (rest menu-list)))))))
+
+
+(comment
+  ;; (def mycoll [1 2 3 4 5])
+  (def mycoll
+    {:toto "hello"
+     :mycoll [1 2 3 4 5]})
+  (defn myloop []
+    (loop [index 0
+           coll (:mycoll mycoll)
+          ;;  {coll :mycoll} mycoll
+           ]
+      (when (seq coll)
+        (println (first coll) " with index " index)
+        (recur (inc index) (rest coll)))))
+
+  (myloop)
+  )
