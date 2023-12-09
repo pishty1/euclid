@@ -48,16 +48,16 @@
         right           (+ canvas-x-center cross-size)
         top             (+ canvas-y-center cross-size)
         bottom          (- canvas-y-center cross-size)
-        is-mobile (is-mobile-browser?)]
-    (println "is mobile :" is-mobile)
+        mobile? (is-mobile-browser?)]
+    (println "is mobile :" mobile?)
 
-    {:is-mouse-pressed false
-     :menu (menu/create-menu is-mobile h w)
-     :is-mobile is-mobile :circ-size circ-size
+    {:menu-visible? false
+     :menu (menu/create-menu-details mobile? h w)
+     :mobile? mobile? :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
      :left left :right right :top top :bottom bottom}))
 
-(defn draw-state [{:keys [is-mouse-pressed menu is-mobile left right top bottom
+(defn draw-state [{:keys [menu-visible? menu mobile? left right top bottom
                           canvas-x-center canvas-y-center circ-size]}]
 
   (q/background 190 30 130)
@@ -66,10 +66,10 @@
 
   (q/line left bottom right top)
   (q/line right bottom left top)
-  (q/fill (if is-mobile 255 0) 150)
+  (q/fill (if mobile? 255 0) 150)
   (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)
-  (when is-mouse-pressed
-    (menu/draw-menu is-mobile menu))
+  (when menu-visible?
+    (menu/draw-menu mobile? menu))
   (menu/draw-burger-icon)
   
   )
