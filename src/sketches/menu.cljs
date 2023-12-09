@@ -18,7 +18,7 @@
 (defn gen-menu-items [is-mobile? page-height page-width]
   (let [height 100
         width (if is-mobile? (/ page-width 2) 300)
-        number-of-menu-items 7
+        number-of-menu-items 5
         origin (generate-origin number-of-menu-items height width page-height page-width)
         padding-top 0]
     (loop [index 0
