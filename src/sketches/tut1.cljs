@@ -51,7 +51,7 @@
         is-mobile (is-mobile-browser?)]
     (println "is mobile :" is-mobile)
 
-    {:menu (menu/menu-item-list h w)
+    {:menu (menu/menu-item-list is-mobile h w)
      :is-mobile is-mobile :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
      :left left :right right :top top :bottom bottom}))
@@ -59,18 +59,18 @@
 (defn draw-state [{:keys [menu is-mobile left right top bottom
                           canvas-x-center canvas-y-center circ-size]}]
 
-
   (q/background 230 230 230)
 
-  (when (q/mouse-pressed?)
-    (menu/draw-menu is-mobile menu))
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
 
   (q/line left bottom right top)
   (q/line right bottom left top)
   (q/fill (if is-mobile 255 0) 150)
-  (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
+  (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)
+  (when (q/mouse-pressed?)
+    (menu/draw-menu is-mobile menu)))
+
 
 (defn update-state [state]
   (assoc state 
