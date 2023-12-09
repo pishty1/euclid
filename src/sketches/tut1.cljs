@@ -51,16 +51,16 @@
         is-mobile (is-mobile-browser?)]
     (println "is mobile :" is-mobile)
 
-    {:menu (menu/create-menu is-mobile h w)
+    {:is-mouse-pressed false
+     :menu (menu/create-menu is-mobile h w)
      :is-mobile is-mobile :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
      :left left :right right :top top :bottom bottom}))
 
-(defn draw-state [{:keys [menu is-mobile left right top bottom
+(defn draw-state [{:keys [is-mouse-pressed menu is-mobile left right top bottom
                           canvas-x-center canvas-y-center circ-size]}]
 
-  (q/background 230 230 230)
-
+  (q/background 190 30 130)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
 
@@ -68,8 +68,11 @@
   (q/line right bottom left top)
   (q/fill (if is-mobile 255 0) 150)
   (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)
-  (when (q/mouse-pressed?)
-    (menu/draw-menu is-mobile menu)))
+  (when is-mouse-pressed
+    (menu/draw-menu is-mobile menu))
+  (menu/draw-burger-icon)
+  
+  )
 
 
 (defn update-state [state]
@@ -85,6 +88,7 @@
    :title "Cross with circle"
    :setup setup
    :update update-state
+   :mouse-clicked menu/when-mouse-pressed
    :draw draw-state
    :size [w h]
    :renderer :p2d

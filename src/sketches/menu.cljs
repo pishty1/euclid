@@ -6,14 +6,31 @@
   (q/fill c1 c2 c3)
   (q/rect x y w h))
 
+(defn draw-burger-icon []
+  (q/stroke 10)
+  (q/fill 220 120 102)
+  (q/rect 0 0 80 50))
+
+(defn is-inside-burger []
+  (let [mouse-x (q/mouse-x)
+        mouse-y (q/mouse-y)]
+    (and (<= 0 mouse-x 80)
+         (<= 0 mouse-y 50))))
+
+(defn when-mouse-pressed [state]
+  (let [is_inside_burger (is-inside-burger)]
+    (println "is inside? " is_inside_burger)
+    (assoc state :is-mouse-pressed is_inside_burger)))
+
 ; get total height of page - totoal height of menu items divide by 2  = starting y 
 (defn generate-origin [number-of-menu-items height width page-height page-width]
   (let [diff-y (- page-height (* number-of-menu-items height))
-        origin-y (/ diff-y 2)
         diff-x (- page-width width)
+        origin-y (/ diff-y 2)
         origin-x (/ diff-x 2)]
     {:ox origin-x
      :oy origin-y}))
+
 
 (defn gen-menu-items [is-mobile? page-height page-width]
   (let [height 100
