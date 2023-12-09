@@ -20,7 +20,7 @@
 (defn when-mouse-pressed [state]
   (let [is_inside_burger (is-inside-burger)]
     (println "is inside? " is_inside_burger)
-    (assoc state :is-mouse-pressed is_inside_burger)))
+    (assoc state :is-mouse-pressed (and is_inside_burger (not (:is-mouse-pressed state))))))
 
 ; get total height of page - totoal height of menu items divide by 2  = starting y 
 (defn generate-origin [number-of-menu-items height width page-height page-width]
