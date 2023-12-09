@@ -2,18 +2,33 @@
    (:require [quil.core :as q]))
 
  (defn draw-menu-item [x y h w c1 c2 c3]
+  ;;  (q/stroke-weight 20)
    (q/fill c1 c2 c3)
    (q/rect x y w h))
 
+; get total height of page - totoal height of menu items divide by 2  = starting y 
+(defn generate-origin [number-of-menu-items height width page-height page-width]
+  (let [height 100
+        width 100
+        offset-x (* 0 0)
+        offset-y (* 0 0)
+        diff-y (- page-height (* number-of-menu-items height))
+        origin-y (/ diff-y 2)
+        diff-x (- page-width (* 1 width))
+        origin-x (/ diff-x 2)
+        ]
+    {:ox origin-x 
+     :oy origin-y}))
 
- (defn gen-menu-items []
-   (let [myrange (range 7)
-         height 100
+
+ (defn gen-menu-items [page-height page-width]
+   (let [height 100
          width 100
-         ox 100
-         oy 100]
+         number-of-menu-items 4
+         origin (generate-origin number-of-menu-items height width page-height page-width)
+         padding-top 0]
      (loop [index 0
-            mrange myrange
+            mrange (range number-of-menu-items)
             menu-list []]
        (if (seq mrange)
          (recur (inc index)
@@ -24,16 +39,16 @@
                                  :color3 (rand-int (rand-int 255))
                                  :height height
                                  :width width
-                                 :px  ox; lets start here and stack them down 
-                                 :py (+ oy (* index height))}))
+                                 :px  (:ox origin); lets start here and stack them down 
+                                 :py (+ padding-top (+ (:oy origin) (* index height)))}))
          menu-list))))
 
- (def menu-item-list
+ (defn menu-item-list [page-height page-width]
    {:padding 10
-    :menu-list (gen-menu-items)})
+    :menu-list (gen-menu-items page-height page-width)})
 
- (defn draw-menu [is-mobile?]
-   (doseq [{:keys [px py height width color1 color2 color3]} (:menu-list menu-item-list)]
+ (defn draw-menu [is-mobile? menu-list]
+   (doseq [{:keys [px py height width color1 color2 color3]} (:menu-list menu-list)]
      (draw-menu-item
       px
       py
@@ -45,17 +60,5 @@
 
 
 (comment
-  ;; (def mycoll [1 2 3 4 5])
-  (def mycoll
-    {:toto "hello"
-     :mycoll [1 2 3 4 5]})
-  (defn myloop []
-    (loop [index 0
-           coll (:mycoll mycoll)
-          ;;  {coll :mycoll} mycoll
-           ]
-      (when (seq coll)
-        (println (first coll) " with index " index)
-        (recur (inc index) (rest coll)))))
 
-  (myloop))
+  )
