@@ -55,14 +55,14 @@
      :left left :right right :top top :bottom bottom}))
 
 (defn draw-state [{:keys [is-mobile left right top bottom
-                    canvas-x-center canvas-y-center circ-size]} ]
+                          canvas-x-center canvas-y-center circ-size]} ]
 
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
 
   (when (q/mouse-pressed?)
-    (menu/draw-menu is-mobile 4))
+    (menu/draw-menu is-mobile))
 
   (q/line left bottom right top)
   (q/line right bottom left top)
