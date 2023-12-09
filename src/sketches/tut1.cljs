@@ -51,7 +51,7 @@
         is-mobile (is-mobile-browser?)]
     (println "is mobile :" is-mobile)
 
-    {:menu (menu/menu-item-list is-mobile h w)
+    {:menu (menu/create-menu is-mobile h w)
      :is-mobile is-mobile :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
      :left left :right right :top top :bottom bottom}))

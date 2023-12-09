@@ -10,7 +10,7 @@
 (defn generate-origin [number-of-menu-items height width page-height page-width]
   (let [diff-y (- page-height (* number-of-menu-items height))
         origin-y (/ diff-y 2)
-        diff-x (- page-width (* 1 width))
+        diff-x (- page-width width)
         origin-x (/ diff-x 2)]
     {:ox origin-x
      :oy origin-y}))
@@ -37,7 +37,7 @@
                                 :py (+ padding-top (+ (:oy origin) (* index height)))}))
         menu-list))))
 
-(defn menu-item-list [is-mobile? page-height page-width]
+(defn create-menu [is-mobile? page-height page-width]
   {:padding 10
    :menu-list (gen-menu-items is-mobile? page-height page-width)})
 
