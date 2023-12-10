@@ -19,19 +19,22 @@
   ([]
    (tut1/start))
   ([x]
-   (println "inside chooser")
    (case x
      0 (flow/start)
      1 (tut1/start)
      2 (tut2/start)
      3 (tut3/start)
      4 (tut4/start)
-     (println "unknown index"))))
+     (println x ": unknown index"))))
 
 (go-loop []
   (let [input (<! ch/my-channel)]
-    (println "input: " input)
-    (chooser input))
+    (println "input: " (type (:start-fn input)))
+    (chooser (:index input))
+    ;; (resolve '(:start-fn input))
+    )
   (recur))
 
-(comment)
+(comment
+  (chooser 2)
+  )

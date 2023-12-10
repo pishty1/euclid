@@ -34,7 +34,7 @@
                                  (+ (:py %) (:height %)))
                             %)
                          (:items (:menu state)))]
-      (go (>! ch/my-channel (:index selected))))
+      (go (>! ch/my-channel selected)))
     (println "clicked off menu"))
 
   (assoc state
@@ -52,17 +52,18 @@
      :oy origin-y}))
 
 
-(defn gen-menu-items [origin width height number]
+(defn gen-menu-items [items origin width height]
   (let [padding-top 0]
     (loop [index 0
-           mrange (range number)
+           mrange items
            items []]
       (if (seq mrange)
         (recur (inc index)
                (rest mrange)
                (conj items
                      {:index index
-                      :label (str "index: " index)
+                      :label (:name (first mrange))
+                      :start-fn (:start (first mrange))
                       :color1 (rand-int (rand-int 255))
                       :color2 (rand-int (rand-int 255))
                       :color3 (rand-int (rand-int 255))
@@ -72,10 +73,21 @@
                       :py (+ padding-top (+ (:oy origin) (* index height)))}))
         items))))
 
+(def showcase [{:name "flow"
+                :start 'flow/start}
+               {:name "tut1"
+                :start 'tut1/start}
+               {:name "tut2"
+                :start 'tut2/start}
+               {:name "tut3"
+                :start 'tut3/start}
+               {:name "tut4"
+                :start 'tut4/start}])
+
 (defn init-menu [mobile? page-height page-width]
   (let [width (if mobile? (/ page-width 2) 300)
         height 100
-        number 4
+        number (count showcase) 
         origin (origin number height width page-height page-width)]
     {:number number
      :width width 
@@ -85,7 +97,7 @@
                   :toy (* (:oy origin) number)
                   :fromx (:ox origin)
                   :fromy (:oy origin)}
-     :items (gen-menu-items origin width height number)}))
+     :items (gen-menu-items showcase origin width height)}))
 
 (defn draw-menu [items]
   (doseq [{:keys [px py height width color1 color2 color3]} (:items items)]
@@ -100,7 +112,7 @@
 
 
 (comment
-  
+ (resolve 'flow/start) 
   (go 
     (println "from the other side:  " (<! ch/my-channel)))
   )

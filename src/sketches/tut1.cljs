@@ -2,6 +2,7 @@
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]
+  ;;  [sketches.config :as config]
    [quil.middleware :as m]))
 
 ;; Example 1 - Cross with Circle
@@ -35,7 +36,8 @@
                        (.-opera js/window))]
     (boolean (re-find #"(Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini)" user-agent))))
 
-(defn setup []
+(defn setup [mvar] 
+  (println "hello wrold" mvar)
   (q/smooth)
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
@@ -51,6 +53,7 @@
         mobile? (mobile-browser?)]
 
     {:menu-visible? false
+    ;;  :show-items (config/showcase)
      :menu (menu/init-menu mobile? h w)
      :mobile? mobile? :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
@@ -85,7 +88,7 @@
   (q/sketch
    :host "sketch"
    :title "Cross with circle"
-   :setup setup
+   :setup setup 
    :update update-state
    :mouse-clicked menu/when-mouse-pressed
    :draw draw-state
