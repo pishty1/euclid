@@ -4,12 +4,9 @@
             [sketches.tut2 :as tut2]
             [sketches.tut3 :as tut3]
             [sketches.tut4 :as tut4]
-            ))
+            [sketches.channels :as ch]
+            [cljs.core.async :refer [go-loop <!]]))
 
-
-(def body (.-body js/document))
-(def w (.-clientWidth body))
-(def h (.-clientHeight body))
 
 (defn prevent-behavior [e]
   (.preventDefault e))
@@ -18,27 +15,23 @@
 ;; document.addEventListener('contextmenu', event => event.preventDefault());
 (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
 
-;; (defonce sketchy
-;;   (if (< (rand-int 10) 5)
-;;     (tut1/gen-art-1)
-;;     (flow/startup)))
+(defn chooser
+  ([]
+   (tut1/start))
+  ([x]
+   (println "inside chooser")
+   (case x
+     0 (flow/start)
+     1 (tut1/start)
+     2 (tut2/start)
+     3 (tut3/start)
+     4 (tut4/start)
+     (println "unknown index"))))
 
-(defn chooser [x]
-  (println "inside chooser")
-  (case x
-    0 (flow/start)
-    1 (tut1/start)
-    2 (tut2/start)
-    3 (tut3/start)
-    4 (tut4/start)
-    (println "unknown index")))
+(go-loop []
+  (let [input (<! ch/my-channel)]
+    (println "input: " input)
+    (chooser input))
+  (recur))
 
-(defn randomizer []
-  (if (> (rand-int 10) 10)
-    (flow/start)
-    (tut1/start)))
-
-(comment
-  (chooser 1)
-
-  )
+(comment)

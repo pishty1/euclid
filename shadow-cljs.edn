@@ -6,8 +6,8 @@
                  :output-dir "resources/public/js/"
                  :asset-path "."
                  :target :browser
-                 :modules {:main {:init-fn sketches.entry/randomizer}}
-                 :devtools {:after-load sketches.entry/randomizer}
+                 :modules {:main {:init-fn sketches.entry/chooser}}
+                 :devtools {:after-load sketches.entry/chooser}
                  }
           :prod {:output-to "docs/js/main.js"
                  :output-dir "docs/js/"
@@ -15,11 +15,11 @@
                  :target :browser
                  :compiler-options {:optimizations :advanced}
                  :js-options {:minimize-require true}
-                 :modules {:main {:init-fn sketches.entry/randomizer}}}
+                 :modules {:main {:init-fn sketches.entry/chooser}}}
           :min {:output-to "resources/public/js/main.js"
                 :target :browser
                 :output-dir "resources/public/js/"
                 :asset-path "."
                 :compiler-options {:optimizations :simple}
                 :js-options {:minimize-require true}
-                :modules {:main {:init-fn sketches.entry/randomizer}}}}}
+                :modules {:main {:init-fn sketches.entry/chooser}}}}}
