@@ -29,7 +29,7 @@
 ;; (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
 ;; (set! (.-disabled (.getElementById js/document "myapp")) true)
 
-(defn is-mobile-browser? []
+(defn mobile-browser? []
   (let [user-agent (or (.-userAgent js/navigator)
                        (.-vendor js/navigator)
                        (.-opera js/window))]
@@ -48,11 +48,10 @@
         right           (+ canvas-x-center cross-size)
         top             (+ canvas-y-center cross-size)
         bottom          (- canvas-y-center cross-size)
-        mobile? (is-mobile-browser?)]
-    (println "is mobile :" mobile?)
+        mobile? (mobile-browser?)]
 
     {:menu-visible? false
-     :menu (menu/create-menu-details mobile? h w)
+     :menu (menu/init-menu mobile? h w)
      :mobile? mobile? :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
      :left left :right right :top top :bottom bottom}))
