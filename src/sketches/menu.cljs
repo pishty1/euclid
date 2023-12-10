@@ -34,7 +34,7 @@
                                    (+ (:py %) (:height %)))
                               %)
                            (:items (:menu state)))]
-        (println (:label selected))))
+        (println (:index selected))))
     (println "clicked off menu"))
 
   (assoc state
@@ -60,7 +60,8 @@
       (if (seq mrange)
         (recur (inc index)
                (rest mrange)
-               (conj items {:label (str "index: " index)
+               (conj items {:index index
+                            :label (str "index: " index)
                             :color1 (rand-int (rand-int 255))
                             :color2 (rand-int (rand-int 255))
                             :color3 (rand-int (rand-int 255))
@@ -85,7 +86,7 @@
                   :fromy (:oy origin)}
      :items (gen-menu-items origin width height number)}))
 
-(defn draw-menu [mobile? items]
+(defn draw-menu [items]
   (doseq [{:keys [px py height width color1 color2 color3]} (:items items)]
     (draw-menu-item
      px

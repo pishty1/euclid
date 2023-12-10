@@ -24,13 +24,14 @@
 ;;     (flow/startup)))
 
 (defn chooser [x]
+  (println "inside chooser")
   (case x
     0 (flow/start)
     1 (tut1/start)
     2 (tut2/start)
     3 (tut3/start)
     4 (tut4/start)
-    ))
+    (println "unknown index")))
 
 (defn randomizer []
   (if (> (rand-int 10) 10)

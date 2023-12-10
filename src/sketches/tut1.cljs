@@ -68,7 +68,7 @@
   (q/fill (if mobile? 255 0) 150)
   (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)
   (when menu-visible?
-    (menu/draw-menu mobile? menu))
+    (menu/draw-menu menu))
   (menu/draw-burger-icon)
   
   )
