@@ -24,7 +24,7 @@
   (inside? (q/mouse-x) (q/mouse-y) fromx fromy tox toy))
 
 (defn when-mouse-pressed [state]
-  (if (and
+  (when (and
        (:menu-visible? state)
        (inside-menu? (:dimentions (:menu state))))
     (let [selected (some #(when (inside?
@@ -34,8 +34,7 @@
                                  (+ (:py %) (:height %)))
                             %)
                          (:items (:menu state)))]
-      (go (>! ch/my-channel selected)))
-    (println "clicked off menu"))
+      (go (>! ch/my-channel selected))))
 
   (assoc state
          :menu-visible? (and (inside-burger?)
@@ -87,10 +86,10 @@
 (defn init-menu [mobile? page-height page-width]
   (let [width (if mobile? (/ page-width 2) 300)
         height 100
-        number (count showcase) 
+        number (count showcase)
         origin (origin number height width page-height page-width)]
     {:number number
-     :width width 
+     :width width
      :height height
      :origin origin
      :dimentions {:tox (+ (:ox origin) width)
@@ -112,7 +111,4 @@
 
 
 (comment
- (resolve 'flow/start) 
-  (go 
-    (println "from the other side:  " (<! ch/my-channel)))
-  )
+) 

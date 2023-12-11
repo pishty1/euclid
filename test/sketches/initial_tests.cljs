@@ -9,6 +9,5 @@
     (is (= 0 (add -1 1)) "-1 + 1 should equal 0")))
 
 (comment 
- (println "he") 
   
   )
