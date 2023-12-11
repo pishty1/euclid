@@ -1,19 +1,18 @@
 (ns sketches.flow
   (:require [quil.core :as q :include-macros true]
-            [quil.middleware :as middleware]
             [sketches.menu :as menu]
-            ))
+            [quil.middleware :as m]))
 
-(def body (.-body js/document))
-(def w (.-clientWidth body))
-(def h (.-clientHeight body))
+;; (def body (.-body js/document))
+;; (def w (.-clientWidth body))
+;; (def h (.-clientHeight body))
 
-(defn prevent-behavior [e]
-  (.preventDefault e))
+;; (defn prevent-behavior [e]
+;;   (.preventDefault e))
 
-(.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
-;; document.addEventListener('contextmenu', event => event.preventDefault());
-(.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
+;; (.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
+;; ;; document.addEventListener('contextmenu', event => event.preventDefault());
+;; (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
 
 (def noise-zoom
   "Noise zoom level."
@@ -42,8 +41,8 @@
    :vy        1
    :size      3
    :direction 0
-   :x         (q/random w)
-   :y         (q/random h)
+   :x         (q/random menu/w)
+   :y         (q/random menu/h)
    :color     (rand-nth (:colors palette))})
 
 
@@ -51,7 +50,7 @@
   "Returns the initial state to use for the update-render loop."
   []
   (apply q/background (:background palette))
-  (map particle (range 0 2000)))
+  {:particles (map particle (range 0 2000))})
 
 
 (defn position
@@ -77,48 +76,42 @@
 
 (defn sketch-update
   "Returns the next state to render. Receives the current state as a paramter."
-  [particles]
-  (map (fn [p]
-         (assoc p
-                :mx        100 
-                :x         (position (:x p) (:vx p) w)
-                :y         (position (:y p) (:vy p) h)
-                :direction (direction (:x p) (:y p) (:id p))
-                :vx        (velocity (:vx p) (Math/cos (:direction p)))
-                :vy        (velocity (:vy p) (Math/sin (:direction p)))))
-       particles))
+  [{:keys [particles] :as state}]
+  (assoc state :particles (map (fn [p]
+                                 (assoc p
+                                        :mx        100
+                                        :x         (position (:x p) (:vx p) menu/w)
+                                        :y         (position (:y p) (:vy p) menu/h)
+                                        :direction (direction (:x p) (:y p) (:id p))
+                                        :vx        (velocity (:vx p) (Math/cos (:direction p)))
+                                        :vy        (velocity (:vy p) (Math/sin (:direction p)))))
+                               particles)))
 
 
 (defn sketch-draw
   "Draws the current state to the canvas. Called on each iteration after sketch-update."
-  [particles]
+  [{:keys [particles] }]
   (q/no-stroke)
   (q/fill 255 255 255)
-  (q/rect (/ w 2) (/ h 2) 80 40)
+  (q/rect (/ menu/w 2) (/ menu/h 2) 80 40)
   (q/ellipse (q/mouse-x) (q/mouse-y) 80 80)
   (doseq [p particles]
     (apply q/fill (conj (:color p) 5))
     (q/ellipse (:x p) (:y p) (:size p) (:size p))))
 
 
-(defn create [canvas]
-  (println "version 0.0.4")
-  (q/sketch
-   :host canvas
-   :size [w h]
-   :draw #'sketch-draw
-   :setup #'sketch-setup
-   :update #'sketch-update
-   :middleware [middleware/fun-mode]
-   :settings (fn []
-               (q/pixel-density 1)
-               (q/random-seed 666)
-               (q/noise-seed 666))))
-
-
-;; (enable-console-print!)
-(defn reload! []
-  (println "Code updated."))
-
 (defn start []
-  (create "sketch"))
+  (println "version 0.0.4")
+  (q/defsketch Toto
+    :host "sketch"
+    :size [menu/w menu/h]
+    :setup sketch-setup
+    :draw sketch-draw
+    :update sketch-update
+    :mouse-clicked menu/when-mouse-pressed
+    :middleware [menu/show-frame-rate
+                 m/fun-mode]
+    :settings (fn []
+                (q/pixel-density 1)
+                (q/random-seed 666)
+                (q/noise-seed 666))))

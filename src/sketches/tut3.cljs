@@ -1,5 +1,8 @@
 (ns sketches.tut3
-  (:require [quil.core :as q]))
+  (:require
+   [quil.core :as q]
+   [sketches.menu :as menu]
+   [quil.middleware :as m]))
 
 
  (def body (.-body js/document))
@@ -8,7 +11,8 @@
 
  (defn setup []
    (q/frame-rate 1)                    ;; Set framerate to 1 FPS
-   (q/background 200))                 ;; Set the background colour to
+   (q/background 200)
+   {})                 ;; Set the background colour to
                                       ;; a nice shade of grey.
  (defn draw []
    (q/stroke (q/random 255))             ;; Set the stroke colour to a random grey
@@ -30,4 +34,8 @@
    :settings #(q/smooth 2)             ;; Turn on anti-aliasing
    :setup setup                        ;; Specify the setup fn
    :draw draw                          ;; Specify the draw fn
-   :size [w h]))
+   :size [menu/w menu/h]
+   :mouse-clicked menu/when-mouse-pressed
+   :size [menu/w menu/h]
+   :middleware [menu/show-frame-rate
+                m/fun-mode]))

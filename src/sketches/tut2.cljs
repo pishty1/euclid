@@ -1,9 +1,12 @@
 (ns sketches.tut2
   (:require [quil.core :as q :include-macros true]
-            [sketches.menu :as menu]))
+            [sketches.menu :as menu]
+            [quil.middleware :as m])
+  )
 
 (defn setup []
-  (q/frame-rate 30))
+  (q/frame-rate 30)
+  {})
 
 (defn pulse [low high rate]
   (let [diff (- high low)
@@ -33,7 +36,8 @@
              (* (/ 3) y-max (q/sin (* 2 (t)))))]
     (q/bezier base-x 0 base-x 0
               0 (- x-max) x y)))
-(defn draw []
+
+(defn draw [state]
   (q/background 255)
   (q/stroke 0)
   (q/stroke-weight 1)
@@ -44,10 +48,22 @@
       (doseq [x (range (- x-max) x-max 2)]
         (stem x)))))
 
+(defn update-state [state]
+  (assoc state
+         :left (q/mouse-x)
+         :right (q/mouse-y)))
 
 (defn start []
-  (q/sketch
-   :host "sketch"
-   :size [500 500]
-   :setup setup
-   :draw draw))
+  (q/defsketch Titi
+    :host "sketch"
+    :size [500 500]
+    :setup setup
+    :update update-state
+    :draw draw
+    :renderer :p2d
+    :mouse-clicked menu/when-mouse-pressed
+    :size [menu/w menu/h]
+    :middleware [menu/show-frame-rate
+                 m/fun-mode]
+    )
+  )

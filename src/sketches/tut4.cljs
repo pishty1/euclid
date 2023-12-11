@@ -1,6 +1,7 @@
 (ns sketches.tut4
   (:require [quil.core :as q :include-macros true]
-            [quil.middleware :as m]))
+            [quil.middleware :as m]
+            [sketches.menu :as menu]))
 
 ;; By Erik Svedäng, Nov 2014
 
@@ -219,12 +220,14 @@
 
 
 (defn start []
-  (q/sketch
-    :host "sketch"
-    :size [500 500]
-    :setup setup
-    :update update-state
-    :key-pressed on-key-down
-    :key-released on-key-up
-    :draw draw-state
-    :middleware [m/fun-mode]))
+  (q/defsketch Bobo
+   :host "sketch"
+   :setup setup
+   :update update-state
+   :draw draw-state
+   :key-pressed on-key-down
+   :key-released on-key-up
+   :mouse-clicked menu/when-mouse-pressed
+   :size [menu/w menu/h]
+   :middleware [menu/show-frame-rate
+                m/fun-mode]))

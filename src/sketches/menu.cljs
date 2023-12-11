@@ -1,55 +1,36 @@
 (ns sketches.menu
   (:require [quil.core :as q]
             [cljs.core.async :refer [go <! >!]]
-            [sketches.channels :as ch]))
+            [sketches.channels :as ch]
+            ))
 
-(defn draw-menu-item [x y h w c1 c2 c3]
-  ;;  (q/stroke-weight 20)
-  (q/fill c1 c2 c3)
-  (q/rect x y w h))
+(def body (.-body js/document))
+(def w (.-clientWidth body))
+(def h (.-clientHeight body))
 
-(defn draw-burger-icon []
-  (q/stroke 10)
-  (q/fill 220 120 102)
-  (q/rect 0 0 80 50))
+(defn prevent-behavior [e]
+  (.preventDefault e))
 
-(defn inside? [mousex mousey fromx fromy tox toy]
-  (and (<= fromx mousex tox)
-       (<= fromy mousey toy)))
+(.addEventListener js/document "touchmove" prevent-behavior #js {:passive false})
+;; (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
+;; (set! (.-disabled (.getElementById js/document "myapp")) true)
 
-(defn inside-burger? []
-  (inside? (q/mouse-x) (q/mouse-y) 0 0 80 50))
+(defn mobile-browser? []
+  (let [user-agent (or (.-userAgent js/navigator)
+                       (.-vendor js/navigator)
+                       (.-opera js/window))]
+    (boolean (re-find #"(Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini)" user-agent))))
 
-(defn inside-menu? [{:keys [fromx fromy tox toy]}]
-  (inside? (q/mouse-x) (q/mouse-y) fromx fromy tox toy))
-
-(defn when-mouse-pressed [state]
-  (when (and
-       (:menu-visible? state)
-       (inside-menu? (:dimentions (:menu state))))
-    (let [selected (some #(when (inside?
-                                 (q/mouse-x) (q/mouse-y)
-                                 (:px %) (:py %)
-                                 (+ (:px %) (:width %))
-                                 (+ (:py %) (:height %)))
-                            %)
-                         (:items (:menu state)))]
-      (go (>! ch/my-channel selected))))
-
-  (assoc state
-         :menu-visible? (and (inside-burger?)
-                             (not (:menu-visible? state)))))
-
-
-; get total height of page - totoal height of menu items divide by 2  = starting y 
-(defn origin [number-of-menu-items height width page-height page-width]
-  (let [diff-y (- page-height (* number-of-menu-items height))
-        diff-x (- page-width width)
-        origin-y (/ diff-y 2)
-        origin-x (/ diff-x 2)]
-    {:ox origin-x
-     :oy origin-y}))
-
+(def showcase [{:name "flow"
+                :start 'flow/start}
+               {:name "tut1"
+                :start 'tut1/start}
+               {:name "tut2"
+                :start 'tut2/start}
+               {:name "tut3"
+                :start 'tut3/start}
+               {:name "tut4"
+                :start 'tut4/start}])
 
 (defn gen-menu-items [items origin width height]
   (let [padding-top 0]
@@ -72,16 +53,35 @@
                       :py (+ padding-top (+ (:oy origin) (* index height)))}))
         items))))
 
-(def showcase [{:name "flow"
-                :start 'flow/start}
-               {:name "tut1"
-                :start 'tut1/start}
-               {:name "tut2"
-                :start 'tut2/start}
-               {:name "tut3"
-                :start 'tut3/start}
-               {:name "tut4"
-                :start 'tut4/start}])
+(defn burger-icon []
+  (q/stroke 10)
+  (q/fill 220 120 102)
+  (q/rect 0 0 80 50))
+
+; get total height of page - totoal height of menu items divide by 2  = starting y 
+(defn origin [number-of-menu-items height width page-height page-width]
+  (let [diff-y (- page-height (* number-of-menu-items height))
+        diff-x (- page-width width)
+        origin-y (/ diff-y 2)
+        origin-x (/ diff-x 2)]
+    {:ox origin-x
+     :oy origin-y}))
+
+(defn draw-menu-item [x y h w c1 c2 c3]
+  ;;  (q/stroke-weight 20)
+  (q/fill c1 c2 c3)
+  (q/rect x y w h))
+
+(defn draw-menu [items]
+  (doseq [{:keys [px py height width color1 color2 color3]} (:items items)]
+    (draw-menu-item
+     px
+     py
+     height
+     width
+     color1
+     color2
+     color3)))
 
 (defn init-menu [mobile? page-height page-width]
   (let [width (if mobile? (/ page-width 2) 300)
@@ -98,17 +98,69 @@
                   :fromy (:oy origin)}
      :items (gen-menu-items showcase origin width height)}))
 
-(defn draw-menu [items]
-  (doseq [{:keys [px py height width color1 color2 color3]} (:items items)]
-    (draw-menu-item
-     px
-     py
-     height
-     width
-     color1
-     color2
-     color3)))
 
+(defn wrap-setup [options]
+  (let [setup (:setup options (fn [] nil))
+        mobile? (mobile-browser?)
+        updated-state (fn []
+                        (reset!
+                         (q/state-atom)
+                         (assoc (setup)
+                                :menu (init-menu mobile? h w)
+                                :mobile? mobile?
+                                :menu-visible? false)))
+        ]
+
+    (-> options
+        (assoc :setup updated-state))))
+
+
+(defn wrap-draw [options]
+  (let [draw (:draw options (fn [_] nil))
+        updated-draw (fn []
+                       (draw)
+                       (when (q/state :menu-visible?)
+                         (draw-menu (q/state :menu)))
+                       (burger-icon))]
+    (-> options
+        ;; (dissoc :update)
+        (assoc :draw updated-draw))))
+
+
+(defn show-frame-rate [options]
+  (-> options
+      wrap-setup
+      wrap-draw
+      ))
+
+
+(defn inside? [mousex mousey fromx fromy tox toy]
+  (and (<= fromx mousex tox)
+       (<= fromy mousey toy)))
+
+(defn inside-burger? []
+  (inside? (q/mouse-x) (q/mouse-y) 0 0 80 50))
+
+(defn inside-menu? [{:keys [fromx fromy tox toy]}]
+  (inside? (q/mouse-x) (q/mouse-y) fromx fromy tox toy))
+
+(defn when-mouse-pressed [state]
+  (println "pressing ...... " state)
+  (when (and
+         (:menu-visible? state)
+         (inside-menu? (:dimentions (:menu state))))
+    (let [selected (some #(when (inside?
+                                 (q/mouse-x) (q/mouse-y)
+                                 (:px %) (:py %)
+                                 (+ (:px %) (:width %))
+                                 (+ (:py %) (:height %)))
+                            %)
+                         (:items (:menu state)))]
+      (go (>! ch/my-channel selected))))
+
+  (assoc state
+         :menu-visible? (and (inside-burger?)
+                             (not (:menu-visible? state)))))
 
 (comment
-) 
+  ) 
