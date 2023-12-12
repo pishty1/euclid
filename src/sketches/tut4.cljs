@@ -108,7 +108,7 @@
                   (rand-between 50 150)]))
 
 (defn setup []
-  ;; (q/rect-mode :center)
+  (q/rect-mode :center)
   (q/frame-rate 30)
   {:ship (create-ship)
    :smoke []

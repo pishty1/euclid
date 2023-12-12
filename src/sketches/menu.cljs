@@ -71,6 +71,7 @@
      :oy origin-y}))
 
 (defn draw-menu-item [label x y h w color]
+  (q/rect-mode :corner)
   (q/fill (first color) (second color) (last color))
   (q/rect x y w h)
   (q/stroke-weight 8)
