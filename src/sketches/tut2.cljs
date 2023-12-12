@@ -1,8 +1,7 @@
 (ns sketches.tut2
   (:require [quil.core :as q :include-macros true]
             [sketches.menu :as menu]
-            [quil.middleware :as m])
-  )
+            [quil.middleware :as m]))
 
 (defn setup []
   (q/frame-rate 30)

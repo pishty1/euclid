@@ -53,9 +53,7 @@
 
 
 (defn update-state [state]
-  (assoc state 
-         :left (q/mouse-x)
-         :right (q/mouse-y)))
+  state)
 
 (defn start []
   (q/defsketch Something

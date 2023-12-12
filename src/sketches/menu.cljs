@@ -126,9 +126,10 @@
                        (let [_ (draw)
                              current-rect-mode (q/state)]
                          (q/rect-mode :corner)
-                         (when (q/state :menu-visible?)
-                           (draw-menu (q/state :menu)))
-                         (burger-icon)
+                         (if (q/state :menu-visible?)
+                           (draw-menu (q/state :menu))
+                           (burger-icon))
+                         
                          (q/rect-mode (:rect-mode current-rect-mode :corner))))]
     (-> options
         ;; (dissoc :update)
@@ -153,8 +154,7 @@
   (inside? (q/mouse-x) (q/mouse-y) fromx fromy tox toy))
 
 (defn when-mouse-pressed [state]
-  (cond
-    (and (:menu-visible? state) (inside-menu? (:dimentions (:menu state))))
+  (when (and (:menu-visible? state) (inside-menu? (:dimentions (:menu state))))
     (let [selected (some #(when (inside?
                                  (q/mouse-x) (q/mouse-y)
                                  (:px %) (:py %)
@@ -162,15 +162,11 @@
                                  (+ (:py %) (:height %)))
                             %)
                          (:items (:menu state)))]
-      (go (>! ch/my-channel selected)))
+      (go (>! ch/my-channel selected))))
 
-    (and (inside-burger?) (not (:menu-visible? state)))
-    (assoc state
-           :menu-visible? (and (inside-burger?)
-                               (not (:menu-visible? state))))
-
-    :else state)
-  )
+  (assoc state
+         :menu-visible? (and (inside-burger?)
+                             (not (:menu-visible? state)))))
 
 (comment
   (defn somefun [x]

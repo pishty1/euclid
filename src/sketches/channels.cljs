@@ -2,4 +2,4 @@
   (:require
    [cljs.core.async :refer [chan]]))
    
-(def my-channel (chan))
+(defonce my-channel (chan))
