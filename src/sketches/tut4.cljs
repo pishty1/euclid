@@ -110,7 +110,8 @@
 (defn setup []
   (q/rect-mode :center)
   (q/frame-rate 30)
-  {:ship (create-ship)
+  {:rect-mode :center
+   :ship (create-ship)
    :smoke []
    :stars (take 3000 (repeatedly random-star))
    :planets (take 50 (repeatedly random-planet))})

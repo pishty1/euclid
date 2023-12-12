@@ -71,7 +71,6 @@
      :oy origin-y}))
 
 (defn draw-menu-item [label x y h w color]
-  (q/rect-mode :corner)
   (q/fill (first color) (second color) (last color))
   (q/rect x y w h)
   (q/stroke-weight 8)
@@ -111,16 +110,14 @@
   (let [setup (:setup options (fn [] nil))
         mobile? (mobile-browser?)
         updated-state (fn []
-                        ;; (-> (setup)
-                        ;;     (assoc :menu (init-menu mobile? h w)
-                        ;;            :mobile? mobile?
-                        ;;            :menu-visible? false))
                         (reset!
                          (q/state-atom)
                          (assoc (setup)
                                 :menu (init-menu mobile? h w)
                                 :mobile? mobile?
                                 :menu-visible? false)))]
+
+
 
     (-> options
         (assoc :setup updated-state))))
@@ -129,10 +126,13 @@
 (defn wrap-draw [options]
   (let [draw (:draw options (fn [_] nil))
         updated-draw (fn []
-                       (draw)
-                       (when (q/state :menu-visible?)
-                         (draw-menu (q/state :menu)))
-                       (burger-icon))]
+                       (let [_ (draw)
+                             current-rect-mode (q/state)]
+                         (q/rect-mode :corner)
+                         (when (q/state :menu-visible?)
+                           (draw-menu (q/state :menu)))
+                         (burger-icon)
+                         (q/rect-mode (:rect-mode current-rect-mode :corner))))]
     (-> options
         ;; (dissoc :update)
         (assoc :draw updated-draw))))
@@ -173,4 +173,7 @@
                              (not (:menu-visible? state)))))
 
 (comment
+  (defn somefun [x]
+    (println x))
+  (somefun 1)
   ) 

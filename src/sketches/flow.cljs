@@ -90,11 +90,8 @@
 
 (defn sketch-draw
   "Draws the current state to the canvas. Called on each iteration after sketch-update."
-  [{:keys [particles] }]
+  [{:keys [particles]}]
   (q/no-stroke)
-  (q/fill 255 255 255)
-  (q/rect (/ menu/w 2) (/ menu/h 2) 80 40)
-  (q/ellipse (q/mouse-x) (q/mouse-y) 80 80)
   (doseq [p particles]
     (apply q/fill (conj (:color p) 5))
     (q/ellipse (:x p) (:y p) (:size p) (:size p))))
