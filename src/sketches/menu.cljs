@@ -72,9 +72,9 @@
 
 (defn draw-menu-item [label x y h w color]
   (q/fill (first color) (second color) (last color))
-  (q/rect x y w h)
   (q/stroke-weight 8)
   (q/stroke 6)
+  (q/rect x y w h)
   (q/fill 200)
   (q/text-size 20)
   (q/text label (+ x 40) (+ y 60))
