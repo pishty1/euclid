@@ -29,13 +29,14 @@
 
 (defn start []
   (q/defsketch Toto                  ;; Define a new sketch named example
-   :host "sketch"                      ;; Set the host to sketch
-   :title "Oh so many grey circles"    ;; Set the title of the sketch
-   :settings #(q/smooth 2)             ;; Turn on anti-aliasing
-   :setup setup                        ;; Specify the setup fn
-   :draw draw                          ;; Specify the draw fn
-   :size [menu/w menu/h]
-   :mouse-clicked menu/when-mouse-pressed
-   :size [menu/w menu/h]
-   :middleware [menu/show-frame-rate
-                m/fun-mode]))
+    :host "sketch"                      ;; Set the host to sketch
+    :title "Oh so many grey circles"    ;; Set the title of the sketch
+    :settings #(q/smooth 2)             ;; Turn on anti-aliasing
+    :setup setup                        ;; Specify the setup fn
+    :draw draw                          ;; Specify the draw fn
+    :size [menu/w menu/h]
+    :renderer :p2d
+    :mouse-clicked menu/when-mouse-pressed
+    :size [menu/w menu/h]
+    :middleware [menu/show-frame-rate
+                 m/fun-mode]))

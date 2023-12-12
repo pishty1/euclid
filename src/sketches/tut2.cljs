@@ -56,7 +56,6 @@
 (defn start []
   (q/defsketch Titi
     :host "sketch"
-    :size [500 500]
     :setup setup
     :update update-state
     :draw draw

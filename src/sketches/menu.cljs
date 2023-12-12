@@ -116,9 +116,6 @@
                                 :menu (init-menu mobile? h w)
                                 :mobile? mobile?
                                 :menu-visible? false)))]
-
-
-
     (-> options
         (assoc :setup updated-state))))
 

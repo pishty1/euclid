@@ -222,13 +222,14 @@
 
 (defn start []
   (q/defsketch Bobo
-   :host "sketch"
-   :setup setup
-   :update update-state
-   :draw draw-state
-   :key-pressed on-key-down
-   :key-released on-key-up
-   :mouse-clicked menu/when-mouse-pressed
-   :size [menu/w menu/h]
-   :middleware [menu/show-frame-rate
-                m/fun-mode]))
+    :host "sketch"
+    :setup setup
+    :update update-state
+    :draw draw-state
+    :key-pressed on-key-down
+    :key-released on-key-up
+    :renderer :p2d
+    :mouse-clicked menu/when-mouse-pressed
+    :size [menu/w menu/h]
+    :middleware [menu/show-frame-rate
+                 m/fun-mode]))
