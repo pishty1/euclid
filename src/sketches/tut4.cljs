@@ -228,7 +228,6 @@
     :draw draw-state
     :key-pressed on-key-down
     :key-released on-key-up
-    :renderer :p2d
     :mouse-clicked menu/when-mouse-pressed
     :size [menu/w menu/h]
     :middleware [menu/show-frame-rate

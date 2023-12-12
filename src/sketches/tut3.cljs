@@ -5,10 +5,6 @@
    [quil.middleware :as m]))
 
 
- (def body (.-body js/document))
- (def w (.-clientWidth body))
- (def h (.-clientHeight body))
-
  (defn setup []
    (q/frame-rate 1)                    ;; Set framerate to 1 FPS
    (q/background 200)
@@ -35,7 +31,6 @@
     :setup setup                        ;; Specify the setup fn
     :draw draw                          ;; Specify the draw fn
     :size [menu/w menu/h]
-    :renderer :p2d
     :mouse-clicked menu/when-mouse-pressed
     :size [menu/w menu/h]
     :middleware [menu/show-frame-rate

@@ -96,14 +96,14 @@
         number (count showcase)
         origin (origin number height width page-height page-width)]
     {:number number
-     :width width
-     :height height
-     :origin origin
-     :dimentions {:tox (+ (:ox origin) width)
-                  :toy (* (:oy origin) number)
-                  :fromx (:ox origin)
-                  :fromy (:oy origin)}
-     :items (gen-menu-items showcase origin width height)}))
+                :width width
+                :height height
+                :origin origin
+                :dimentions {:tox (+ (:ox origin) width)
+                             :toy (+ (:oy origin) (* height number))
+                             :fromx (:ox origin)
+                             :fromy (:oy origin)}
+                :items (gen-menu-items showcase origin width height)}))
 
 
 (defn wrap-setup [options]
