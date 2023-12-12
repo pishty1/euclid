@@ -29,10 +29,7 @@
 
 (go-loop []
   (let [input (<! ch/my-channel)]
-    (println "input: " (type (:start-fn input)))
-    (chooser (:index input))
-    ;; (resolve '(:start-fn input))
-    )
+    (chooser (:index input)))
   (recur))
 
 (comment

@@ -28,7 +28,7 @@
 
 
 (defn start []
-  (q/sketch                   ;; Define a new sketch named example
+  (q/defsketch Toto                  ;; Define a new sketch named example
    :host "sketch"                      ;; Set the host to sketch
    :title "Oh so many grey circles"    ;; Set the title of the sketch
    :settings #(q/smooth 2)             ;; Turn on anti-aliasing

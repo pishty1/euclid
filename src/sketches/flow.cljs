@@ -102,7 +102,7 @@
 
 (defn start []
   (println "version 0.0.4")
-  (q/defsketch Toto
+  (q/defsketch Koto
     :host "sketch"
     :size [menu/w menu/h]
     :setup sketch-setup

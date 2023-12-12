@@ -21,16 +21,21 @@
                        (.-opera js/window))]
     (boolean (re-find #"(Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini)" user-agent))))
 
-(def showcase [{:name "flow"
-                :start 'flow/start}
-               {:name "tut1"
-                :start 'tut1/start}
-               {:name "tut2"
-                :start 'tut2/start}
-               {:name "tut3"
-                :start 'tut3/start}
-               {:name "tut4"
-                :start 'tut4/start}])
+(def showcase [{:name "Flow"
+                :start 'flow/start
+                :color '(120 0 10)}
+               {:name "Cross"
+                :start 'tut1/start
+                :color '(120 100 10)}
+               {:name "Move"
+                :start 'tut2/start
+                :color '(120 200 10)}
+               {:name "Perlin"
+                :start 'tut3/start
+                :color '(120 500 100)}
+               {:name "Venture"
+                :start 'tut4/start
+                :color '(120 0 100)}])
 
 (defn gen-menu-items [items origin width height]
   (let [padding-top 0]
@@ -44,9 +49,7 @@
                      {:index index
                       :label (:name (first mrange))
                       :start-fn (:start (first mrange))
-                      :color1 (rand-int (rand-int 255))
-                      :color2 (rand-int (rand-int 255))
-                      :color3 (rand-int (rand-int 255))
+                      :color (:color (first mrange))
                       :height height
                       :width width
                       :px (:ox origin); lets start here and stack them down 
@@ -67,21 +70,25 @@
     {:ox origin-x
      :oy origin-y}))
 
-(defn draw-menu-item [x y h w c1 c2 c3]
-  ;;  (q/stroke-weight 20)
-  (q/fill c1 c2 c3)
-  (q/rect x y w h))
+(defn draw-menu-item [label x y h w color]
+  (q/fill (first color) (second color) (last color))
+  (q/rect x y w h)
+  (q/stroke-weight 8)
+  (q/stroke 6)
+  (q/fill 200)
+  (q/text-size 20)
+  (q/text label (+ x 40) (+ y 60))
+  )
 
 (defn draw-menu [items]
-  (doseq [{:keys [px py height width color1 color2 color3]} (:items items)]
+  (doseq [{:keys [label px py height width color]} (:items items)]
     (draw-menu-item
+     label
      px
      py
      height
      width
-     color1
-     color2
-     color3)))
+     color)))
 
 (defn init-menu [mobile? page-height page-width]
   (let [width (if mobile? (/ page-width 2) 300)
@@ -103,13 +110,16 @@
   (let [setup (:setup options (fn [] nil))
         mobile? (mobile-browser?)
         updated-state (fn []
+                        ;; (-> (setup)
+                        ;;     (assoc :menu (init-menu mobile? h w)
+                        ;;            :mobile? mobile?
+                        ;;            :menu-visible? false))
                         (reset!
                          (q/state-atom)
                          (assoc (setup)
                                 :menu (init-menu mobile? h w)
                                 :mobile? mobile?
-                                :menu-visible? false)))
-        ]
+                                :menu-visible? false)))]
 
     (-> options
         (assoc :setup updated-state))))
@@ -145,7 +155,6 @@
   (inside? (q/mouse-x) (q/mouse-y) fromx fromy tox toy))
 
 (defn when-mouse-pressed [state]
-  (println "pressing ...... " state)
   (when (and
          (:menu-visible? state)
          (inside-menu? (:dimentions (:menu state))))

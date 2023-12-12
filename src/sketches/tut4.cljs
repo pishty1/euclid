@@ -108,7 +108,7 @@
                   (rand-between 50 150)]))
 
 (defn setup []
-  (q/rect-mode :center)
+  ;; (q/rect-mode :center)
   (q/frame-rate 30)
   {:ship (create-ship)
    :smoke []
@@ -207,8 +207,8 @@
                 (pulse 50 70 5.0))
   (q/no-stroke)
   (let [ship-pos (-> state :ship :pos)
-        cam-pos (translate-v2 ship-pos [(- (/ (q/width) 2))
-                                        (- (/ (q/height) 2))])]
+        cam-pos (translate-v2 ship-pos [(- (/ menu/w 2))
+                                        (- (/ menu/h 2))])]
     (doseq [star (:stars state)]
       (draw-entity star cam-pos))
     (doseq [planet (:planets state)]
