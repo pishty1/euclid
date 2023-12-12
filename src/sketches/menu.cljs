@@ -153,9 +153,8 @@
   (inside? (q/mouse-x) (q/mouse-y) fromx fromy tox toy))
 
 (defn when-mouse-pressed [state]
-  (when (and
-         (:menu-visible? state)
-         (inside-menu? (:dimentions (:menu state))))
+  (cond
+    (and (:menu-visible? state) (inside-menu? (:dimentions (:menu state))))
     (let [selected (some #(when (inside?
                                  (q/mouse-x) (q/mouse-y)
                                  (:px %) (:py %)
@@ -163,11 +162,15 @@
                                  (+ (:py %) (:height %)))
                             %)
                          (:items (:menu state)))]
-      (go (>! ch/my-channel selected))))
+      (go (>! ch/my-channel selected)))
 
-  (assoc state
-         :menu-visible? (and (inside-burger?)
-                             (not (:menu-visible? state)))))
+    (and (inside-burger?) (not (:menu-visible? state)))
+    (assoc state
+           :menu-visible? (and (inside-burger?)
+                               (not (:menu-visible? state))))
+
+    :else state)
+  )
 
 (comment
   (defn somefun [x]
