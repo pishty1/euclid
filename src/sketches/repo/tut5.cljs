@@ -24,61 +24,66 @@
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
-  (let [cross-size      70
-        circ-size       50
-        canvas-x-center (/ (q/width) 2)
-        canvas-y-center (/ (q/height) 2)
-        left            (- canvas-x-center cross-size)
-        right           (+ canvas-x-center cross-size)
-        top             (+ canvas-y-center cross-size)
-        bottom          (- canvas-y-center cross-size)]
+  (let [number-of-balls 6]
 
-    {:x 0 :y 0 :xspeed 1 :yspeed 3.3
-     :circ-size circ-size
-     :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
-     :left left :right right :top top :bottom bottom}))
+    {:balls (map (fn [_]
+                   {:location {:x (rand-int (q/width)) :y (rand-int (q/height))}
+                    :speed {:x (rand-int 3) :y (rand-int 5)}
+                    :stroke (list (rand-int 255) (rand-int 255) (rand-int 255))
+                    :fill (list (rand-int 255) (rand-int 255) (rand-int 255))
+                    })
+                 (range number-of-balls))}))
 
-(defn draw-state [{:keys [x y mobile? left right top bottom
-                          canvas-x-center canvas-y-center circ-size]}]
+(defn draw-state [{:keys [balls]}]
 
   (q/background 190 130 30)
-  (q/stroke 130 0 0)
-  (q/stroke-weight 4)
-
-  (q/line left bottom right top)
-  (q/line right bottom left top)
-  (q/fill (if mobile? 255 0) 150)
-  (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)
-  (q/stroke 0)
-  (q/fill 175)
-  (q/ellipse x y 16 16)
+;;   (q/stroke 130 0 0)
+  (q/stroke-weight 5)
+  (doseq [ball balls]
+    (q/stroke (first (:stroke ball))
+              (second (:stroke ball))
+              (last (:stroke ball)))
+    (q/fill (first (:fill ball))
+            (second (:fill ball))
+            (last (:fill ball)))
+    (q/ellipse (:x (:location ball)) (:y (:location ball)) 26 26))
+  
   )
 
 
-(defn update-state [{:keys [x y xspeed yspeed w h] :as state}]
-  (let [newx (+ x xspeed)
-        newy (+ y yspeed)
-        newxspeed (if (or (> newx w) (< newx 0))
-                    (* xspeed -1)
-                    xspeed)
-        newyspeed (if (or (> newy h) (< newy 0))
-                    (* yspeed -1)
-                    yspeed)]
-    (assoc state
-           :x newx :y newy 
-           :xspeed newxspeed :yspeed newyspeed)))
+(defn update-state [{:keys [balls w h] :as state}]
+  (loop [myballs balls
+         newballs []]
+    (if (seq myballs)
+      (let [ball (first myballs)
+            location (:location ball)
+            speed (:speed ball)
+            dx (+ (:x location) (:x speed))
+            dy (+ (:y location) (:y speed))
+            newxspeed (if (or (> dx w) (< dx 0))
+                        (* (:x speed) -1)
+                        (:x speed))
+            newyspeed (if (or (> dy h) (< dy 0))
+                        (* (:y speed) -1)
+                        (:y speed))
+            mynewball (assoc ball
+                             :location {:x dx :y dy}
+                             :speed {:x newxspeed :y newyspeed})]
+        (recur (rest myballs)
+               (conj newballs mynewball)))
+      (assoc state
+             :balls newballs))
+    ))
 
 (defn start []
   (q/defsketch Something2
-   :host "sketch"
-   :title "Cross with circle"
-   :setup setup 
-   :update update-state
-   :draw draw-state
-   :renderer :p2d
-   :mouse-clicked menu/when-mouse-pressed
-   :size [menu/w menu/h]
-   :middleware [menu/show-frame-rate
-                m/fun-mode]
-    )
-  )
+    :host "sketch"
+    :title "Cross with circle"
+    :setup setup
+    :update update-state
+    :draw draw-state
+    :renderer :p2d
+    :mouse-clicked menu/when-mouse-pressed
+    :size [menu/w menu/h]
+    :middleware [menu/show-frame-rate
+                 m/fun-mode]))
