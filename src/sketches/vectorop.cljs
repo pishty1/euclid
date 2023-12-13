@@ -14,3 +14,6 @@
 
 (defn mag [[x y]]
   (Math/sqrt (+ (* x x) (* y y))))
+
+(defn normalize [[x y]]
+  (div [x y] (mag [x y])))

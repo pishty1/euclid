@@ -48,18 +48,17 @@
             (last (:fill ball)))
     (q/ellipse (:x (:location ball)) (:y (:location ball)) 26 26))
 
-  (let [center {:x (/ (q/width) 2)
-                :y (/ (q/height) 2)}
-        mouse {:x (q/mouse-x)
-               :y (q/mouse-y)}
-        diff (v/sub  [(:x mouse) (:y mouse)]
-                     [(:x center) (:y center)])
+  (let [center [(/ (q/width) 2)
+                (/ (q/height) 2)]
+        mouse [(q/mouse-x)
+               (q/mouse-y)]
+        diff (v/sub  mouse center)
         ;; scaled-diff (v/mult diff 0.8)
         scaled-diff-div (v/div diff 0.5)
         mag (v/mag scaled-diff-div)
         [finalx finaly] scaled-diff-div]
-    (q/line (:x center) (:y center)
-            (+ (:x center) finalx) (+ (:y center) finaly))
+    (q/line (first center) (last center)
+            (+ (first center) finalx) (+ (last center) finaly))
 
     (q/fill 0)
     (q/rect 0 0 mag, 10)
