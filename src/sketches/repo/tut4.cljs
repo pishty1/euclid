@@ -1,4 +1,4 @@
-(ns sketches.tut4
+(ns sketches.repo.tut4
   (:require [quil.core :as q :include-macros true]
             [quil.middleware :as m]
             [sketches.menu :as menu]))

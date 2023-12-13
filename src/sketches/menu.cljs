@@ -1,12 +1,11 @@
 (ns sketches.menu
   (:require [quil.core :as q]
             [cljs.core.async :refer [go <! >!]]
-            [sketches.channels :as ch]
-            ))
+            [sketches.channels :as ch]))
 
-(def body (.-body js/document))
-(def w (.-clientWidth body))
-(def h (.-clientHeight body))
+(defonce body (.-body js/document))
+(defonce w (.-clientWidth body))
+(defonce h (.-clientHeight body))
 
 (defn prevent-behavior [e]
   (.preventDefault e))
@@ -30,9 +29,12 @@
                {:name "Move"
                 :start 'tut2/start
                 :color '(120 200 10)}
-               {:name "Perlin"
-                :start 'tut3/start
-                :color '(120 500 100)}
+              ;;  {:name "Perlin"
+              ;;   :start 'tut3/start
+              ;;   :color '(120 500 100)}
+               {:name "NoC"
+                :start 'tut5/start
+                :color '(160 80 130)}
                {:name "Venture"
                 :start 'tut4/start
                 :color '(120 0 100)}])
@@ -77,8 +79,7 @@
   (q/rect x y w h)
   (q/fill 200)
   (q/text-size 20)
-  (q/text label (+ x 40) (+ y 60))
-  )
+  (q/text label (+ x 40) (+ y 60)))
 
 (defn draw-menu [items]
   (doseq [{:keys [label px py height width color]} (:items items)]
@@ -96,14 +97,14 @@
         number (count showcase)
         origin (origin number height width page-height page-width)]
     {:number number
-                :width width
-                :height height
-                :origin origin
-                :dimentions {:tox (+ (:ox origin) width)
-                             :toy (+ (:oy origin) (* height number))
-                             :fromx (:ox origin)
-                             :fromy (:oy origin)}
-                :items (gen-menu-items showcase origin width height)}))
+     :width width
+     :height height
+     :origin origin
+     :dimentions {:tox (+ (:ox origin) width)
+                  :toy (+ (:oy origin) (* height number))
+                  :fromx (:ox origin)
+                  :fromy (:oy origin)}
+     :items (gen-menu-items showcase origin width height)}))
 
 
 (defn wrap-setup [options]
@@ -115,7 +116,9 @@
                          (assoc (setup)
                                 :menu (init-menu mobile? h w)
                                 :mobile? mobile?
-                                :menu-visible? false)))]
+                                :menu-visible? false
+                                :w w
+                                :h h)))]
     (-> options
         (assoc :setup updated-state))))
 

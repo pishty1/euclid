@@ -1,4 +1,4 @@
-(ns sketches.tut3
+(ns sketches.repo.tut3
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]

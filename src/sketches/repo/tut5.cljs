@@ -1,10 +1,8 @@
-(ns sketches.tut1
+(ns sketches.repo.tut5
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]
-   [quil.middleware :as m]
-   )
-  )
+   [quil.middleware :as m]))
 
 ;; Example 1 - Cross with Circle
 ;; Taken from Section 2.2.1, p20
@@ -35,28 +33,43 @@
         top             (+ canvas-y-center cross-size)
         bottom          (- canvas-y-center cross-size)]
 
-    {:circ-size circ-size
+    {:x 0 :y 0 :xspeed 1 :yspeed 3.3
+     :circ-size circ-size
      :canvas-x-center canvas-x-center :canvas-y-center canvas-y-center
      :left left :right right :top top :bottom bottom}))
 
-(defn draw-state [{:keys [mobile? left right top bottom
+(defn draw-state [{:keys [x y mobile? left right top bottom
                           canvas-x-center canvas-y-center circ-size]}]
 
-  (q/background 190 30 130)
-  (q/stroke 130, 0 0)
+  (q/background 190 130 30)
+  (q/stroke 130 0 0)
   (q/stroke-weight 4)
 
   (q/line left bottom right top)
   (q/line right bottom left top)
   (q/fill (if mobile? 255 0) 150)
-  (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
+  (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)
+  (q/stroke 0)
+  (q/fill 175)
+  (q/ellipse x y 16 16)
+  )
 
 
-(defn update-state [state]
-  state)
+(defn update-state [{:keys [x y xspeed yspeed w h] :as state}]
+  (let [newx (+ x xspeed)
+        newy (+ y yspeed)
+        newxspeed (if (or (> newx w) (< newx 0))
+                    (* xspeed -1)
+                    xspeed)
+        newyspeed (if (or (> newy h) (< newy 0))
+                    (* yspeed -1)
+                    yspeed)]
+    (assoc state
+           :x newx :y newy 
+           :xspeed newxspeed :yspeed newyspeed)))
 
 (defn start []
-  (q/defsketch Something
+  (q/defsketch Something2
    :host "sketch"
    :title "Cross with circle"
    :setup setup 

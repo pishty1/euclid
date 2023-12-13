@@ -1,6 +1,6 @@
 (ns sketches.initial-tests
   (:require [cljs.test :refer [deftest is testing]]
-            [sketches.flow :refer [add]]))
+            [sketches.repo.flow :refer [add]]))
 
 (deftest add-test
   (testing "Addition function tests"

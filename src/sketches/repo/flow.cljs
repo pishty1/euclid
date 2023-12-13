@@ -1,4 +1,4 @@
-(ns sketches.flow
+(ns sketches.repo.flow
   (:require [quil.core :as q :include-macros true]
             [sketches.menu :as menu]
             [quil.middleware :as m]))

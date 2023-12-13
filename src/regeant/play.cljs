@@ -1,4 +1,4 @@
-(ns sketches.play
+(ns regeant.play
   (:require [reagent.core :as r]
             [reagent.dom :as rdom]
             [clojure.string :as str]))
