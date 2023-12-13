@@ -24,7 +24,7 @@
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
-  (let [number-of-balls 6]
+  (let [number-of-balls 400]
 
     {:balls (map (fn [_]
                    {:location {:x (rand-int (q/width)) :y (rand-int (q/height))}
@@ -37,7 +37,6 @@
 (defn draw-state [{:keys [balls]}]
 
   (q/background 190 130 30)
-;;   (q/stroke 130 0 0)
   (q/stroke-weight 5)
   (doseq [ball balls]
     (q/stroke (first (:stroke ball))
@@ -46,9 +45,7 @@
     (q/fill (first (:fill ball))
             (second (:fill ball))
             (last (:fill ball)))
-    (q/ellipse (:x (:location ball)) (:y (:location ball)) 26 26))
-  
-  )
+    (q/ellipse (:x (:location ball)) (:y (:location ball)) 26 26)))
 
 
 (defn update-state [{:keys [balls w h] :as state}]
