@@ -2,7 +2,8 @@
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]
-   [quil.middleware :as m]))
+   [quil.middleware :as m]
+   [sketches.vectorop :as v]))
 
 ;; Example 1 - Cross with Circle
 ;; Taken from Section 2.2.1, p20
@@ -24,7 +25,7 @@
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
-  (let [number-of-balls 400]
+  (let [number-of-balls 4]
 
     {:balls (map (fn [_]
                    {:location {:x (rand-int (q/width)) :y (rand-int (q/height))}
@@ -45,7 +46,24 @@
     (q/fill (first (:fill ball))
             (second (:fill ball))
             (last (:fill ball)))
-    (q/ellipse (:x (:location ball)) (:y (:location ball)) 26 26)))
+    (q/ellipse (:x (:location ball)) (:y (:location ball)) 26 26))
+
+  (let [center {:x (/ (q/width) 2)
+                :y (/ (q/height) 2)}
+        mouse {:x (q/mouse-x)
+               :y (q/mouse-y)}
+        diff (v/sub  [(:x mouse) (:y mouse)]
+                     [(:x center) (:y center)])
+        ;; scaled-diff (v/mult diff 0.8)
+        scaled-diff-div (v/div diff 0.5)
+        mag (v/mag scaled-diff-div)
+        [finalx finaly] scaled-diff-div]
+    (q/line (:x center) (:y center)
+            (+ (:x center) finalx) (+ (:y center) finaly))
+
+    (q/fill 0)
+    (q/rect 0 0 mag, 10)
+    ))
 
 
 (defn update-state [{:keys [balls w h] :as state}]
@@ -53,24 +71,24 @@
          newballs []]
     (if (seq myballs)
       (let [ball (first myballs)
-            location (:location ball)
-            speed (:speed ball)
-            dx (+ (:x location) (:x speed))
-            dy (+ (:y location) (:y speed))
-            newxspeed (if (or (> dx w) (< dx 0))
-                        (* (:x speed) -1)
-                        (:x speed))
-            newyspeed (if (or (> dy h) (< dy 0))
-                        (* (:y speed) -1)
-                        (:y speed))
-            mynewball (assoc ball
-                             :location {:x dx :y dy}
-                             :speed {:x newxspeed :y newyspeed})]
+            location    (:location ball)
+            speed       (:speed ball)
+            newlocation {:x (+ (:x location) (:x speed))
+                         :y (+ (:y location) (:y speed))}
+            newspeed    {:x (if (or (> (:x newlocation) w)
+                                    (< (:x newlocation) 0))
+                              (* (:x speed) -1)
+                              (:x speed))
+                         :y (if (or (> (:y newlocation) h)
+                                    (< (:y newlocation) 0))
+                              (* (:y speed) -1)
+                              (:y speed))}]
         (recur (rest myballs)
-               (conj newballs mynewball)))
+               (conj newballs (assoc ball
+                                     :location newlocation
+                                     :speed newspeed))))
       (assoc state
-             :balls newballs))
-    ))
+             :balls newballs))))
 
 (defn start []
   (q/defsketch Something2
