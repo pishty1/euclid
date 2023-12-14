@@ -40,8 +40,11 @@
          current-mouse {:x (q/mouse-x) :y (q/mouse-y) :w 20 :h 20}
          diff (v/sub  [(:x current-mouse) (:y current-mouse)]
                       origin)
-         mag (v/mag diff)
-         rcircle {:x (:x anchor-circle) :y (:y anchor-circle) :w mag :h mag}]
+         mag (* 2 (v/mag diff))
+         rcircle {:x (:x anchor-circle)
+                  :y (:y anchor-circle)
+                  :w mag
+                  :h mag}]
 
      (q/line (:fromx line) (:fromy line)  (:tox line) (:toy line))
      (q/fill 255 150)
