@@ -26,9 +26,12 @@
                {:name "Cross"
                 :start 'tut1/start
                 :color '(120 100 10)}
-               {:name "Move"
-                :start 'tut2/start
-                :color '(120 200 10)}
+              ;;  {:name "Move"
+              ;;   :start 'tut2/start
+              ;;   :color '(120 200 10)}
+               {:name "Euclid"
+                :start 'euclid/start
+                :color '(160 100 100)}
               ;;  {:name "Perlin"
               ;;   :start 'tut3/start
               ;;   :color '(120 500 100)}
@@ -135,7 +138,7 @@
                          
                          (q/rect-mode (:rect-mode current-rect-mode :corner))))]
     (-> options
-        ;; (dissoc :update)
+        (dissoc :update)
         (assoc :draw updated-draw))))
 
 
@@ -157,7 +160,7 @@
   (inside? (q/mouse-x) (q/mouse-y) fromx fromy tox toy))
 
 (defn when-mouse-pressed [state]
-  (when (and (:menu-visible? state) (inside-menu? (:dimentions (:menu state))))
+  j(when (and (:menu-visible? state) (inside-menu? (:dimentions (:menu state))))
     (let [selected (some #(when (inside?
                                  (q/mouse-x) (q/mouse-y)
                                  (:px %) (:py %)
@@ -169,7 +172,8 @@
 
   (assoc state
          :menu-visible? (and (inside-burger?)
-                             (not (:menu-visible? state)))))
+                             (not (:menu-visible? state)))
+         :mouse-pressed-position [(q/mouse-x) (q/mouse-y)]))
 
 (comment
   (defn somefun [x]

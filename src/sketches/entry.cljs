@@ -5,6 +5,7 @@
             [sketches.repo.tut3 :as tut3]
             [sketches.repo.tut4 :as tut4]
             [sketches.repo.tut5 :as tut5]
+            [sketches.repo.euclid :as euclid]
             [sketches.menu :as menu]
             [sketches.channels :as ch]
             [cljs.core.async :refer [go-loop <!]]))
@@ -19,12 +20,12 @@
 
 (defn chooser
   ([]
-   (tut5/start))
+   (euclid/start))
   ([x]
    (case x
      0 (flow/start)
      1 (tut1/start)
-     2 (tut2/start)
+     2 (euclid/start)
      3 (tut5/start)
      4 (tut4/start)
      (println x ": unknown index"))))
