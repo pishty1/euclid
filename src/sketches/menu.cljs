@@ -160,7 +160,7 @@
   (inside? (q/mouse-x) (q/mouse-y) fromx fromy tox toy))
 
 (defn when-mouse-pressed [state]
-  j(when (and (:menu-visible? state) (inside-menu? (:dimentions (:menu state))))
+  (when (and (:menu-visible? state) (inside-menu? (:dimentions (:menu state))))
     (let [selected (some #(when (inside?
                                  (q/mouse-x) (q/mouse-y)
                                  (:px %) (:py %)
