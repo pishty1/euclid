@@ -20,7 +20,9 @@
 
 (defn chooser
   ([]
-   (euclid/start))
+  ;;  (euclid/start)
+   (tut5/start)
+   )
   ([x]
    (case x
      0 (flow/start)

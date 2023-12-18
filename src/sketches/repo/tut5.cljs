@@ -20,20 +20,67 @@
 ;; fill(255, 150);
 ;; ellipse(width/2, height/2, 50, 50);
 
+(defn bounce [location speed w h]
+  [(if (or (> (first location) w)
+           (< (first location) 0))
+     (* (first speed) -1)
+     (first speed))
+   (if (or (> (second location) h)
+           (< (second location) 0))
+     (* (second speed) -1)
+     (second speed))])
+
+(defn wrap [location w h]
+  [(if (> (first location) w)
+     0
+     (if (< (first location) 0)
+       w
+       (first location)))
+   (if (> (second location) h)
+     0
+     (if (< (second location) 0)
+       h
+       (second location)))])
+
+(defn boundries [location speed w h type]
+  (case type
+    :bounce (bounce location speed w h)
+    :wrap (wrap location w h)
+    (wrap location w h)))
+
 (defn setup []
   (q/smooth)
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
-  (let [number-of-balls 4]
+  (let [number-of-balls 100]
 
     {:balls (map (fn [_]
-                   {:location {:x (rand-int (q/width)) :y (rand-int (q/height))}
-                    :speed {:x (rand-int 3) :y (rand-int 5)}
-                    :stroke (list (rand-int 255) (rand-int 255) (rand-int 255))
-                    :fill (list (rand-int 255) (rand-int 255) (rand-int 255))
-                    })
+                   {:location [(rand-int (q/width)) (rand-int (q/height))]
+                    :speed [0 0] 
+                    :acc [0 0] 
+                    :stroke (list 0 0 100)
+                    :fill  (list  0 0 255)})
                  (range number-of-balls))}))
+(defn update-state [{:keys [balls] :as state}]
+    (loop [myballs balls
+           newballs []]
+      (if (seq myballs)
+        (let [ball (first myballs)
+              location    (:location ball)
+              speed       (:speed ball)
+              diff (v/sub [(q/mouse-x) (q/mouse-y)] location )
+              normalized-diff (v/norm diff)
+              scaled-diff (v/mult normalized-diff 0.1)
+              updated-speed (v/add speed scaled-diff)
+              limited-speed (v/limit updated-speed 5)
+              updated-location (v/add location limited-speed)]
+          (recur (rest myballs)
+                 (conj newballs (assoc ball
+                                       :location updated-location
+                                       :speed updated-speed))))
+        (assoc state
+               :balls newballs))))
 
 (defn draw-state [{:keys [balls]}]
 
@@ -46,7 +93,7 @@
     (q/fill (first (:fill ball))
             (second (:fill ball))
             (last (:fill ball)))
-    (q/ellipse (:x (:location ball)) (:y (:location ball)) 26 26))
+    (q/ellipse (first (:location ball)) (second (:location ball)) 26 26))
 
   (let [center [(/ (q/width) 2)
                 (/ (q/height) 2)]
@@ -54,50 +101,24 @@
                (q/mouse-y)]
         diff (v/sub  mouse center)
         ;; scaled-diff (v/mult diff 0.8)
-        scaled-diff-div (v/div diff 0.5)
+        scaled-diff-div (v/div diff 1)
         mag (v/mag scaled-diff-div)
-        [finalx finaly] scaled-diff-div]
-    (q/line (first center) (last center)
-            (+ (first center) finalx) (+ (last center) finaly))
-
-    (q/fill 0)
-    (q/rect 0 0 mag, 10)
-    ))
+        [finalx finaly] scaled-diff-div]))
 
 
-(defn update-state [{:keys [balls w h] :as state}]
-  (loop [myballs balls
-         newballs []]
-    (if (seq myballs)
-      (let [ball (first myballs)
-            location    (:location ball)
-            speed       (:speed ball)
-            newlocation {:x (+ (:x location) (:x speed))
-                         :y (+ (:y location) (:y speed))}
-            newspeed    {:x (if (or (> (:x newlocation) w)
-                                    (< (:x newlocation) 0))
-                              (* (:x speed) -1)
-                              (:x speed))
-                         :y (if (or (> (:y newlocation) h)
-                                    (< (:y newlocation) 0))
-                              (* (:y speed) -1)
-                              (:y speed))}]
-        (recur (rest myballs)
-               (conj newballs (assoc ball
-                                     :location newlocation
-                                     :speed newspeed))))
-      (assoc state
-             :balls newballs))))
 
-(defn start []
-  (q/defsketch Something2
-    :host "sketch"
-    :title "Cross with circle"
-    :setup setup
-    :update update-state
-    :draw draw-state
-    :renderer :p2d
-    :mouse-clicked menu/when-mouse-pressed
-    :size [menu/w menu/h]
-    :middleware [menu/show-frame-rate
-                 m/fun-mode]))
+
+
+
+  (defn start []
+    (q/defsketch Something2
+      :host "sketch"
+      :title "Cross with circle"
+      :setup setup
+      :update update-state
+      :draw draw-state
+      :renderer :p2d
+      :mouse-clicked menu/when-mouse-pressed
+      :size [menu/w menu/h]
+      :middleware [menu/show-frame-rate
+                   m/fun-mode]))
