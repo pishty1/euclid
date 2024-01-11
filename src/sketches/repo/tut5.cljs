@@ -72,11 +72,12 @@
             speed       (:speed ball)
             mass       (:mass ball)
             direction (v/sub [(q/mouse-x) (q/mouse-y)] location)
-            distance (if (< (v/mag direction) 5)
+            org-distance (v/mag direction)
+            distance (if (< org-distance 5)
                        5
-                       (if (> (v/mag direction) 25)
+                       (if (> org-distance 25)
                          25
-                         (v/mag direction)))
+                         org-distance))
             magnitude (/ (* 1 mass 20) (* distance distance))
             norm-direction (v/norm direction)
             scaled-direction (v/mult norm-direction magnitude)
@@ -87,7 +88,10 @@
                (conj newballs (assoc ball
                                      :location updated-location
                                      :speed limited-speed
-                                     :acc [0 0]))))
+                                     :acc [0 0]
+                                     :fill (list (* 10 org-distance) org-distance 255)
+                                     :stroke (list (* 2 org-distance) (* 1 org-distance) 100)
+                                     ))))
       (assoc state
              :balls newballs))))
 
