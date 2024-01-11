@@ -60,7 +60,7 @@
                     :acc [0 0]
                     :stroke (list 0 0 100)
                     :fill  (list  0 0 255)
-                    :mass (rand-int 10)})
+                    :mass (q/floor (+ 1 (rand-int 10)))})
                  (range number-of-balls))}))
 
 (defn update-state [{:keys [balls] :as state}]
