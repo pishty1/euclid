@@ -54,36 +54,44 @@
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
   (let [number-of-balls 100]
-
     {:balls (map (fn [_]
                    {:location [(rand-int (q/width)) (rand-int (q/height))]
-                    :speed [0 0] 
-                    :acc [0 0] 
+                    :speed [(rand-int 2) (rand-int 2)]
+                    :acc [0 0]
                     :stroke (list 0 0 100)
-                    :fill  (list  0 0 255)})
+                    :fill  (list  0 0 255)
+                    :mass (rand-int 10)})
                  (range number-of-balls))}))
+
 (defn update-state [{:keys [balls] :as state}]
-    (loop [myballs balls
-           newballs []]
-      (if (seq myballs)
-        (let [ball (first myballs)
-              location    (:location ball)
-              speed       (:speed ball)
-              diff (v/sub [(q/mouse-x) (q/mouse-y)] location )
-              normalized-diff (v/norm diff)
-              scaled-diff (v/mult normalized-diff 0.1)
-              updated-speed (v/add speed scaled-diff)
-              limited-speed (v/limit updated-speed 5)
-              updated-location (v/add location limited-speed)]
-          (recur (rest myballs)
-                 (conj newballs (assoc ball
-                                       :location updated-location
-                                       :speed updated-speed))))
-        (assoc state
-               :balls newballs))))
+  (loop [myballs balls
+         newballs []]
+    (if (seq myballs)
+      (let [ball (first myballs)
+            location    (:location ball)
+            speed       (:speed ball)
+            mass       (:mass ball)
+            direction (v/sub [(q/mouse-x) (q/mouse-y)] location)
+            distance (if (< (v/mag direction) 5)
+                       5
+                       (if (> (v/mag direction) 25)
+                         25
+                         (v/mag direction)))
+            magnitude (/ (* 1 mass 20) (* distance distance))
+            norm-direction (v/norm direction)
+            scaled-direction (v/mult norm-direction magnitude)
+            updated-speed (v/add speed scaled-direction)
+            limited-speed (v/limit updated-speed 10)
+            updated-location (v/add location limited-speed)]
+        (recur (rest myballs)
+               (conj newballs (assoc ball
+                                     :location updated-location
+                                     :speed limited-speed
+                                     :acc [0 0]))))
+      (assoc state
+             :balls newballs))))
 
 (defn draw-state [{:keys [balls]}]
-
   (q/background 190 130 30)
   (q/stroke-weight 5)
   (doseq [ball balls]
@@ -94,7 +102,6 @@
             (second (:fill ball))
             (last (:fill ball)))
     (q/ellipse (first (:location ball)) (second (:location ball)) 26 26))
-
   (let [center [(/ (q/width) 2)
                 (/ (q/height) 2)]
         mouse [(q/mouse-x)
@@ -105,20 +112,15 @@
         mag (v/mag scaled-diff-div)
         [finalx finaly] scaled-diff-div]))
 
-
-
-
-
-
-  (defn start []
-    (q/defsketch Something2
-      :host "sketch"
-      :title "Cross with circle"
-      :setup setup
-      :update update-state
-      :draw draw-state
-      :renderer :p2d
-      :mouse-clicked menu/when-mouse-pressed
-      :size [menu/w menu/h]
-      :middleware [menu/show-frame-rate
-                   m/fun-mode]))
+(defn start []
+  (q/defsketch Something2
+    :host "sketch"
+    :title "Cross with circle"
+    :setup setup
+    :update update-state
+    :draw draw-state
+    :renderer :p2d
+    :mouse-clicked menu/when-mouse-pressed
+    :size [menu/w menu/h]
+    :middleware [menu/show-frame-rate
+                 m/fun-mode]))
