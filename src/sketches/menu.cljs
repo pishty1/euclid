@@ -35,7 +35,7 @@
               ;;  {:name "Perlin"
               ;;   :start 'tut3/start
               ;;   :color '(120 500 100)}
-               {:name "NoC"
+               {:name "Figget-A-Balls"
                 :start 'tut5/start
                 :color '(160 80 130)}
                {:name "Venture"
