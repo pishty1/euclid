@@ -52,86 +52,98 @@
   (q/translate x y)
   (q/rotate angle)
   
-  (doseq [i (range 5)]
-    (let [size (* cross-size (- 1 (* i 0.15)))
-          opacity (- 100 (* i 20))]
-      (q/stroke hue 80 90 opacity)
-      (q/line (- size) (- size) size size)
-      (q/line size (- size) (- size) size)))
+  ; Draw multiple layers with more subtle colors
+  (doseq [i (range 12)]  ; More layers for smoother fade
+    (let [size (* cross-size (- 1 (* i 0.08)))  ; Even slower size reduction
+          base-opacity (- 80 (* i 6))  ; Lower max opacity, gentler falloff
+          ; Smaller hue shifts for more cohesive look
+          layer-hue (mod (+ hue (* i 2)) 360)
+          ; Lower saturation for pastel effect
+          saturation (if (even? i) 40 30)]
+      (q/stroke layer-hue saturation 85 base-opacity)
+      (q/fill layer-hue saturation 75 (/ base-opacity 4))
+      (q/stroke-weight (- 3 (* i 0.15)))  ; Thinner strokes
+      (q/begin-shape)
+      (q/vertex (- size) (- size))
+      (q/vertex size size)
+      (q/end-shape)
+      (q/begin-shape)
+      (q/vertex size (- size))
+      (q/vertex (- size) size)
+      (q/end-shape)))
   
   (q/pop-matrix))
 
-(defn draw-state [{:keys [cross1 cross2 canvas-x-center canvas-y-center circ-size]}]
-  ; Semi-transparent background for trail effect
-  (q/fill 190 30 130 40)
-  (q/no-stroke)
-  (q/rect 0 0 (q/width) (q/height))
-  
-  ; Set color mode to HSB for easier color manipulation
+(defn draw-state [{:keys [cross1 cross2 canvas-x-center canvas-y-center circ-size time]}]
   (q/color-mode :hsb 360 100 100 100)
-  (q/stroke-weight 3)
+  (let [bg-hue (mod (* time 0.1) 360)]  ; Slower background color shift
+    ; More transparent, subtle background
+    (q/fill bg-hue 10 20 15)  ; Lower saturation and brightness
+    (q/no-stroke)
+    (q/rect 0 0 (q/width) (q/height)))
   
-  ; Draw both crosses
+  (q/stroke-weight 2)  ; Thinner strokes overall
+  
+  ; Draw crosses
   (draw-cross cross1)
   (draw-cross cross2)
   
-  ; Draw the circle in the center
-  (q/fill 255 150)
-  (q/ellipse canvas-x-center canvas-y-center circ-size circ-size))
+  ; Subtler center circle
+  (let [circle-hue (mod (+ (:hue cross1) (:hue cross2)) 360)]
+    (q/fill circle-hue 30 80 100)
+    (q/no-stroke)
+    (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)))
 
 (defn calculate-interaction [cross1 cross2]
-  ; Calculate distance and angle between crosses
   (let [dx (- (:x cross2) (:x cross1))
         dy (- (:y cross2) (:y cross1))
         distance (Math/sqrt (+ (* dx dx) (* dy dy)))
         angle (Math/atan2 dy dx)
-        interaction-factor (/ 300 (+ distance 50))]  ; Smoother falloff
+        interaction-factor (/ 200 (+ distance 100))]  ; Even smoother falloff
     {:distance distance
      :angle angle
      :factor interaction-factor}))
 
 (defn update-cross-position [cross center-x center-y orbit-radius time]
-  (let [orbit-speed 0.01
+  (let [orbit-speed 0.005  ; Slower orbital motion
         x (+ center-x (* orbit-radius (Math/cos (* time orbit-speed))))
         y (+ center-y (* orbit-radius (Math/sin (* time orbit-speed))))]
     (assoc cross :x x :y y)))
 
 (defn update-state [state]
-  (let [time (:time state 0)  ; Add time to state for orbital motion
+  (let [time (:time state 0)
         interaction (calculate-interaction (:cross1 state) (:cross2 state))
-        orbit-radius 120  ; Base orbit radius
+        orbit-radius 150  ; Larger orbit for gentler motion
         
-        ; Update cross1 position and properties
+        ; Update cross1
         cross1 (-> (:cross1 state)
-                   ; Orbit clockwise
                    (update-cross-position (:canvas-x-center state) 
                                         (:canvas-y-center state)
                                         orbit-radius 
                                         time)
-                   ; Rotation speed affected by proximity
-                   (update :angle #(+ % (* 0.02 (:factor interaction))))
-                   ; Size pulses more dramatically when closer
+                   ; Slower rotation
+                   (update :angle #(+ % (* 0.01 (:factor interaction))))
+                   ; Gentler size pulsing
                    (assoc :cross-size (* (:base-size (:cross1 state))
-                                       (+ 1 (* 0.4 (q/sin (* time 0.1))
+                                       (+ 1 (* 0.2 (q/sin (* time 0.05))
                                              (:factor interaction)))))
-                   ; Color shifts based on angle between crosses
-                   (update :hue #(mod (+ % (* 2 (:factor interaction))) 360)))
+                   ; Slower color shifts
+                   (update :hue #(mod (+ % (* 0.5 (:factor interaction))) 360)))
         
-        ; Update cross2 position and properties
+        ; Update cross2
         cross2 (-> (:cross2 state)
-                   ; Orbit counter-clockwise
                    (update-cross-position (:canvas-x-center state) 
                                         (:canvas-y-center state)
                                         orbit-radius 
                                         (- time))
-                   ; Opposite rotation, speed affected by proximity
-                   (update :angle #(- % (* 0.015 (:factor interaction))))
-                   ; Size pulses in opposite phase
+                   ; Slower rotation
+                   (update :angle #(- % (* 0.008 (:factor interaction))))
+                   ; Gentler size pulsing
                    (assoc :cross-size (* (:base-size (:cross2 state))
-                                       (+ 1 (* 0.4 (q/cos (* time 0.1))
+                                       (+ 1 (* 0.2 (q/cos (* time 0.05))
                                              (:factor interaction)))))
-                   ; Complementary color shifts
-                   (update :hue #(mod (+ % 180 (* 2 (:factor interaction))) 360)))]
+                   ; Slower complementary color shifts
+                   (update :hue #(mod (+ % 180 (* 0.5 (:factor interaction))) 360)))]
     
     (-> state
         (assoc :cross1 cross1)

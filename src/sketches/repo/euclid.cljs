@@ -25,47 +25,84 @@
   (q/background 230 230 230)
   (q/stroke 130, 0 0)
   (q/stroke-weight 4)
-  {:mouse-pressed-position nil})
+  {:mouse-pressed-position nil
+   :circles []
+   :gravity 0.5})
 
-(defn draw-state [state]
+(defn add-circle [state x y]
+  (update state :circles conj
+          {:pos [x y]
+           :vel [0 0]
+           :radius 20
+           :bounce 0.7}))
 
-  (q/background 190 130 30)
-  (q/stroke-weight 2)
-  (when (:mouse-pressed-position state)
-    (let [origin (:mouse-pressed-position state)
-          anchor-circle {:x (first origin) :y (second origin) :w 20 :h 20}
-          line   {:fromx (first origin) :fromy (second origin)
-                  :tox (q/mouse-x) :toy (q/mouse-y)}
-          current-mouse {:x (q/mouse-x) :y (q/mouse-y) :w 20 :h 20}
-          diff (v/sub [(:fromx line) (:fromy line)]
-                      [(:tox line) (:toy line)])
+(defn apply-gravity [circle]
+  (update-in circle [:vel 1] + (:gravity circle)))
 
-          mag (* 2 (v/mag diff))
-          rcircle {:x (:x anchor-circle)
-                   :y (:y anchor-circle)
-                   :w mag
-                   :h mag}]
+(defn apply-velocity [circle]
+  (update circle :pos #(v/add % (:vel circle))))
 
-      (q/line (:fromx line) (:fromy line)  (:tox line) (:toy line))
-      (q/fill 255 150)
-      (q/ellipse (:x anchor-circle) (:y anchor-circle) (:w anchor-circle) (:h anchor-circle))
-      (q/ellipse (:x current-mouse) (:y current-mouse) (:w current-mouse) (:h current-mouse))
-      (q/ellipse (:x rcircle) (:y rcircle) (:w rcircle) (:h rcircle)))))
-
+(defn handle-boundary [circle]
+  (let [[x y] (:pos circle)
+        r (:radius circle)
+        [vx vy] (:vel circle)
+        bounce (:bounce circle)
+        max-y (- menu/h r)]
+    (if (> y max-y)
+      (assoc circle 
+             :pos [x max-y]
+             :vel [vx (* -1 vy bounce)])
+      circle)))
 
 (defn update-state [state]
-  state)
+  (if (:mouse-pressed-position state)
+    state  ; Don't apply physics while drawing
+    (update state :circles
+            (fn [circles]
+              (map (comp handle-boundary
+                        apply-velocity
+                        #(assoc % :gravity (:gravity state))
+                        apply-gravity)
+                   circles)))))
 
+(defn draw-state [state]
+  (q/background 190 130 30)
+  (q/stroke-weight 2)
+  
+  ; Draw all circles with physics
+  (doseq [circle (:circles state)]
+    (let [[x y] (:pos circle)]
+      (q/fill 255 150)
+      (q/ellipse x y (* 2 (:radius circle)) (* 2 (:radius circle)))))
+  
+  ; Draw the interaction elements while mouse is pressed
+  (when (:mouse-pressed-position state)
+    (let [origin (:mouse-pressed-position state)
+          line   {:fromx (first origin) :fromy (second origin)
+                  :tox (q/mouse-x) :toy (q/mouse-y)}]
+      (q/line (:fromx line) (:fromy line) (:tox line) (:toy line))
+      (q/ellipse (first origin) (second origin) 40 40)
+      (q/ellipse (q/mouse-x) (q/mouse-y) 40 40))))
+
+(defn mouse-released [state event]
+  (if (:mouse-pressed-position state)
+    (-> state
+        (add-circle (first (:mouse-pressed-position state))
+                   (second (:mouse-pressed-position state)))
+        (add-circle (:x event) (:y event))
+        (assoc :mouse-pressed-position nil))
+    state))
 
 (defn start []
-  (q/defsketch Euclid
+  (q/defsketch euclid
     :host "sketch"
-    :title "Cross with circle"
+    :title "Gravity Circles"
     :setup setup
     :update update-state
     :draw draw-state
     :renderer :p2d
     :mouse-clicked menu/when-mouse-pressed
+    :mouse-released mouse-released
     :size [menu/w menu/h]
     :middleware [menu/show-frame-rate
-                 m/fun-mode]))
+                m/fun-mode]))
