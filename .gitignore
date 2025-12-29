@@ -2,7 +2,7 @@
 .clj-kondo
 .cpcache
 .lsp
-docs
+docs/js
 target
 .nrepl-port
 .rebel_readline_history
