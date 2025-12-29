@@ -1,6 +1,6 @@
-(ns sketches.menu
+(ns menu
   (:require [quil.core :as q]
-            [sketches.registry :as registry]))
+            [registry :as registry]))
 
 (defonce selected-sketch (atom 0))
 
@@ -108,6 +108,7 @@
                                 :h h)))]
     (-> options
         (assoc :setup updated-state))))
+
 (defn wrap-draw [options]
   (let [draw (:draw options (fn [_] nil))
         updated-draw (fn []
@@ -117,7 +118,7 @@
                          (if (q/state :menu-visible?)
                            (draw-menu (q/state :menu))
                            (burger-icon))
-
+                         
                          (q/rect-mode (:rect-mode current-rect-mode :corner))))]
     (-> options
         (dissoc :update)
@@ -127,7 +128,8 @@
 (defn show-frame-rate [options]
   (-> options
       wrap-setup
-      wrap-draw))
+      wrap-draw
+      ))
 
 
 (defn inside? [mousex mousey fromx fromy tox toy]

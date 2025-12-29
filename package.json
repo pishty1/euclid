@@ -1,7 +1,7 @@
 {
-  "name": "shadow-reagent",
+  "name": "euclid",
   "version": "0.0.1",
-  "description": "Template for shadow-cljs and reagent projects",
+  "description": "A creative coding playground built with ClojureScript and Quil",
   "repository": {
     "type": "git",
     "url": "https://github.com/jacekschae/shadow-reagent"

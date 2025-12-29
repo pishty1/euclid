@@ -1,7 +1,7 @@
-(ns sketches.entry
-  (:require [sketches.manifest]
-            [sketches.menu :as menu]
-            [sketches.registry :as registry]
+(ns entry
+  (:require [manifest]
+            [menu :as menu]
+            [registry :as registry]
             [quil.core :as q]))
 
 

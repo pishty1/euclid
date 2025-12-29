@@ -1,10 +1,10 @@
-(ns sketches.repo.figget
+(ns sketches.figget
   (:require
    [quil.core :as q]
-   [sketches.menu :as menu]
-   [sketches.registry :as registry]
+   [menu :as menu]
+   [registry :as registry]
    [quil.middleware :as m]
-   [sketches.vectorop :as v]))
+   [utils.vectorop :as v]))
 
 ;; Example 1 - Cross with Circle
 ;; Taken from Section 2.2.1, p20

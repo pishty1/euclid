@@ -1,8 +1,8 @@
-(ns sketches.repo.venture
+(ns sketches.venture
   (:require [quil.core :as q :include-macros true]
             [quil.middleware :as m]
-            [sketches.registry :as registry]
-            [sketches.menu :as menu]))
+            [registry :as registry]
+            [menu :as menu]))
 
 (declare on-screen?)
 

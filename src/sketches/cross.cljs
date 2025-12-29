@@ -1,8 +1,8 @@
-(ns sketches.repo.cross
+(ns sketches.cross
   (:require
    [quil.core :as q]
-   [sketches.menu :as menu]
-   [sketches.registry :as registry]
+   [menu :as menu]
+   [registry :as registry]
    [quil.middleware :as m]))
 
 ;; Example 1 - Cross with Circle

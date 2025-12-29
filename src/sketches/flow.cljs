@@ -1,7 +1,7 @@
-(ns sketches.repo.flow
+(ns sketches.flow
   (:require [quil.core :as q :include-macros true]
-            [sketches.menu :as menu]
-            [sketches.registry :as registry]
+            [menu :as menu]
+            [registry :as registry]
             [quil.middleware :as m]))
 
 (def config

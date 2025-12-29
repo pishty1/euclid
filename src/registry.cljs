@@ -1,4 +1,4 @@
-(ns sketches.registry
+(ns registry
   (:require [quil.core :as q]))
 
 ;; Change to a vector to allow auto-indexing (0, 1, 2...)

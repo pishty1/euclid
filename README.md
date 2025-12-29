@@ -23,23 +23,28 @@ The app supports hot-reloading, so changes to your code will appear instantly.
 
 ## 🏗 Project Structure
 
-The project uses a **Registry & Manifest** pattern to manage sketches dynamically.
+The project uses a **Registry & Manifest** pattern to manage sketches dynamically, with a clean separation between system code and user content.
 
-*   **`src/sketches/entry.cljs`**: The main entry point. It initializes the app and handles the sketch switching logic.
-*   **`src/sketches/menu.cljs`**: Renders the navigation menu overlay.
-*   **`src/sketches/registry.cljs`**: A central atom that stores the configuration of all loaded sketches.
-*   **`src/sketches/manifest.cljs`**: The "Table of Contents". This file requires all the sketch namespaces so they are included in the build.
-*   **`src/sketches/repo/`**: The folder where your individual sketch files live.
+**System Files** (in `src/`):
+*   **`entry.cljs`**: The main entry point. Initializes the app and handles sketch switching logic.
+*   **`menu.cljs`**: Renders the navigation menu overlay.
+*   **`registry.cljs`**: Central atom storing all loaded sketches' configuration.
+*   **`manifest.cljs`**: The "Table of Contents". Requires all sketch namespaces so they're included in the build.
+*   **`utils/`**: Shared utility modules (e.g., `vectorop.cljs` for vector math).
+
+**User Content** (in `src/sketches/`):
+*   Individual sketch files (e.g., `flow.cljs`, `cross.cljs`, `euclid.cljs`, etc.)
+*   Each file is a standalone creative work that registers itself.
 
 ## 🎨 How to Add a New Sketch
 
-1.  **Create a file** in `src/sketches/repo/` (e.g., `mysketch.cljs`).
+1.  **Create a file** in `src/sketches/` (e.g., `mysketch.cljs`).
 2.  **Define your sketch** using the `registry/def-sketch` helper at the bottom of your file:
     ```clojure
-    (ns sketches.repo.mysketch
+    (ns sketches.mysketch
       (:require [quil.core :as q]
-                [sketches.registry :as registry]
-                [sketches.menu :as menu]))
+                [registry :as registry]
+                [menu :as menu]))
 
     ;; ... your setup, update, draw functions ...
 
@@ -50,22 +55,30 @@ The project uses a **Registry & Manifest** pattern to manage sketches dynamicall
        :size [menu/w menu/h]
        :middleware [menu/show-frame-rate]})
     ```
-3.  **Register it** by adding the namespace to `src/sketches/manifest.cljs`:
+3.  **Register it** by adding the namespace to `src/manifest.cljs`:
     ```clojure
-    (ns sketches.manifest
-      (:require [sketches.repo.mysketch] ;; <-- Add this
+    (ns manifest
+      (:require [sketches.mysketch] ;; <-- Add this
                 ...))
     ```
 4.  Save, and it will automatically appear in the menu!
 
 ## 📦 Deployment
 
-The project is configured to deploy to GitHub Pages.
-To build for production:
+The project is configured to deploy to GitHub Pages automatically via GitHub Actions.
+
+### Automated Deployment
+Pushing to the `main` branch triggers a workflow that:
+1.  Builds the project using `shadow-cljs release prod`.
+2.  Commits the artifacts to the `publish` branch.
+3.  GitHub Pages serves the content from the `publish` branch.
+
+### Manual Build
+To build for production locally:
 ```bash
 npx shadow-cljs release prod
 ```
-This generates the optimized assets in `docs/`, which GitHub Pages can serve.
+This generates the optimized assets in `docs/`.
 
 ## 🔗 Links
 [Blog Post](https://pishty.uk/euclid/)
