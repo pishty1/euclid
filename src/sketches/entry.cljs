@@ -7,8 +7,6 @@
             [sketches.repo.tut5 :as tut5]
             [sketches.repo.euclid :as euclid]
             [sketches.menu :as menu]
-            [sketches.channels :as ch]
-            [cljs.core.async :refer [go-loop <!]]
             [quil.core :as q]))
 
 
@@ -26,7 +24,7 @@
 
 (defn chooser
   ([]
-   (chooser 0))
+   (chooser @menu/selected-sketch))
   ([x]
    (clear-sketch)
    (case x
@@ -37,15 +35,10 @@
      4 (tut4/start)
      (println x ": unknown index"))))
 
-(defonce app-state (atom {:running false}))
-
 (defn init []
-  (when-not (:running @app-state)
-    (swap! app-state assoc :running true)
-    (go-loop []
-      (let [input (<! ch/my-channel)]
-        (chooser (:index input)))
-      (recur))))
+  (add-watch menu/selected-sketch :switcher
+             (fn [_key _atom _old-state new-state]
+               (chooser new-state))))
 
 (init)
 

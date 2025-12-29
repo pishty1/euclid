@@ -1,7 +1,7 @@
 (ns sketches.menu
-  (:require [quil.core :as q]
-            [cljs.core.async :refer [go <! >!]]
-            [sketches.channels :as ch]))
+  (:require [quil.core :as q]))
+
+(defonce selected-sketch (atom 0))
 
 (defonce body (.-body js/document))
 (defonce w (.-clientWidth body))
@@ -168,7 +168,8 @@
                                  (+ (:py %) (:height %)))
                             %)
                          (:items (:menu state)))]
-      (go (>! ch/my-channel selected))))
+      (when selected
+        (reset! selected-sketch (:index selected)))))
 
   (assoc state
          :menu-visible? (and (inside-burger?)
