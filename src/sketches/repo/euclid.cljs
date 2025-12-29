@@ -2,6 +2,7 @@
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]
+   [sketches.registry :as registry]
    [quil.middleware :as m]
    [sketches.vectorop :as v]))
 
@@ -93,16 +94,15 @@
         (assoc :mouse-pressed-position nil))
     state))
 
-(defn start []
-  (q/defsketch euclid
-    :host "sketch"
-    :title "Gravity Circles"
-    :setup setup
-    :update update-state
-    :draw draw-state
-    :renderer :p2d
-    :mouse-clicked menu/when-mouse-pressed
-    :mouse-released mouse-released
-    :size [menu/w menu/h]
-    :middleware [menu/show-frame-rate
-                m/fun-mode]))
+(registry/def-sketch "Euclid" '(160 100 100)
+  {:host "sketch"
+   :title "Gravity Circles"
+   :setup setup
+   :update update-state
+   :draw draw-state
+   :renderer :p2d
+   :mouse-clicked menu/when-mouse-pressed
+   :mouse-released mouse-released
+   :size [menu/w menu/h]
+   :middleware [menu/show-frame-rate
+                  m/fun-mode]})

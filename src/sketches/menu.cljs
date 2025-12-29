@@ -1,5 +1,6 @@
 (ns sketches.menu
-  (:require [quil.core :as q]))
+  (:require [quil.core :as q]
+            [sketches.registry :as registry]))
 
 (defonce selected-sketch (atom 0))
 
@@ -20,30 +21,12 @@
                        (.-opera js/window))]
     (boolean (re-find #"(Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini)" user-agent))))
 
-(def showcase [{:name "Flow"
-                :start 'flow/start
-                :color '(120 0 10)}
-               {:name "Cross"
-                :start 'tut1/start
-                :color '(120 100 10)}
-              ;;  {:name "Move"
-              ;;   :start 'tut2/start
-              ;;   :color '(120 200 10)}
-               {:name "Euclid"
-                :start 'euclid/start
-                :color '(160 100 100)}
-              ;;  {:name "Perlin"
-              ;;   :start 'tut3/start
-              ;;   :color '(120 500 100)}
-               {:name "Figget-A-Balls"
-                :start 'tut5/start
-                :color '(160 80 130)}
-               {:name "Venture"
-                :start 'tut4/start
-                :color '(120 0 100)}])
+(defn get-menu-items []
+  (mapv (fn [[_ sketch]] sketch) (registry/get-all-sketches)))
 
-(defn gen-menu-items [items origin width height]
-  (let [padding-top 0]
+(defn gen-menu-items [origin width height]
+  (let [padding-top 0
+        items (get-menu-items)]
     (loop [index 0
            mrange items
            items []]
@@ -97,7 +80,8 @@
 (defn init-menu [mobile? page-height page-width]
   (let [width (if mobile? (/ page-width 2) 300)
         height 100
-        number (count showcase)
+        items (get-menu-items)
+        number (count items)
         origin (origin number height width page-height page-width)]
     {:number number
      :width width
@@ -107,7 +91,7 @@
                   :toy (+ (:oy origin) (* height number))
                   :fromx (:ox origin)
                   :fromy (:oy origin)}
-     :items (gen-menu-items showcase origin width height)}))
+     :items (gen-menu-items origin width height)}))
 
 
 (defn wrap-setup [options]
@@ -124,8 +108,6 @@
                                 :h h)))]
     (-> options
         (assoc :setup updated-state))))
-
-
 (defn wrap-draw [options]
   (let [draw (:draw options (fn [_] nil))
         updated-draw (fn []

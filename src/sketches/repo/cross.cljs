@@ -1,7 +1,8 @@
-(ns sketches.repo.tut1
+(ns sketches.repo.cross
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]
+   [sketches.registry :as registry]
    [quil.middleware :as m]
    )
   )
@@ -150,15 +151,14 @@
         (assoc :cross2 cross2)
         (update :time inc))))
 
-(defn start []
-  (q/defsketch Something
-    :host "sketch"
-    :title "Cross with circle"
-    :setup setup
-    :update update-state
-    :draw draw-state
-    :renderer :p2d
-    :mouse-clicked menu/when-mouse-pressed
-    :size [menu/w menu/h]
-    :middleware [menu/show-frame-rate
-                 m/fun-mode]))
+(registry/def-sketch "La Cross" '(120 100 10)
+  {:host "sketch"
+   :title "Cross with circle"
+   :setup setup
+   :update update-state
+   :draw draw-state
+   :renderer :p2d
+   :mouse-clicked menu/when-mouse-pressed
+   :size [menu/w menu/h]
+   :middleware [menu/show-frame-rate
+                m/fun-mode]})

@@ -1,12 +1,7 @@
 (ns sketches.entry
-  (:require [sketches.repo.flow :as flow]
-            [sketches.repo.tut1 :as tut1]
-            [sketches.repo.tut2 :as tut2]
-            [sketches.repo.tut3 :as tut3]
-            [sketches.repo.tut4 :as tut4]
-            [sketches.repo.tut5 :as tut5]
-            [sketches.repo.euclid :as euclid]
+  (:require [sketches.manifest]
             [sketches.menu :as menu]
+            [sketches.registry :as registry]
             [quil.core :as q]))
 
 
@@ -27,13 +22,9 @@
    (chooser @menu/selected-sketch))
   ([x]
    (clear-sketch)
-   (case x
-     0 (flow/start)
-     1 (tut1/start)
-     2 (euclid/start)
-     3 (tut5/start)
-     4 (tut4/start)
-     (println x ": unknown index"))))
+   (if-let [sketch (registry/get-sketch x)]
+     ((:start sketch))
+     (println x ": unknown sketch index"))))
 
 (defn init []
   (add-watch menu/selected-sketch :switcher

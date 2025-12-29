@@ -1,7 +1,8 @@
-(ns sketches.repo.tut5
+(ns sketches.repo.figget
   (:require
    [quil.core :as q]
    [sketches.menu :as menu]
+   [sketches.registry :as registry]
    [quil.middleware :as m]
    [sketches.vectorop :as v]))
 
@@ -88,15 +89,15 @@
                   :fill (list 0 0 0)
                   :mass 15}
      :balls (map (fn [_]
-                  {:location [(rand-int (q/width)) (rand-int (q/height))]
-                   :speed [(rand-int 2) (rand-int 2)]
-                   :acc [0 0]
-                   :stroke (list 0 0 100)
-                   :fill  (list  0 0 255)
-                   :mass (q/floor (+ 1 (rand-int 10)))
-                   :max-speed (+ 5 (rand-int 15))
-                   :on-fire false})
-                (range number-of-balls))
+                   {:location [(rand-int (q/width)) (rand-int (q/height))]
+                    :speed [(rand-int 2) (rand-int 2)]
+                    :acc [0 0]
+                    :stroke (list 0 0 100)
+                    :fill  (list  0 0 255)
+                    :mass (q/floor (+ 1 (rand-int 10)))
+                    :max-speed (+ 5 (rand-int 15))
+                    :on-fire false})
+                 (range number-of-balls))
      :fire-particles []}))
 
 (defn check-collision [ball black-ball]
@@ -117,17 +118,17 @@
         mouse-force (v/mult (v/norm mouse-direction) mouse-magnitude)
         updated-black-speed (v/limit (v/add black-speed mouse-force) 10)
         updated-black-location (v/add black-location updated-black-speed)
-        updated-black-ball (assoc black-ball 
-                                :location updated-black-location
-                                :speed updated-black-speed)
-        
+        updated-black-ball (assoc black-ball
+                                  :location updated-black-location
+                                  :speed updated-black-speed)
+
         ; Update fire particles
         updated-fire-particles (->> fire-particles
-                                  (map update-fire-particle)
-                                  (remove dead?))
-        
+                                    (map update-fire-particle)
+                                    (remove dead?))
+
         ; Then update all other balls and check for collisions
-        [updated-balls new-explosions] 
+        [updated-balls new-explosions]
         (loop [myballs balls
                newballs []
                explosions []]
@@ -141,8 +142,8 @@
                   colliding? (check-collision ball updated-black-ball)
                   ; If colliding and not already on fire, create explosion
                   new-explosions (if (and colliding? (not (:on-fire ball)))
-                                 (concat explosions (create-explosion location))
-                                 explosions)
+                                   (concat explosions (create-explosion location))
+                                   explosions)
                   ; Mouse attraction
                   mouse-dir (v/sub [(q/mouse-x) (q/mouse-y)] location)
                   org-distance (v/mag mouse-dir)
@@ -164,12 +165,12 @@
                      (if colliding?
                        newballs  ; Remove colliding balls
                        (conj newballs (assoc ball
-                                           :location updated-location
-                                           :speed limited-speed
-                                           :acc [0 0]
-                                           :on-fire colliding?
-                                           :fill (list (* 10 org-distance) org-distance 255)
-                                           :stroke (list (* 2 org-distance) (* 1 org-distance) 100))))
+                                             :location updated-location
+                                             :speed limited-speed
+                                             :acc [0 0]
+                                             :on-fire colliding?
+                                             :fill (list (* 10 org-distance) org-distance 255)
+                                             :stroke (list (* 2 org-distance) (* 1 org-distance) 100))))
                      new-explosions))
             [newballs explosions]))]
     (assoc state
@@ -179,7 +180,7 @@
 
 (defn draw-state [{:keys [balls black-ball fire-particles]}]
   (q/background 190 130 30)
-  
+
   ; Draw regular balls
   (q/stroke-weight 5)
   (doseq [ball balls]
@@ -190,11 +191,11 @@
             (second (:fill ball))
             (last (:fill ball)))
     (q/ellipse (first (:location ball)) (second (:location ball)) 26 26))
-  
+
   ; Draw fire particles
   (doseq [particle fire-particles]
     (display-fire-particle particle))
-  
+
   ; Draw black ball
   (q/stroke (first (:stroke black-ball))
             (second (:stroke black-ball))
@@ -202,10 +203,10 @@
   (q/fill (first (:fill black-ball))
           (second (:fill black-ball))
           (last (:fill black-ball)))
-  (q/ellipse (first (:location black-ball)) 
-             (second (:location black-ball)) 
+  (q/ellipse (first (:location black-ball))
+             (second (:location black-ball))
              40 40)
-  
+
   ; Draw ball count
   (q/fill 255)
   (q/stroke 0)
@@ -213,15 +214,14 @@
   (q/text-size 24)
   (q/text (str "Balls: " (count balls)) 20 40))
 
-(defn start []
-  (q/defsketch Something2
-    :host "sketch"
-    :title "Cross with circle"
-    :setup setup
-    :update update-state
-    :draw draw-state
-    :renderer :p2d
-    :mouse-clicked menu/when-mouse-pressed
-    :size [menu/w menu/h]
-    :middleware [menu/show-frame-rate
-                 m/fun-mode]))
+(registry/def-sketch "Figget-A-Balls" '(160 80 130)
+  {:host "sketch"
+   :title "Cross with circle"
+   :setup setup
+   :update update-state
+   :draw draw-state
+   :renderer :p2d
+   :mouse-clicked menu/when-mouse-pressed
+   :size [menu/w menu/h]
+   :middleware [menu/show-frame-rate
+                m/fun-mode]})

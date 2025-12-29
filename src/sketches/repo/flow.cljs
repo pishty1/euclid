@@ -1,6 +1,7 @@
 (ns sketches.repo.flow
   (:require [quil.core :as q :include-macros true]
             [sketches.menu :as menu]
+            [sketches.registry :as registry]
             [quil.middleware :as m]))
 
 (def config
@@ -150,18 +151,16 @@
       (apply q/fill (conj (:color p) (:alpha config)))
       (q/ellipse (:x p) (:y p) (:size p) (:size p))))
 
-  (defn start []
-    (println "version 0.0.6")
-    (q/defsketch Flow
-      :host "sketch"
-      :size [menu/w menu/h]
-      :setup sketch-setup
-      :draw sketch-draw
-      :update sketch-update
-      :mouse-clicked menu/when-mouse-pressed
-      :middleware [menu/show-frame-rate
-                   m/fun-mode]
-      :settings (fn []
-                  (q/pixel-density 1)
-                  (q/random-seed (:random-seed config))
-                  (q/noise-seed (:noise-seed config)))))
+  (registry/def-sketch "Flow" '(120 0 10)
+  {:host "sketch"
+   :size [menu/w menu/h]
+   :setup sketch-setup
+   :draw sketch-draw
+   :update sketch-update
+   :mouse-clicked menu/when-mouse-pressed
+   :middleware [menu/show-frame-rate
+                m/fun-mode]
+   :settings (fn []
+               (q/pixel-density 1)
+               (q/random-seed (:random-seed config))
+               (q/noise-seed (:noise-seed config)))})

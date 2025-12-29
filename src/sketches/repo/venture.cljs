@@ -1,6 +1,7 @@
-(ns sketches.repo.tut4
+(ns sketches.repo.venture
   (:require [quil.core :as q :include-macros true]
             [quil.middleware :as m]
+            [sketches.registry :as registry]
             [sketches.menu :as menu]))
 
 (declare on-screen?)
@@ -66,7 +67,7 @@
 
 (defn create-star [pos]
   {:pos       pos
-  ;;  :dir (rand q/TWO-PI) ; Alternative random direction if needed
+   ;;  :dir (rand q/TWO-PI) ; Alternative random direction if needed
    :dir       0.3 ; Approximately PI + 0.2 to move downward
    :size      (+ 1.0 (rand 3.0))
    :z         (rand-between 0.2 0.7)
@@ -216,13 +217,12 @@
 ;; Main Sketch Entry Point
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn start []
-  (q/defsketch Bobo
-    :host          "sketch"
-    :setup         setup
-    :update        update-state
-    :draw          draw-state
-    :mouse-clicked menu/when-mouse-pressed
-    :size          [menu/w menu/h]
-    :middleware    [menu/show-frame-rate
-                    m/fun-mode]))
+(registry/def-sketch "Ad Venture" '(120 0 100)
+  {:host          "sketch"
+   :setup         setup
+   :update        update-state
+   :draw          draw-state
+   :mouse-clicked menu/when-mouse-pressed
+   :size          [menu/w menu/h]
+   :middleware    [menu/show-frame-rate
+                   m/fun-mode]})
