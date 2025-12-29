@@ -215,7 +215,7 @@
   (q/fill 255)
   (q/stroke 0)
   (q/text-size 24)
-  (q/text (str "Stars: " (count balls)) 20 40))
+  (q/text (str "Stars: " (count balls)) 90 30))
 
 (registry/def-sketch "Figget-A-Balls" '(60 180 230)
   {:host "sketch"
