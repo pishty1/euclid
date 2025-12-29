@@ -42,12 +42,12 @@
 
 (init)
 
-(defn ^:dev/after-load start []
-  (chooser))
+;; (defn ^:dev/after-load start []
+;;   (chooser))
 
-(comment
-  (chooser 2)
-  (let [sym 'sketches.flow/start  ; The symbol you have
-        fn (deref (resolve sym))] ; Resolve the symbol and dereference to get the function
-    (fn))
-  )
+;; (comment
+;;   (chooser 2)
+;;   (let [sym 'sketches.flow/start  ; The symbol you have
+;;         fn (deref (resolve sym))] ; Resolve the symbol and dereference to get the function
+;;     (fn))
+;;   )

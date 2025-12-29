@@ -175,9 +175,3 @@
          :menu-visible? (and (inside-burger?)
                              (not (:menu-visible? state)))
          :mouse-pressed-position [(q/mouse-x) (q/mouse-y)]))
-
-(comment
-  (defn somefun [x]
-    (println x))
-  (somefun 1)
-  ) 
