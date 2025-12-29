@@ -50,7 +50,7 @@
         bounce (:bounce circle)
         max-y (- menu/h r)]
     (if (> y max-y)
-      (assoc circle 
+      (assoc circle
              :pos [x max-y]
              :vel [vx (* -1 vy bounce)])
       circle)))
@@ -61,21 +61,21 @@
     (update state :circles
             (fn [circles]
               (map (comp handle-boundary
-                        apply-velocity
-                        #(assoc % :gravity (:gravity state))
-                        apply-gravity)
+                         apply-velocity
+                         #(assoc % :gravity (:gravity state))
+                         apply-gravity)
                    circles)))))
 
 (defn draw-state [state]
   (q/background 190 130 30)
   (q/stroke-weight 2)
-  
+
   ; Draw all circles with physics
   (doseq [circle (:circles state)]
     (let [[x y] (:pos circle)]
       (q/fill 255 150)
       (q/ellipse x y (* 2 (:radius circle)) (* 2 (:radius circle)))))
-  
+
   ; Draw the interaction elements while mouse is pressed
   (when (:mouse-pressed-position state)
     (let [origin (:mouse-pressed-position state)
@@ -89,7 +89,7 @@
   (if (:mouse-pressed-position state)
     (-> state
         (add-circle (first (:mouse-pressed-position state))
-                   (second (:mouse-pressed-position state)))
+                    (second (:mouse-pressed-position state)))
         (add-circle (:x event) (:y event))
         (assoc :mouse-pressed-position nil))
     state))
@@ -105,4 +105,4 @@
    :mouse-released mouse-released
    :size [menu/w menu/h]
    :middleware [menu/show-frame-rate
-                  m/fun-mode]})
+                m/fun-mode]})

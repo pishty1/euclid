@@ -117,7 +117,7 @@
                          (if (q/state :menu-visible?)
                            (draw-menu (q/state :menu))
                            (burger-icon))
-                         
+
                          (q/rect-mode (:rect-mode current-rect-mode :corner))))]
     (-> options
         (dissoc :update)
@@ -127,8 +127,7 @@
 (defn show-frame-rate [options]
   (-> options
       wrap-setup
-      wrap-draw
-      ))
+      wrap-draw))
 
 
 (defn inside? [mousex mousey fromx fromy tox toy]

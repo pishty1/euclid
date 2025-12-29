@@ -3,9 +3,7 @@
    [quil.core :as q]
    [sketches.menu :as menu]
    [sketches.registry :as registry]
-   [quil.middleware :as m]
-   )
-  )
+   [quil.middleware :as m]))
 
 ;; Example 1 - Cross with Circle
 ;; Taken from Section 2.2.1, p20
@@ -45,14 +43,14 @@
               :y canvas-y-center
               :hue 180}  ; Start with opposite color
      :circ-size circ-size
-     :canvas-x-center canvas-x-center 
+     :canvas-x-center canvas-x-center
      :canvas-y-center canvas-y-center}))
 
 (defn draw-cross [{:keys [angle cross-size x y hue]}]
   (q/push-matrix)
   (q/translate x y)
   (q/rotate angle)
-  
+
   ; Draw multiple layers with more subtle colors
   (doseq [i (range 12)]  ; More layers for smoother fade
     (let [size (* cross-size (- 1 (* i 0.08)))  ; Even slower size reduction
@@ -72,7 +70,7 @@
       (q/vertex size (- size))
       (q/vertex (- size) size)
       (q/end-shape)))
-  
+
   (q/pop-matrix))
 
 (defn draw-state [{:keys [cross1 cross2 canvas-x-center canvas-y-center circ-size time]}]
@@ -82,13 +80,13 @@
     (q/fill bg-hue 10 20 15)  ; Lower saturation and brightness
     (q/no-stroke)
     (q/rect 0 0 (q/width) (q/height)))
-  
+
   (q/stroke-weight 2)  ; Thinner strokes overall
-  
+
   ; Draw crosses
   (draw-cross cross1)
   (draw-cross cross2)
-  
+
   ; Subtler center circle
   (let [circle-hue (mod (+ (:hue cross1) (:hue cross2)) 360)]
     (q/fill circle-hue 30 80 100)
@@ -115,37 +113,37 @@
   (let [time (:time state 0)
         interaction (calculate-interaction (:cross1 state) (:cross2 state))
         orbit-radius 150  ; Larger orbit for gentler motion
-        
+
         ; Update cross1
         cross1 (-> (:cross1 state)
-                   (update-cross-position (:canvas-x-center state) 
-                                        (:canvas-y-center state)
-                                        orbit-radius 
-                                        time)
+                   (update-cross-position (:canvas-x-center state)
+                                          (:canvas-y-center state)
+                                          orbit-radius
+                                          time)
                    ; Slower rotation
                    (update :angle #(+ % (* 0.01 (:factor interaction))))
                    ; Gentler size pulsing
                    (assoc :cross-size (* (:base-size (:cross1 state))
-                                       (+ 1 (* 0.2 (q/sin (* time 0.05))
-                                             (:factor interaction)))))
+                                         (+ 1 (* 0.2 (q/sin (* time 0.05))
+                                                 (:factor interaction)))))
                    ; Slower color shifts
                    (update :hue #(mod (+ % (* 0.5 (:factor interaction))) 360)))
-        
+
         ; Update cross2
         cross2 (-> (:cross2 state)
-                   (update-cross-position (:canvas-x-center state) 
-                                        (:canvas-y-center state)
-                                        orbit-radius 
-                                        (- time))
+                   (update-cross-position (:canvas-x-center state)
+                                          (:canvas-y-center state)
+                                          orbit-radius
+                                          (- time))
                    ; Slower rotation
                    (update :angle #(- % (* 0.008 (:factor interaction))))
                    ; Gentler size pulsing
                    (assoc :cross-size (* (:base-size (:cross2 state))
-                                       (+ 1 (* 0.2 (q/cos (* time 0.05))
-                                             (:factor interaction)))))
+                                         (+ 1 (* 0.2 (q/cos (* time 0.05))
+                                                 (:factor interaction)))))
                    ; Slower complementary color shifts
                    (update :hue #(mod (+ % 180 (* 0.5 (:factor interaction))) 360)))]
-    
+
     (-> state
         (assoc :cross1 cross1)
         (assoc :cross2 cross2)

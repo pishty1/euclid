@@ -62,6 +62,4 @@
     :mouse-clicked menu/when-mouse-pressed
     :size [menu/w menu/h]
     :middleware [menu/show-frame-rate
-                 m/fun-mode]
-    )
-  )
+                 m/fun-mode]))
