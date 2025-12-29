@@ -153,69 +153,65 @@
            :balls updated-balls
            :fire-particles (concat updated-fire-particles new-explosions))))
 
-(defn draw-state [{:keys [balls black-ball fire-particles]}]
+ (defn draw-state [{:keys [balls black-ball fire-particles]}]
   ;; 1. NIGHT SKY BACKGROUND
-  (q/background 10 15 40) ;; Deep Dark Blue
+  (q/background 10 15 40)
 
-  ; Draw regular balls (Shooting Stars)
+  ;; 2. DRAW GRAVITY GLOW AT MOUSE POSITION (The Attractor)
+  (let [mx (q/mouse-x)
+        my (q/mouse-y)
+        ;; Create a slow breathing pulse
+        pulse (q/sin (* (q/millis) 0.005))]
+    (q/no-stroke)
+    ;; Draw concentric rings centered on the mouse
+    (doseq [i (range 3)]
+      (let [base-size 80
+            ;; Rings breathe slightly
+            size (+ base-size (* i 40) (* pulse 15))
+            ;; Alpha fades as rings get further out
+            alpha (max 0 (- 40 (* i 10)))]
+        (q/fill 200 220 255 alpha) ;; Faint blue-white gravity glow
+        (q/ellipse mx my size size))))
+
+  ;; 3. DRAW SHOOTING STARS (With Trails)
   (doseq [ball balls]
     (let [[x y] (:location ball)
           [vx vy] (:speed ball)
-          ;; Make tail longer (4x speed instead of 3x)
-          tail-x (- x (* vx 4)) 
+          tail-x (- x (* vx 4))
           tail-y (- y (* vy 4))
           r (first (:stroke ball))
           g (second (:stroke ball))
           b (last (:stroke ball))]
-      
-      ;; 2. DRAW TAIL (Semi-transparent trail)
-      (q/stroke-weight 4) ;; Thicker trail
-      (q/stroke r g b 100) ;; Add alpha (100) for transparency
+
+      ;; Draw Tail
+      (q/stroke-weight 4)
+      (q/stroke r g b 100)
       (q/line x y tail-x tail-y)
-      
-      ;; 3. DRAW HEAD (Solid and Bright)
+
+      ;; Draw Head
       (q/no-stroke)
       (q/fill (first (:fill ball))
               (second (:fill ball))
               (last (:fill ball)))
-      ;; Smaller head for a faster look
       (q/ellipse x y 12 12)))
 
-  ; Draw fire particles
+  ;; 4. DRAW FIRE PARTICLES
   (doseq [particle fire-particles]
     (display-fire-particle particle))
 
-  ; Draw the "Moon" and Attraction Glow
-  (let [mx (first (:location black-ball))
-        my (second (:location black-ball))
-        ;; Create a slow breathing effect based on time
-        pulse (q/sin (* (q/millis) 0.004))] 
-    
-    (q/no-stroke)
-    
-    ;; 1. VISUALIZE ATTRACTION FIELD (The Glow)
-    ;; Draw 3 large concentric rings that fade out
-    (doseq [i (range 3)] 
-      (let [base-size 120
-            ;; Rings get larger and breathe slightly
-            size (+ base-size (* i 50) (* pulse 20)) 
-            ;; Alpha fades as rings get further out (30 -> 20 -> 10)
-            alpha (max 0 (- 30 (* i 10)))] 
-        (q/fill 255 255 220 alpha) ;; Very faint pale yellow
-        (q/ellipse mx my size size)))
+  ;; 5. DRAW THE MOON (Solid Pale Yellow, no extra glow)
+  (q/stroke-weight 2)
+  (q/stroke (first (:stroke black-ball))
+            (second (:stroke black-ball))
+            (last (:stroke black-ball)))
+  (q/fill (first (:fill black-ball))
+          (second (:fill black-ball))
+          (last (:fill black-ball)))
+  (q/ellipse (first (:location black-ball))
+             (second (:location black-ball))
+             40 40)
 
-    ;; 2. DRAW CORE MOON
-    (q/stroke-weight 2)
-    (q/stroke (first (:stroke black-ball))
-              (second (:stroke black-ball))
-              (last (:stroke black-ball)))
-    ;; Bright solid core
-    (q/fill (first (:fill black-ball))
-            (second (:fill black-ball))
-            (last (:fill black-ball)))
-    (q/ellipse mx my 40 40))
-
-  ; Draw ball count
+  ;; 6. DRAW TEXT
   (q/fill 255)
   (q/stroke 0)
   (q/text-size 24)
