@@ -57,8 +57,8 @@
     {:black-ball {:location [(/ (q/width) 2) (/ (q/height) 2)]
                   :speed [0 0]
                   :acc [0 0]
-                  :stroke (list 0 0 0)
-                  :fill (list 0 0 0)
+                  :stroke (list 255 255 200) ;; Pale Yellow stroke
+                  :fill (list 255 255 220)   ;; Pale Yellow/White fill
                   :mass 15}
      :balls (map (fn [_]
                    {:location [(rand-int (q/width)) (rand-int (q/height))]
@@ -141,8 +141,11 @@
                                              :speed limited-speed
                                              :acc [0 0]
                                              :on-fire colliding?
-                                             :fill (list (* 10 org-distance) org-distance 255)
-                                             :stroke (list (* 2 org-distance) (* 1 org-distance) 100))))
+                                             ;; NEW COLOR LOGIC: 
+                                             ;; Uses Red/Blue mix for Purple/Pink glow based on distance
+                                             ;; (R G B) format
+                                             :fill (list 255 (- 255 (* 10 org-distance)) 255) 
+                                             :stroke (list 200 50 200))))
                      new-explosions))
             [newballs explosions]))]
     (assoc state
@@ -151,40 +154,72 @@
            :fire-particles (concat updated-fire-particles new-explosions))))
 
 (defn draw-state [{:keys [balls black-ball fire-particles]}]
-  (q/background 190 130 30)
+  ;; 1. NIGHT SKY BACKGROUND
+  (q/background 10 15 40) ;; Deep Dark Blue
 
-  ; Draw regular balls
-  (q/stroke-weight 5)
+  ; Draw regular balls (Shooting Stars)
   (doseq [ball balls]
-    (q/stroke (first (:stroke ball))
-              (second (:stroke ball))
-              (last (:stroke ball)))
-    (q/fill (first (:fill ball))
-            (second (:fill ball))
-            (last (:fill ball)))
-    (q/ellipse (first (:location ball)) (second (:location ball)) 26 26))
+    (let [[x y] (:location ball)
+          [vx vy] (:speed ball)
+          ;; Make tail longer (4x speed instead of 3x)
+          tail-x (- x (* vx 4)) 
+          tail-y (- y (* vy 4))
+          r (first (:stroke ball))
+          g (second (:stroke ball))
+          b (last (:stroke ball))]
+      
+      ;; 2. DRAW TAIL (Semi-transparent trail)
+      (q/stroke-weight 4) ;; Thicker trail
+      (q/stroke r g b 100) ;; Add alpha (100) for transparency
+      (q/line x y tail-x tail-y)
+      
+      ;; 3. DRAW HEAD (Solid and Bright)
+      (q/no-stroke)
+      (q/fill (first (:fill ball))
+              (second (:fill ball))
+              (last (:fill ball)))
+      ;; Smaller head for a faster look
+      (q/ellipse x y 12 12)))
 
   ; Draw fire particles
   (doseq [particle fire-particles]
     (display-fire-particle particle))
 
-  ; Draw black ball
-  (q/stroke (first (:stroke black-ball))
-            (second (:stroke black-ball))
-            (last (:stroke black-ball)))
-  (q/fill (first (:fill black-ball))
-          (second (:fill black-ball))
-          (last (:fill black-ball)))
-  (q/ellipse (first (:location black-ball))
-             (second (:location black-ball))
-             40 40)
+  ; Draw the "Moon" and Attraction Glow
+  (let [mx (first (:location black-ball))
+        my (second (:location black-ball))
+        ;; Create a slow breathing effect based on time
+        pulse (q/sin (* (q/millis) 0.004))] 
+    
+    (q/no-stroke)
+    
+    ;; 1. VISUALIZE ATTRACTION FIELD (The Glow)
+    ;; Draw 3 large concentric rings that fade out
+    (doseq [i (range 3)] 
+      (let [base-size 120
+            ;; Rings get larger and breathe slightly
+            size (+ base-size (* i 50) (* pulse 20)) 
+            ;; Alpha fades as rings get further out (30 -> 20 -> 10)
+            alpha (max 0 (- 30 (* i 10)))] 
+        (q/fill 255 255 220 alpha) ;; Very faint pale yellow
+        (q/ellipse mx my size size)))
+
+    ;; 2. DRAW CORE MOON
+    (q/stroke-weight 2)
+    (q/stroke (first (:stroke black-ball))
+              (second (:stroke black-ball))
+              (last (:stroke black-ball)))
+    ;; Bright solid core
+    (q/fill (first (:fill black-ball))
+            (second (:fill black-ball))
+            (last (:fill black-ball)))
+    (q/ellipse mx my 40 40))
 
   ; Draw ball count
   (q/fill 255)
   (q/stroke 0)
-  (q/stroke-weight 2)
   (q/text-size 24)
-  (q/text (str "Balls: " (count balls)) 20 40))
+  (q/text (str "Stars: " (count balls)) 20 40))
 
 (registry/def-sketch "Figget-A-Balls" '(60 180 230)
   {:host "sketch"
