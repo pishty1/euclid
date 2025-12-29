@@ -5,60 +5,35 @@
             [quil.middleware :as m]))
 
 (def config
-  "Configuration map for the flow sketch.
-   Controls all aspects of the particle flow animation:
-   - particle-count: Number of particles in the system
-   - noise-zoom: Scale of the Perlin noise field (smaller = smoother flow)
-   - noise-detail: Additional detail in the noise field (0-1)
-   - alpha: Transparency of particles (0-255)
-   - particle-size: Base size of each particle
-   - initial-velocity: Starting velocity of particles
-   - velocity-scale: How much the flow field affects velocity
-   - max-velocity: Maximum allowed velocity
-   - trail-effect: Whether to keep previous frames (creates trails)
-   - background-fade: How quickly previous frames fade (0-255, 255 = no trail)
-   - random-seed: Seed for random number generation
-   - noise-seed: Seed for Perlin noise generation
-   - mouse-influence: How strongly the mouse affects particles
-   - mouse-radius: Radius of mouse influence"
-  {:particle-count 2000
-   :noise-zoom 0.045
-   :noise-detail 0.12
-   :alpha 5
-   :particle-size 3
-   :initial-velocity {:x 1.0 :y 1.0}
-   :velocity-scale 1.0
-   :max-velocity 7.0
+  {:particle-count 3000          ; High density for network effect
+   :noise-zoom 0.005             ; Zoomed in for long, smooth tendrils
+   :noise-detail 0.5             ; More complex noise falloff
+   :particle-size 1.5            ; Thinner, filament-like size
+   :growth-speed 2.0             ; Constant growth speed (replacing max-velocity)
    :trail-effect true
-   :background-fade 0.1
-   :random-seed 666
-   :noise-seed 666
-   :mouse-influence 0.8
-   :mouse-radius 100})
+   :background-fade 10           ; Very low fade = persistent trails (mycelium map)
+   :random-seed 42
+   :noise-seed 99
+   :sensor-radius 300            ; Distance at which fungus senses food (mouse)
+   :sensor-strength 0.15})       ; How hard it steers towards food (0.0 to 1.0)
 
 (def palette
-  "Color palette for the sketch."
-  {:name       "purple haze"
-   :background [(rand-int 256) (rand-int 256) (rand-int 256)]
-   :colors     (vec (repeatedly 7 #(vector (rand-int 256)
-                                           (rand-int 256)
-                                           (rand-int 256))))})
+  {:name       "bioluminescence"
+   :background [10 10 20]     ; Dark substrate
+   :colors     [[60 255 100]  ; Toxic Green
+                [0 255 200]   ; Cyan Spores
+                [150 50 255]  ; Purple Rot
+                [255 255 255] ; New Growth White
+                [40 100 40]]})
 
 (defn particle
-  "Creates a particle map with initial state.
-   Parameters:
-   - id: Unique identifier for the particle"
   [id]
-  (let [{:keys [initial-velocity particle-size]} config]
-    {:id        id
-     :vx        (:x initial-velocity)
-     :vy        (:y initial-velocity)
-     :size      particle-size
-     :direction 0.0
-     :x         (q/random menu/w)
-     :y         (q/random menu/h)
-     :speed     0.0
-     :color     (rand-nth (:colors palette))}))
+  {:id    id
+   :vx    0.0
+   :vy    0.0
+   :x     (q/random menu/w)
+   :y     (q/random menu/h)
+   :color (rand-nth (:colors palette))})
 
 (defn sketch-setup
   "Returns the initial state to use for the update-render loop.
@@ -67,89 +42,85 @@
   (apply q/background (:background palette))
   {:particles (mapv particle (range 0 (:particle-count config)))})
 
-(defn position
-  "Calculates the next position based on the current, the speed and a max.
-   Uses modulo to wrap around screen boundaries."
-  [^number current ^number delta ^number max]
-  (mod (+ current delta) max))
+(defn lerp-angle [current target amt]
+  (let [diff (- target current)
+        ;; Normalize diff to -PI to +PI to turn shortest direction
+        d (-> diff (+ Math/PI) (mod (* 2 Math/PI)) (- Math/PI))]
+    (+ current (* d amt))))
 
-(defn clamp-velocity
-  "Clamps the velocity between negative and positive max-velocity."
-  [^number velocity]
-  (let [max-v (:max-velocity config)]
-    (cond
-      (> velocity max-v) max-v
-      (< velocity (- max-v)) (- max-v)
-      :else velocity)))
-
-(defn velocity
-  "Calculates the next velocity by averaging the current velocity and the added delta.
-   Provides smooth transitions between velocities."
-  [^number current ^number delta]
-  (clamp-velocity
-   (* (:velocity-scale config)
-      (/ (+ current delta) (+ -10 (rand-int 10))))))
-
-(defn direction
-  "Calculates the next direction based on the previous position and id of each particle.
-   Uses Perlin noise to create smooth, natural-looking flow fields."
-  [^number x ^number y ^number z]
-  (let [{:keys [noise-zoom noise-detail]} config]
-    (* 2.0
-       Math/PI
-       (+ (q/noise (* x noise-zoom) (* y noise-zoom))
-          (* noise-detail (q/noise (* x noise-zoom) (* y noise-zoom) (* z noise-zoom)))))))
-
-(defn update-particle
-  "Updates a single particle's state based on its current position and velocity."
-  [p]
-  (let [mouse-x (q/mouse-x)
-        mouse-y (q/mouse-y)
-        dx (- mouse-x (:x p))
-        dy (- mouse-y (:y p))
-        distance (Math/sqrt (+ (* dx dx) (* dy dy)))
-        mouse-factor (if (< distance (:mouse-radius config))
-                       (* (:mouse-influence config)
-                          (- 1.0 (/ distance (:mouse-radius config))))
-                       0)
-        flow-direction (direction (:x p) (:y p) (:id p))
-        mouse-direction (Math/atan2 dy dx)
-        final-direction (+ flow-direction (* mouse-factor (- mouse-direction flow-direction)))
-        vx (velocity (:vx p) (Math/cos final-direction))
-        vy (velocity (:vy p) (Math/sin final-direction))
-        speed (Math/sqrt (+ (* vx vx) (* vy vy)))
-        hue (mod (* speed 30) 255)
-        size (+ (:particle-size config) (* 2 (/ speed (:max-velocity config))))]
+(defn update-particle [p]
+  (let [;; 1. Sense Food (Mouse)
+        mx (q/mouse-x)
+        my (q/mouse-y)
+        dx (- mx (:x p))
+        dy (- my (:y p))
+        dist-to-food (Math/sqrt (+ (* dx dx) (* dy dy)))
+        
+        ;; 2. Determine Natural Growth Direction (Noise)
+        noise-val (q/noise (* (:x p) (:noise-zoom config)) 
+                           (* (:y p) (:noise-zoom config))
+                           (* (q/frame-count) 0.001))
+        noise-angle (* noise-val 4 Math/PI) ;; 4PI allows loops and whorls
+        
+        ;; 3. Determine Food Attraction
+        ;; Only sense if close enough, otherwise attraction is 0
+        sensed? (< dist-to-food (:sensor-radius config))
+        food-angle (Math/atan2 dy dx)
+        
+        ;; Calculate steering force based on distance (closer = stronger pull)
+        pull-strength (if sensed? 
+                        (q/map-range dist-to-food 0 (:sensor-radius config) 0.2 0.01)
+                        0)
+        
+        ;; 4. Combine Forces
+        ;; Blend natural noise with food attraction
+        final-angle (if sensed?
+                      (lerp-angle noise-angle food-angle pull-strength)
+                      noise-angle)
+        
+        ;; 5. Execute Growth (Movement)
+        speed (:growth-speed config)
+        vx (* speed (Math/cos final-angle))
+        vy (* speed (Math/sin final-angle))
+        
+        ;; Dynamic coloring: Bright white when near food, darker when far
+        base-color (rand-nth (:colors palette))
+        vitality (if sensed? 255 100)]
+    
     (assoc p
-           :x (position (:x p) vx menu/w)
-           :y (position (:y p) vy menu/h)
-           :direction final-direction
-           :vx vx
+           :x (mod (+ (:x p) vx) menu/w)
+           :y (mod (+ (:y p) vy) menu/h)
+           :vx vx 
            :vy vy
-           :speed speed
-           :size size
-           :color [hue (min 255 (* speed 50)) 255])))
+           :color (if (< dist-to-food 50) 
+                    [255 255 255] ;; Hot white center
+                    base-color))))
 
 (defn sketch-update
   "Returns the next state to render. Updates all particles' positions and velocities."
   [{:keys [particles] :as state}]
   (assoc state :particles (mapv update-particle particles)))
 
-(defn apply-background
-  "Applies background with fade effect if trail-effect is enabled."
-  []
+(defn sketch-draw [{:keys [particles]}]
+  ;; 1. Draw the "fading" background (the substrate)
   (if (:trail-effect config)
-    (apply q/background (conj (:background palette) (:background-fade config)))
-    (apply q/background (:background palette))))
+    (do
+      (q/no-stroke)
+      (apply q/fill (conj (:background palette) (:background-fade config)))
+      (q/rect 0 0 menu/w menu/h))
+    (apply q/background (:background palette)))
 
-(defn sketch-draw
-  "Draws the current state to the canvas. Called on each iteration after sketch-update."
-  [{:keys [particles]}]
-  (apply-background)
-  (q/no-stroke)
+  ;; 2. Draw the Hyphae
   (doseq [p particles]
-    (apply q/fill (conj (:color p) (:alpha config)))
-    (q/ellipse (:x p) (:y p) (:size p) (:size p))))
+    (let [[r g b] (:color p)]
+      ;; Low alpha makes overlapping trails glow brighter
+      (q/stroke r g b 80)
+      (q/stroke-weight (:particle-size config))
+      ;; Draw a line from previous pos to current (simulates filament)
+      (q/line (- (:x p) (:vx p)) 
+              (- (:y p) (:vy p)) 
+              (:x p) 
+              (:y p)))))
 
 (registry/def-sketch "Flow" '(120 0 10)
   {:host "sketch"
