@@ -214,7 +214,7 @@
   (q/text-size 24)
   (q/text (str "Balls: " (count balls)) 20 40))
 
-(registry/def-sketch "Figget-A-Balls" '(160 80 130)
+(registry/def-sketch "Figget-A-Balls" '(60 180 230)
   {:host "sketch"
    :title "Cross with circle"
    :setup setup
