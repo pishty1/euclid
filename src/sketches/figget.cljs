@@ -21,34 +21,6 @@
 ;; fill(255, 150);
 ;; ellipse(width/2, height/2, 50, 50);
 
-(defn bounce [location speed w h]
-  [(if (or (> (first location) w)
-           (< (first location) 0))
-     (* (first speed) -1)
-     (first speed))
-   (if (or (> (second location) h)
-           (< (second location) 0))
-     (* (second speed) -1)
-     (second speed))])
-
-(defn wrap [location w h]
-  [(if (> (first location) w)
-     0
-     (if (< (first location) 0)
-       w
-       (first location)))
-   (if (> (second location) h)
-     0
-     (if (< (second location) 0)
-       h
-       (second location)))])
-
-(defn boundries [location speed w h type]
-  (case type
-    :bounce (bounce location speed w h)
-    :wrap (wrap location w h)
-    (wrap location w h)))
-
 (defn create-fire-particle [location]
   {:location location
    :velocity [(* (q/random-gaussian) 1.2)
