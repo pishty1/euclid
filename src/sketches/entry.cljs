@@ -8,7 +8,8 @@
             [sketches.repo.euclid :as euclid]
             [sketches.menu :as menu]
             [sketches.channels :as ch]
-            [cljs.core.async :refer [go-loop <!]]))
+            [cljs.core.async :refer [go-loop <!]]
+            [quil.core :as q]))
 
 
 (defn prevent-behavior [e]
@@ -18,12 +19,16 @@
 ;; document.addEventListener('contextmenu', event => event.preventDefault());
 (.addEventListener js/document "contextmenu" prevent-behavior #js {:passive false})
 
+(defn clear-sketch []
+  (let [node (.getElementById js/document "sketch")]
+    (when node
+      (set! (.-innerHTML node) ""))))
+
 (defn chooser
   ([]
-  ;;  (euclid/start)
-   (tut5/start)
-   )
+   (chooser 0))
   ([x]
+   (clear-sketch)
    (case x
      0 (flow/start)
      1 (tut1/start)
@@ -32,11 +37,20 @@
      4 (tut4/start)
      (println x ": unknown index"))))
 
-(go-loop []
-  (let [input (<! ch/my-channel)
-        my-fn (:start-fn input)]
-    (chooser (:index input)))
-  (recur))
+(defonce app-state (atom {:running false}))
+
+(defn init []
+  (when-not (:running @app-state)
+    (swap! app-state assoc :running true)
+    (go-loop []
+      (let [input (<! ch/my-channel)]
+        (chooser (:index input)))
+      (recur))))
+
+(init)
+
+(defn ^:dev/after-load start []
+  (chooser))
 
 (comment
   (chooser 2)

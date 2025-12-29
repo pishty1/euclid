@@ -1,9 +1,9 @@
 Euclid: a place to try out different creative graphic coding ideas in clojurescript.
 The project is ready to be forked and deployed to your own github pages.
 
-To run locally
+To run locally (from the terminal)
 
-```shadow-cljs watch app```
+```npx shadow-cljs watch app```
 
 
 The github workflow is ready for the app to be deployed to the github pages in the same repo.
