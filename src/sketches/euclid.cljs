@@ -194,12 +194,76 @@
    :scale (max 30 (min (* 0.34 (q/width)) (* 0.34 (max 80 (- (q/height) 180)))))})
 (defn screen [pos] (let [{:keys [center scale]} (transform)] (add center (times pos scale))))
 (defn world [pos] (let [{:keys [center scale]} (transform)] (times (sub pos center) (/ 1 scale))))
-(defn point-pos [state id] (:pos (first (filter #(= id (:id %)) (:points state)))))
+(defn find-point [state id] (first (filter #(= id (:id %)) (:points state))))
+(defn point-pos [state id]
+  (let [p (find-point state id)] (when (not= false (:valid? p)) (:pos p))))
+
+(defn primitive-ids [shape]
+  (if (= :line (:kind shape)) [(:a shape) (:b shape)] [(:center shape) (:edge shape)]))
+
+(defn evaluate-primitive [state shape]
+  (let [[a b] (map #(point-pos state %) (primitive-ids shape))]
+    (when (and a b)
+      (if (= :line (:kind shape)) {:p1 a :p2 b} {:center a :r (distance a b)}))))
+
+(defn shapes [state]
+  (concat (map #(assoc % :kind :line) (:lines state))
+          (map #(assoc % :kind :circle) (:circles state))))
+
+(defn primitive-intersections [state a b]
+  (let [p (evaluate-primitive state a) q (evaluate-primitive state b)]
+    (when (and p q)
+      (case [(:kind a) (:kind b)]
+        [:line :line] (when-let [pos (intersect-lines p q)] [pos])
+        [:circle :circle] (intersect-circles p q)
+        [:line :circle] (intersect-line-circle p q)
+        [:circle :line] (intersect-line-circle q p)))))
+
+(defn intersection-candidates [state]
+  (let [items (vec (shapes state))]
+    (vec (mapcat identity
+                 (for [i (range (count items)) j (range (inc i) (count items))
+                       :let [a (nth items i) b (nth items j)]]
+                   (map-indexed (fn [branch pos]
+                                  {:pos pos :kind :ghost :title "Bound intersection"
+                                   :constraint {:first a :second b :branch branch}})
+                                (primitive-intersections state a b)))))))
+
+(defn resolve-constraints [state]
+  ;; New points only reference already existing anchors: creation order is
+  ;; a topological order, including constructions built on other intersections.
+  (reduce (fn [s {:keys [id constraint]}]
+            (if-not constraint s
+              (let [{:keys [first second branch]} constraint
+                    pos (nth (vec (primitive-intersections s first second)) branch nil)]
+                (update s :points
+                        #(mapv (fn [p] (if (= id (:id p))
+                                         (cond-> (assoc p :valid? (boolean pos))
+                                           pos (assoc :pos pos :home pos)) p)) %)))))
+          state (:points state)))
+
+(defn root-anchors [state id]
+  (if-let [constraint (:constraint (find-point state id))]
+    (reduce into #{} (map #(root-anchors state %)
+                         (concat (primitive-ids (:first constraint))
+                                 (primitive-ids (:second constraint)))))
+    #{id}))
+
+(defn move-anchor [state id pos]
+  (let [p (find-point state id)
+        bound? (boolean (:constraint p))
+        roots (if bound? (root-anchors state id) #{id})
+        delta (sub pos (:pos p))]
+    (resolve-constraints
+     (update state :points
+             #(mapv (fn [p]
+                      (if (contains? roots (:id p))
+                        (let [new-pos (if bound? (add (:pos p) delta) pos)]
+                          (assoc p :pos new-pos :home new-pos)) p)) %)))))
 
 (defn primitives [state]
-  {:lines (mapv (fn [{:keys [a b]}] {:p1 (point-pos state a) :p2 (point-pos state b)}) (:lines state))
-   :circles (mapv (fn [{:keys [center edge]}]
-                    (let [p (point-pos state center)] {:center p :r (distance p (point-pos state edge))})) (:circles state))})
+  {:lines (vec (keep #(evaluate-primitive state (assoc % :kind :line)) (:lines state)))
+   :circles (vec (keep #(evaluate-primitive state (assoc % :kind :circle)) (:circles state)))})
 
 (defn calculate-ghosts [{:keys [lines circles]}]
   (->> (concat
@@ -215,8 +279,8 @@
 
 (defn closest [state pos real-only?]
   (let [tolerance (/ (if real-only? 20 15) (:scale (transform)))
-        candidates (concat (map #(assoc % :kind :real) (:points state))
-                           (when-not real-only? (map #(hash-map :pos % :kind :ghost) (:ghosts state)))
+        candidates (concat (map #(assoc % :kind :real) (filter #(not= false (:valid? %)) (:points state)))
+                           (when-not real-only? (intersection-candidates state))
                            (when (and (not real-only?) (:guides? state) (:proof state))
                              (map (fn [[id title]] {:pos (id (:proof state)) :kind :proof :title title})
                                   [[:o "Circumcenter"] [:i "Incenter"] [:g "Centroid"]
@@ -252,6 +316,7 @@
     (reset! actions [])
     (let [state (if (:menu-visible? state) state (reduce apply-action state pending))
           state (if (and (:motion? state) (not (:menu-visible? state))) (animate state) state)
+          state (resolve-constraints state)
           ghosts (calculate-ghosts (primitives state))
           pos (world [(q/mouse-x) (q/mouse-y)])
           proof (current-proof state)
@@ -266,7 +331,10 @@
   (if-let [existing (first (filter #(< (distance pos (:pos %)) epsilon) (:points state)))]
     [state (:id existing)]
     (if (>= (count (:points state)) (:points limits)) [state nil]
-        [(-> state (update :points conj (point (:next-id state) pos)) (update :next-id inc)) (:next-id state)])))
+        (let [binding (first (filter #(< (distance pos (:pos %)) epsilon) (intersection-candidates state)))
+              p (cond-> (point (:next-id state) pos)
+                  binding (assoc :constraint (:constraint binding) :valid? true))]
+          [(-> state (update :points conj p) (update :next-id inc)) (:next-id state)]))))
 
 (defn construct [state pos]
   (let [state (assoc state :motion? false :status "")]
@@ -303,7 +371,7 @@
   (if (or (:menu-visible? state) (nil? (:dragging state))) state
     (let [pos (world [(q/mouse-x) (q/mouse-y)])]
       (-> state
-          (update :points #(mapv (fn [p] (if (= (:id p) (:dragging state)) (assoc p :pos pos :home pos) p)) %))
+          (move-anchor (:dragging state) pos)
           (assoc :trails [] :drag-moved? (or (:drag-moved? state) (> (distance pos (:drag-start state)) 0.01)))))))
 
 (defn mouse-released [state _]
@@ -439,8 +507,8 @@
 (defn draw-interaction [state]
   (when (:guides? state)
     (doseq [pos (:ghosts state)] (dot-at pos (:guide palette) 2)))
-  (doseq [{:keys [id pos]} (:points state)]
-    (dot-at pos (:gold palette) (if (= id (:dragging state)) 7 5))
+  (doseq [{:keys [id pos constraint]} (filter #(not= false (:valid? %)) (:points state))]
+    (dot-at pos (:gold palette) (if (= id (:dragging state)) 7 (if constraint 6 5)))
     (when (:guides? state) (label pos (if (< id 26) (js/String.fromCharCode (+ 65 id)) (str "P" id)) (:gold palette))))
   (when-let [snap (:snapped state)]
     (q/no-fill)
@@ -489,8 +557,8 @@
         y (- (q/height) (if panel (+ 34 (.-offsetHeight panel)) 164))
         hint (if (seq (:status state)) (:status state)
                (if (:selection state) "Choose the second point · Esc cancels"
-                 (case (:tool state) :move "Drag anchors · Play brings geometry to life"
-                       :point "Plant points · Intersections snap"
+                 (case (:tool state) :move "Drag anchors · Drag intersections to move their construction"
+                       :point "Plant points · Intersections stay attached"
                        :line "Choose two points for a ruler"
                        :circle "Choose a center, then an edge")))]
     (q/text hint 22 y)))
