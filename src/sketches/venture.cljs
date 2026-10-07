@@ -114,11 +114,11 @@
                 (random-int 0 (if (< wave 2) 1 3)))
         factor-a (random-int 2 (min 12 (+ wave 3)))
         factor-b (random-int 2 (min 12 (+ wave 3)))]
-    (case op
+    (assoc (case op
       :add {:equation (str a " + " b) :answer (+ a b)}
       :subtract {:equation (str (max a b) " − " (min a b)) :answer (Math/abs (- a b))}
       :multiply {:equation (str factor-a " × " factor-b) :answer (* factor-a factor-b)}
-      :divide {:equation (str (* factor-a factor-b) " ÷ " factor-a) :answer factor-b})))
+      :divide {:equation (str (* factor-a factor-b) " ÷ " factor-a) :answer factor-b}) :operation op)))
 
 (defn new-game [state]
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
@@ -269,34 +269,78 @@
     (q/fill 143 255 230 160)
     (q/triangle (- x 6) (+ y 17) (+ x 6) (+ y 17) x (+ y 29 (* 4 (Math/sin (* (:clock state) 18)))))))
 
+(def enemy-styles
+  {:add {:color [245 177 76] :symbol "+"}
+   :subtract {:color [255 113 142] :symbol "−"}
+   :multiply {:color [183 145 255] :symbol "×"}
+   :divide {:color [99 197 255] :symbol "÷"}})
+
+(defn outline [points]
+  (q/begin-shape)
+  (doseq [[x y] points] (q/vertex x y))
+  (q/end-shape :close))
+
+(defn draw-enemy-body [operation clock id]
+  ;; Silhouettes encode the operation even when colors cannot be distinguished.
+  (case operation
+    :add
+    (do
+      (outline [[-6 -19] [6 -19] [6 -6] [19 -6] [19 6] [6 6]
+                [6 19] [-6 19] [-6 6] [-19 6] [-19 -6] [-6 -6]])
+      (doseq [[x y] [[0 -15] [15 0] [0 15] [-15 0]]]
+        (q/ellipse x y 3 3)))
+    :subtract
+    (do
+      (outline [[-24 0] [-14 -10] [14 -10] [24 0] [14 10] [-14 10]])
+      (q/line -17 0 -10 0)
+      (q/line 10 0 17 0))
+    :multiply
+    (do
+      (outline [[-18 -22] [0 -11] [18 -22] [11 0] [18 22] [0 11]
+                [-18 22] [-11 0]])
+      (doseq [[x y] [[-15 -17] [15 -17] [-15 17] [15 17]]]
+        (q/ellipse x y 4 4)))
+    :divide
+    (let [spread (+ 15 (* 2 (Math/sin (+ (* clock 2) id))))]
+      (q/line 0 (- spread) 0 spread)
+      (q/ellipse 0 (- spread) 12 12)
+      (q/ellipse 0 spread 12 12)
+      (outline [[-20 0] [-12 -7] [12 -7] [20 0] [12 7] [-12 7]]))
+    nil))
+
 (defn draw-enemy [state enemy targeted?]
   (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
-        color (if targeted? [133 255 227] [245 157 63])]
+        operation (:operation enemy)
+        {:keys [color symbol]} (get enemy-styles operation (:add enemy-styles))]
     (q/push-matrix)
     (q/translate x y)
-    (q/rotate (+ (* (:clock state) 0.35) (:id enemy)))
     (q/no-stroke)
     (apply q/fill (conj color 12))
-    (q/ellipse 0 0 56 56)
-    (apply q/stroke (conj color 215))
+    (q/ellipse 0 0 64 64)
+    ;; Keep the operation's own color when targeting; use a mint ring instead.
+    (when targeted?
+      (q/no-fill)
+      (q/stroke 133 255 227 220)
+      (q/stroke-weight 1.5)
+      (q/ellipse 0 0 64 64))
+    (apply q/stroke (conj color 230))
     (q/stroke-weight 1.4)
-    (q/no-fill)
-    (q/begin-shape)
-    (doseq [i (range 6)]
-      (let [angle (* i (/ (* 2 Math/PI) 6))]
-        (q/vertex (* 15 (Math/cos angle)) (* 15 (Math/sin angle)))))
-    (q/end-shape :close)
-    (q/line -8 0 8 0)
-    (q/line 0 -8 0 8)
+    (q/fill 5 17 26 235)
+    (draw-enemy-body operation (:clock state) (:id enemy))
+    (q/no-stroke)
+    (apply q/fill color)
+    (q/text-size 13)
+    (q/text-align :center :center)
+    (q/text symbol 0 0)
     (q/pop-matrix)
     (q/text-size 16)
     (let [label (:equation enemy) width (+ 20 (q/text-width label))]
       (q/no-stroke)
       (q/fill 3 12 18 230)
-      (q/rect (- x (/ width 2)) (+ y 23) width 27 4)
-      (apply q/fill color)
+      (q/rect (- x (/ width 2)) (+ y 28) width 27 4)
+      (apply q/fill (if targeted? [133 255 227] color))
       (q/text-align :center :center)
-      (q/text label x (+ y 36)))))
+      (q/text label x (+ y 41)))))
 
 (defn draw-effects [state]
   (doseq [{:keys [lane progress age]} (:effects state)]
