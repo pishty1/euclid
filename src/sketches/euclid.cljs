@@ -99,7 +99,7 @@
 
 (defn load-scene [state scene]
   (merge state (scene-data scene) {:scene scene :tool :move :selection nil :dragging nil
-                                  :motion? (not= scene :free) :phase 0 :trails [] :status ""}))
+                                  :motion? (not= scene :free) :phase 0 :trails [] :status "" :last-release nil}))
 
 (defn undo [state]
   (if-let [previous (peek (:history state))]
@@ -307,15 +307,26 @@
           (assoc :trails [] :drag-moved? (or (:drag-moved? state) (> (distance pos (:drag-start state)) 0.01)))))))
 
 (defn mouse-released [state _]
-  (let [state (drain-actions state)]
-  (cond
-    (:menu-visible? state) state
-    (:dragging state) (-> (if (:drag-moved? state) (remember state (:drag-origin state)) state)
-                         (dissoc :dragging :drag-origin :drag-start :drag-moved?))
-    (= :move (:tool state)) state
-    :else (let [pos (world [(q/mouse-x) (q/mouse-y)])
-                snapped (closest state pos false)]
-            (construct state (or (:pos snapped) pos))))))
+  (let [state (drain-actions state)
+        pixel [(q/mouse-x) (q/mouse-y)]
+        now (q/millis)
+        previous (:last-release state)
+        duplicate? (and previous (= (:tool state) (:tool previous))
+                        (< (- now (:time previous)) 400)
+                        (< (distance pixel (:pixel previous)) 2))]
+    (cond
+      (:menu-visible? state) state
+      ;; p5 receives both a touch release and its compatibility mouse release.
+      duplicate? (dissoc state :dragging :drag-origin :drag-start :drag-moved?)
+      :else
+      (let [updated (cond
+                      (:dragging state)
+                      (-> (if (:drag-moved? state) (remember state (:drag-origin state)) state)
+                          (dissoc :dragging :drag-origin :drag-start :drag-moved?))
+                      (= :move (:tool state)) state
+                      :else (let [pos (world pixel) snapped (closest state pos false)]
+                              (construct state (or (:pos snapped) pos))))]
+        (assoc updated :last-release {:pixel pixel :time now :tool (:tool state)})))))
 
 (defn key-pressed [state event]
   (if (:menu-visible? state) state
