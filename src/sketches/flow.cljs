@@ -5,8 +5,8 @@
             [quil.middleware :as m]))
 
 (def config
-  {:seed 42 :growth-interval 24 :max-points 90 :max-lines 120
-   :min-spacing 16 :margin 55})
+  {:seed 42 :growth-interval 12 :max-points 140 :max-lines 220
+   :min-spacing 13 :margin 55 :neighbor-count 6})
 
 (def palette
   {:background [16 23 25]
@@ -66,30 +66,58 @@
   (q/random-seed (:seed config))
   (initial-garden))
 
+(defn neighbor-indices [points a]
+  (->> (range (count points))
+       (remove #{a})
+       (sort-by #(distance-squared (:pos (nth points a)) (:pos (nth points %))))
+       (take (:neighbor-count config))
+       vec))
+
+(defn empty-circle? [points center radius-squared]
+  ;; Boundary points are allowed. A point inside the circle suppresses growth.
+  (every? #(>= (distance-squared (:pos %) center) (- radius-squared 0.01)) points))
+
+(defn growth-site [points line other]
+  ;; Bisectors sharing a parent meet at a triangle's circumcenter.
+  (when (some (set (:parent-ids line)) (:parent-ids other))
+    (when-let [center (intersection line other)]
+      (let [radius-squared (distance-squared center (first (:parents line)))
+            max-radius (* 0.32 (min menu/w menu/h))]
+        (when (and (inside-garden? center)
+                   (< radius-squared (* max-radius max-radius))
+                   (empty-circle? points center radius-squared))
+          {:pos center :radius-squared radius-squared})))))
+
 (defn grow [state]
   (let [points (:points state)
-        ;; Prefer new intersections, but allow older branches to keep growing.
-        a (if (< (q/random 1) 0.7)
-            (max 0 (- (count points) 1 (int (q/random (min 8 (count points))))))
+        ;; New points feed back into the local neighborhood on the next step.
+        a (if (< (q/random 1) 0.6)
+            (max 0 (- (count points) 1 (int (q/random (min 10 (count points))))))
             (int (q/random (count points))))
-        b (int (q/random (count points)))
-        pair (vec (sort [a b]))
-        pa (:pos (nth points a)) pb (:pos (nth points b))]
-    (if (or (= a b) (contains? (:pairs state) pair)
-            (< (distance-squared pa pb) 900)
-            (>= (count (:lines state)) (:max-lines config)))
+        neighbors (neighbor-indices points a)
+        available (filterv #(not (contains? (:pairs state) (vec (sort [a %])))) neighbors)]
+    (if (or (empty? available)
+            (>= (count (:lines state)) (:max-lines config))
+            (>= (count points) (:max-points config)))
       state
-      (let [line (assoc (bisector pa pb)
-                        :parents [pa pb] :born (:tick state)
+      (let [b (nth available (int (q/random (count available))))
+            pair (vec (sort [a b]))
+            pa (:pos (nth points a)) pb (:pos (nth points b))
+            line (assoc (bisector pa pb)
+                        :parents [pa pb] :parent-ids pair :born (:tick state)
                         :generation (inc (max (:generation (nth points a))
                                               (:generation (nth points b)))))
-            candidates (keep #(intersection line %) (:lines state))
-            next-points (reduce (fn [acc p]
+            ;; Fill the largest vacant pocket first; new seeds suppress others.
+            sites (sort-by :radius-squared >
+                           (keep #(growth-site points line %) (:lines state)))
+            next-points (reduce (fn [acc {:keys [pos radius-squared]}]
                                   (if (and (< (count acc) (:max-points config))
-                                           (inside-garden? p) (separated? acc p))
-                                    (conj acc {:pos p :born (:tick state)
-                                               :generation (:generation line)})
-                                    acc)) points candidates)]
+                                           (separated? acc pos)
+                                           (empty-circle? acc pos radius-squared))
+                                    (conj acc {:pos pos :born (:tick state)
+                                               :generation (:generation line)
+                                               :bloom-radius (Math/sqrt radius-squared)})
+                                    acc)) points sites)]
         (-> state
             (assoc :points next-points)
             (update :lines conj line)
@@ -123,19 +151,20 @@
         (q/no-fill)
         (apply q/stroke (conj (:chord palette) 100))
         (q/ellipse x y 4 4))))
-  (doseq [{[x y] :pos :keys [born generation]} points]
+  (doseq [{[x y] :pos :keys [born generation bloom-radius]} points]
     (let [age (- tick born) bloom (max 0 (- 1 (/ age 60)))]
       (when (pos? bloom)
         (q/no-fill)
         (apply q/stroke (conj (:point palette) (* 90 bloom)))
-        (q/ellipse x y (+ 5 (* 22 (- 1 bloom))) (+ 5 (* 22 (- 1 bloom)))))
+        (let [diameter (+ 5 (* 2 (or bloom-radius 11) (- 1 bloom)))]
+          (q/ellipse x y diameter diameter)))
       (q/no-stroke)
       (apply q/fill (:point palette))
       (q/ellipse x y (if (zero? generation) 5 3) (if (zero? generation) 5 3))))
   (q/no-stroke)
   (apply q/fill (conj (:point palette) 170))
   (q/text-size 12)
-  (q/text "PERPENDICULAR GARDENS" 24 (- menu/h 44))
+  (q/text "PERPENDICULAR GARDENS / OPEN SPACE" 24 (- menu/h 44))
   (q/text-size 10)
   (q/text "Click to plant a point  ·  R to regrow" 24 (- menu/h 25)))
 
@@ -156,7 +185,7 @@
     (merge state (initial-garden))
     state))
 
-(registry/def-sketch "Perpendicular Gardens" '(102 145 144)
+(registry/def-sketch "Gardens: Open Space" '(102 145 144)
   {:host "sketch" :size [menu/w menu/h]
    :setup sketch-setup :draw sketch-draw :update sketch-update
    :mouse-clicked mouse-clicked :key-pressed key-pressed
