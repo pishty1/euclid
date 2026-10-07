@@ -12,7 +12,7 @@
 (def descriptions
   {"Prime Gardens" "Prime gaps guide a growing geometric garden."
    "La Cross" "Orbiting crosses, shifting angles, and color."
-   "Ad Venture" "Drift through a field of stars and planets."
+   "Ad Venture" "Solve arithmetic to blast incoming enemy ships."
    "Figget-A-Balls" "Bouncing particles, collisions, and sparks."
    "Euclid" "Construct with points, lines, and circles."})
 
@@ -106,7 +106,8 @@
                                 (focus-card! target)))))
         (.appendChild list card))))
   (when-let [button (.getElementById js/document "euclid-nav")]
-    (.setAttribute button "data-sketch" (:name (registry/get-sketch @selected-sketch))))
+    (.setAttribute button "data-sketch" (:name (registry/get-sketch @selected-sketch)))
+    (.setAttribute body "data-sketch" (:name (registry/get-sketch @selected-sketch))))
   (when-let [name-node (.querySelector js/document "#euclid-nav .current-name")]
     (set! (.-textContent name-node) (:name (registry/get-sketch @selected-sketch)))))
 
