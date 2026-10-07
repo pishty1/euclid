@@ -10,19 +10,21 @@
   {:background [7 13 24]
    :stars [[102 215 233] [145 185 237] [157 234 218]]
    :vortex [176 145 238]
-   :moon [246 227 184]
+   :positive [250 177 90]
+   :negative [102 215 233]
    :sparks [250 177 90]})
 
 (defn safe-unit [direction]
   (let [length (v/mag direction)]
     (if (< length 0.0001) [0 0] (v/div direction length))))
 
-(defn create-ball []
+(defn create-ball [id]
   {:location [(q/random (q/width)) (q/random (q/height))]
    :speed [(q/random -1.5 1.5) (q/random -1.5 1.5)]
    :acc [0 0] :mass (q/random 1 5)
    :size (q/random 3 6) :max-speed (q/random 3 7)
-   :color (rand-nth (:stars palette)) :on-fire false})
+   :charge (if (even? id) 1 -1)
+   :color (if (even? id) (:positive palette) (:negative palette))})
 
 (defn bounce [ball]
   (let [[x y] (:location ball) [vx vy] (:speed ball)
@@ -75,98 +77,78 @@
     (apply q/fill (conj (:sparks palette) (max 0 lifespan)))
     (q/ellipse x y size size)))
 
+(defn create-dipole [id]
+  {:location [(* (+ 0.2 (* 0.2 id)) (q/width))
+              (* (if (even? id) 0.35 0.65) (q/height))]
+   :speed [(q/random -1 1) (q/random -1 1)]
+   :angle (* id 1.7) :polarity (if (even? id) 1 -1) :size 24})
+
+(defn poles [{:keys [location angle polarity]}]
+  (let [offset [(* 10 (Math/cos angle)) (* 10 (Math/sin angle))]]
+    [[(v/add location offset) polarity]
+     [(v/sub location offset) (- polarity)]]))
+
+(defn magnetic-force [location charge dipole]
+  (reduce v/add [0 0]
+          (for [[pole polarity] (poles dipole)
+                :let [direction (v/sub pole location)
+                      distance (v/mag direction)]]
+            ;; Softened charges avoid singular accelerations at a pole.
+            (v/mult (safe-unit direction)
+                    (/ (* -1800 charge polarity) (+ 400 (* distance distance)))))))
+
 (defn setup []
   (q/frame-rate 60)
   (q/pixel-density 1)
-  {:black-ball {:location [(/ (q/width) 2) (/ (q/height) 2)]
-                :speed [0 0] :acc [0 0] :mass 15 :size 36}
-   :balls (mapv (fn [_] (create-ball)) (range 100))
-   :fire-particles [] :tick 0
+  {:balls (mapv create-ball (range 100))
+   :dipoles (mapv create-dipole (range 4))
+   :fire-particles [] :tick 0 :paused? false :reversals 0
    :vortices [(create-vortex [(* 0.3 (q/width)) (* 0.42 (q/height))] 1)
               (create-vortex [(* 0.7 (q/width)) (* 0.58 (q/height))] -1)]})
-
-(defn check-collision [ball black-ball]
-  (let [distance (v/mag (v/sub (:location ball) (:location black-ball)))]
-    (< distance (+ 18 (/ (:size ball) 2)))))
 
 (defn create-explosion [location]
   (repeatedly 18 #(create-fire-particle location)))
 
-(defn step-world [{:keys [balls black-ball fire-particles vortices] :as state}]
-  (let [; First update black ball position based on mouse
-        black-location (:location black-ball)
-        black-speed (:speed black-ball)
-        black-mass (:mass black-ball)
-        mouse-direction (v/sub [(q/mouse-x) (q/mouse-y)] black-location)
-        mouse-distance (max 5 (min 25 (v/mag mouse-direction)))
-        mouse-magnitude (/ (* 1 black-mass 20) (* mouse-distance mouse-distance))
-        mouse-force (v/mult (safe-unit mouse-direction) mouse-magnitude)
-        updated-black-speed (v/limit (v/add black-speed mouse-force) 10)
-        updated-black-location (v/add black-location updated-black-speed)
-        updated-black-ball (bounce (assoc black-ball
-                                  :location updated-black-location
-                                  :speed updated-black-speed))
-
-        ; Update fire particles
-        updated-fire-particles (->> fire-particles
-                                    (map update-fire-particle)
-                                    (remove dead?))
-
-        ; Then update all other balls and check for collisions
-        [updated-balls new-explosions]
-        (loop [myballs balls
-               newballs []
-               explosions []]
-          (if (seq myballs)
-            (let [ball (first myballs)
-                  location (:location ball)
-                  speed (:speed ball)
-                  mass (:mass ball)
-                  max-speed (:max-speed ball)
-                  ; Check collision with black ball
-                  colliding? (check-collision ball updated-black-ball)
-                  ; If colliding and not already on fire, create explosion
-                  new-explosions (if (and colliding? (not (:on-fire ball)))
-                                   (concat explosions (create-explosion location))
-                                   explosions)
-                  ; Mouse attraction
-                  mouse-dir (v/sub [(q/mouse-x) (q/mouse-y)] location)
-                  org-distance (v/mag mouse-dir)
-                  distance (max 5 (min 25 org-distance))
-                  magnitude (/ (* 1 mass 20) (* distance distance))
-                  norm-direction (safe-unit mouse-dir)
-                  mouse-force (v/mult norm-direction magnitude)
-                  ; Black ball repulsion
-                  black-dir (v/sub location updated-black-location)
-                  black-distance (max 5 (v/mag black-dir))
-                  black-magnitude (/ (* 2 mass black-mass 40) (* black-distance black-distance))
-                  black-force (v/mult (safe-unit black-dir) black-magnitude)
-                  ; Combine forces
-                  vortex-pull (reduce v/add [0 0] (map #(vortex-force location %) vortices))
-                  total-force (v/add (v/add mouse-force black-force) vortex-pull)
-                  updated-speed (v/add speed total-force)
-                  limited-speed (v/limit updated-speed max-speed)
-                  updated-location (v/add location limited-speed)]
-              (recur (rest myballs)
-                     (if colliding?
-                       newballs  ; Remove colliding balls
-                       (conj newballs (bounce (assoc ball
-                                             :location updated-location
-                                             :speed limited-speed
-                                             :acc [0 0]
-                                             :vortex-influence (min 1 (v/mag vortex-pull))
-                                             :on-fire colliding?))))
-                     new-explosions))
-            [newballs explosions]))]
-    (assoc state
-           :black-ball updated-black-ball
-           :balls (if (and (< (count updated-balls) 100) (zero? (mod (:tick state) 4)))
-                    (conj updated-balls (create-ball)) updated-balls)
-           :tick (inc (:tick state))
-           :fire-particles (vec (take-last 600 (concat updated-fire-particles new-explosions))))))
+(defn step-world [{:keys [balls dipoles fire-particles vortices tick] :as state}]
+  (let [updated-balls
+        (mapv (fn [{:keys [location speed charge max-speed] :as ball}]
+                (let [swirl (reduce v/add [0 0] (map #(vortex-force location %) vortices))
+                      magnetic (reduce v/add [0 0] (map #(magnetic-force location charge %) dipoles))
+                      speed (v/limit (v/add (v/mult speed 0.995) (v/add swirl magnetic)) max-speed)]
+                  (bounce (assoc ball :location (v/add location speed) :speed speed
+                                      :vortex-influence (min 1 (v/mag swirl)))))) balls)
+        updated-dipoles
+        (mapv (fn [{:keys [location speed angle] :as dipole}]
+                (let [swirl (reduce v/add [0 0] (map #(vortex-force location %) vortices))
+                      ;; The swarm pushes back on the source of its magnetic field.
+                      recoil (reduce v/add [0 0]
+                                     (map #(v/mult (magnetic-force (:location %) (:charge %) dipole) -0.035) balls))
+                      speed (v/limit (v/add (v/mult speed 0.995) (v/add (v/mult swirl 0.45) recoil)) 2.5)]
+                  (bounce (assoc dipole :location (v/add location speed) :speed speed
+                                       :angle (+ angle (* 0.012 (:polarity dipole))
+                                                 (* 0.025 (- (first recoil) (second recoil)))))))) dipoles)
+        ;; A core has a three-second recovery period, preventing repeated flips
+        ;; while a dipole remains inside it.
+        [vortices dipoles flashes]
+        (reduce (fn [[fields magnets flashes] [index vortex]]
+                  (if-let [magnet-index
+                           (when (>= tick (:ready-at vortex 0))
+                             (first (keep-indexed
+                                     (fn [i magnet]
+                                       (when (< (v/mag (v/sub (:location magnet) (:location vortex))) 26) i)) magnets)))]
+                    [(assoc fields index (assoc vortex :spin (- (:spin vortex)) :ready-at (+ tick 180)))
+                     (update-in magnets [magnet-index :polarity] -)
+                     (conj flashes (:location vortex))]
+                    [fields magnets flashes]))
+                [vortices updated-dipoles []] (map-indexed vector vortices))]
+    (assoc state :balls updated-balls :dipoles dipoles :vortices vortices :tick (inc tick)
+                 :reversals (+ (:reversals state) (count flashes))
+                 :fire-particles (vec (take-last 600
+                                       (concat (remove dead? (map update-fire-particle fire-particles))
+                                               (mapcat create-explosion flashes)))))))
 
 (defn update-state [state]
-  (if (:menu-visible? state) state (step-world state)))
+  (if (or (:menu-visible? state) (:paused? state)) state (step-world state)))
 
 (defn draw-vortex [{[x y] :location :keys [spin radius]}]
   (let [angle (* spin (q/millis) 0.0004)]
@@ -193,39 +175,28 @@
     (apply q/fill (:vortex palette))
     (q/ellipse x y 4 4)))
 
-(defn draw-attractor []
-  (let [x (q/mouse-x) y (q/mouse-y)
-        pulse (+ 1 (* 0.08 (Math/sin (* (q/millis) 0.002))))]
+(defn draw-dipole [dipole]
+  (let [[[a qa] [b qb]] (poles dipole)
+        [x y] (:location dipole)]
+    (q/stroke-weight 2)
+    (q/stroke 184 202 214 150)
+    (q/line (first a) (second a) (first b) (second b))
     (q/no-fill)
     (q/stroke-weight 1)
-    (doseq [[diameter alpha] [[38 70] [76 35] [120 15]]]
-      (q/stroke 118 178 208 alpha)
-      (q/ellipse x y (* diameter pulse) (* diameter pulse)))
-    (q/stroke 145 203 220 100)
-    (q/line (- x 5) y (+ x 5) y)
-    (q/line x (- y 5) x (+ y 5))))
-
-(defn draw-moon [moon]
-  (let [[x y] (:location moon)]
+    (q/stroke 184 202 214 35)
+    (q/ellipse x y 32 32)
     (q/no-stroke)
-    (doseq [[diameter alpha] [[100 4] [70 8] [48 12]]]
-      (apply q/fill (conj (:moon palette) alpha))
-      (q/ellipse x y diameter diameter))
-    (apply q/fill (:moon palette))
-    (q/ellipse x y 36 36)
-    (q/fill 184 165 130 85)
-    (q/ellipse (- x 6) (- y 5) 9 9)
-    (q/ellipse (+ x 7) (+ y 4) 6 6)
-    (q/no-fill)
-    (q/stroke 255 244 215 70)
-    (q/stroke-weight 1)
-    (q/ellipse x y 44 44)))
+    (doseq [[[px py] charge] [[a qa] [b qb]]]
+      (let [color (if (pos? charge) (:positive palette) (:negative palette))]
+        (apply q/fill (conj color 20))
+        (q/ellipse px py 18 18)
+        (apply q/fill color)
+        (q/ellipse px py 6 6)))))
 
-(defn draw-state [{:keys [balls black-ball fire-particles vortices]}]
+(defn draw-state [{:keys [balls dipoles fire-particles vortices paused? reversals]}]
   (apply q/background (:background palette))
   (q/rect-mode :corner)
   (q/ellipse-mode :center)
-  (draw-attractor)
   (doseq [vortex vortices] (draw-vortex vortex))
   (doseq [{[x y] :location [vx vy] :speed :keys [color size vortex-influence]} balls]
     (let [color (blend-color color (:vortex palette) (or vortex-influence 0))]
@@ -240,43 +211,36 @@
     (apply q/fill (conj color 230))
     (q/ellipse x y size size)))
   (doseq [particle fire-particles] (display-fire-particle particle))
-  (draw-moon black-ball)
+  (doseq [dipole dipoles] (draw-dipole dipole))
   (q/no-stroke)
   (q/fill 161 188 207)
   (q/text-font "monospace")
   (q/text-size 11)
   (q/text-align :left :bottom)
-  (q/text "FIGGET-A-BALLS / ORBITAL PLAYGROUND" 22 (- (q/height) 56))
+  (q/text "FIGGET-A-BALLS / DIPOLE ECOLOGY" 22 (- (q/height) 56))
   (q/fill 94 123 147)
   (q/text-size 10)
-  (q/text "Move to attract · Click to plant a vortex" 22 (- (q/height) 37))
-  (q/text "C clears vortices · R resets" 22 (- (q/height) 20))
+  (q/text "Opposite charges attract · Core crossings flip spin" 22 (- (q/height) 37))
+  (q/text "Space pauses · C clears vortices · R resets" 22 (- (q/height) 20))
   (q/text-align :right :top)
-  (q/text (str (count balls) " particles") (- (q/width) 22) 24))
-
-(defn mouse-clicked [state]
-  (if (or (:menu-visible? state) (menu/inside-burger?)) state
-    (update state :vortices
-            (fn [vortices]
-              (vec (take-last 5
-                              (conj vortices (create-vortex [(q/mouse-x) (q/mouse-y)]
-                                                           (- (:spin (last vortices) -1))))))))))
+  (q/text (str (count balls) " particles / " (count dipoles) " dipoles") (- (q/width) 22) 24)
+  (q/text (if paused? "PAUSED" (str reversals " core reversals")) (- (q/width) 22) 41))
 
 (defn key-pressed [state event]
   (if (:menu-visible? state) state
     (case (:key event)
+      :space (update state :paused? not)
       :c (assoc state :vortices [])
       :r (merge state (setup))
       state)))
 
 (registry/def-sketch "Figget-A-Balls" '(60 180 230)
   {:host "sketch"
-   :title "Orbital playground"
+   :title "Dipole ecology"
    :setup setup
    :update update-state
    :draw draw-state
    :renderer :p2d
-   :mouse-clicked mouse-clicked
    :key-pressed key-pressed
    :size [menu/w menu/h]
    :middleware [menu/show-frame-rate
