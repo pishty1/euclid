@@ -5,133 +5,160 @@
             [quil.middleware :as m]))
 
 (def config
-  {:particle-count 3000          ; High density for network effect
-   :noise-zoom 0.005             ; Zoomed in for long, smooth tendrils
-   :noise-detail 0.5             ; More complex noise falloff
-   :particle-size 1.5            ; Thinner, filament-like size
-   :growth-speed 2.0             ; Constant growth speed (replacing max-velocity)
-   :trail-effect true
-   :background-fade 10           ; Very low fade = persistent trails (mycelium map)
-   :random-seed 42
-   :noise-seed 99
-   :sensor-radius 300            ; Distance at which fungus senses food (mouse)
-   :sensor-strength 0.15})       ; How hard it steers towards food (0.0 to 1.0)
+  {:seed 42 :growth-interval 24 :max-points 90 :max-lines 120
+   :min-spacing 16 :margin 55})
 
 (def palette
-  {:name       "bioluminescence"
-   :background [10 10 20]     ; Dark substrate
-   :colors     [[60 255 100]  ; Toxic Green
-                [0 255 200]   ; Cyan Spores
-                [150 50 255]  ; Purple Rot
-                [255 255 255] ; New Growth White
-                [40 100 40]]})
+  {:background [16 23 25]
+   :construction [102 145 144]
+   :chord [190 143 93]
+   :point [233 222 192]})
 
-(defn particle
-  [id]
-  {:id    id
-   :vx    0.0
-   :vy    0.0
-   :x     (q/random menu/w)
-   :y     (q/random menu/h)
-   :color (rand-nth (:colors palette))})
+(defn distance-squared [[ax ay] [bx by]]
+  (+ (* (- ax bx) (- ax bx)) (* (- ay by) (- ay by))))
 
-(defn sketch-setup
-  "Returns the initial state to use for the update-render loop.
-   Initializes the background and creates the particle system."
-  []
+(defn inside-garden? [[x y]]
+  (let [margin (min (:margin config) (/ menu/w 6) (/ menu/h 6))]
+    (and (< margin x (- menu/w margin))
+         (< margin y (- menu/h margin)))))
+
+(defn separated? [points p]
+  (every? #(> (distance-squared (:pos %) p)
+              (* (:min-spacing config) (:min-spacing config))) points))
+
+(defn bisector [[ax ay] [bx by]]
+  {:origin [(/ (+ ax bx) 2) (/ (+ ay by) 2)]
+   :direction [(- ay by) (- bx ax)]})
+
+(defn intersection [{[ax ay] :origin [dx dy] :direction}
+                     {[bx by] :origin [ex ey] :direction}]
+  (let [det (- (* dx ey) (* dy ex))]
+    (when (> (Math/abs det) 0.0001)
+      (let [t (/ (- (* (- bx ax) ey) (* (- by ay) ex)) det)]
+        [(+ ax (* t dx)) (+ ay (* t dy))]))))
+
+(defn clipped-endpoints [{[x y] :origin [dx dy] :direction}]
+  (let [hits (concat
+              (when (> (Math/abs dx) 0.0001)
+                (for [edge [0 menu/w]
+                      :let [py (+ y (* (/ (- edge x) dx) dy))]
+                      :when (<= 0 py menu/h)] [edge py]))
+              (when (> (Math/abs dy) 0.0001)
+                (for [edge [0 menu/h]
+                      :let [px (+ x (* (/ (- edge y) dy) dx))]
+                      :when (<= 0 px menu/w)] [px edge])))]
+    ;; A corner can occur twice; distinct keeps the visible segment nonzero.
+    (vec (take 2 (distinct hits)))))
+
+(defn initial-garden []
+  (let [cx (/ menu/w 2) cy (/ menu/h 2)
+        radius (* 0.23 (min menu/w menu/h))]
+    {:points (mapv (fn [i]
+                     (let [angle (+ -0.7 (* i (/ (* 2 Math/PI) 7)))
+                           r (* radius (q/random 0.65 1.2))]
+                       {:pos [(+ cx (* r (Math/cos angle)))
+                              (+ cy (* r (Math/sin angle)))]
+                        :born 0 :generation 0})) (range 7))
+     :lines [] :pairs #{} :tick 0}))
+
+(defn sketch-setup []
+  (q/frame-rate 30)
+  (q/random-seed (:seed config))
+  (initial-garden))
+
+(defn grow [state]
+  (let [points (:points state)
+        ;; Prefer new intersections, but allow older branches to keep growing.
+        a (if (< (q/random 1) 0.7)
+            (max 0 (- (count points) 1 (int (q/random (min 8 (count points))))))
+            (int (q/random (count points))))
+        b (int (q/random (count points)))
+        pair (vec (sort [a b]))
+        pa (:pos (nth points a)) pb (:pos (nth points b))]
+    (if (or (= a b) (contains? (:pairs state) pair)
+            (< (distance-squared pa pb) 900)
+            (>= (count (:lines state)) (:max-lines config)))
+      state
+      (let [line (assoc (bisector pa pb)
+                        :parents [pa pb] :born (:tick state)
+                        :generation (inc (max (:generation (nth points a))
+                                              (:generation (nth points b)))))
+            candidates (keep #(intersection line %) (:lines state))
+            next-points (reduce (fn [acc p]
+                                  (if (and (< (count acc) (:max-points config))
+                                           (inside-garden? p) (separated? acc p))
+                                    (conj acc {:pos p :born (:tick state)
+                                               :generation (:generation line)})
+                                    acc)) points candidates)]
+        (-> state
+            (assoc :points next-points)
+            (update :lines conj line)
+            (update :pairs conj pair))))))
+
+(defn sketch-update [state]
+  (let [next-state (update state :tick inc)]
+    (if (and (not (:menu-visible? state))
+             (zero? (mod (:tick next-state) (:growth-interval config))))
+      (grow next-state)
+      next-state)))
+
+(defn draw-segment [[ax ay] [bx by] progress]
+  (q/line ax ay (+ ax (* progress (- bx ax))) (+ ay (* progress (- by ay)))))
+
+(defn sketch-draw [{:keys [points lines tick]}]
   (apply q/background (:background palette))
-  {:particles (mapv particle (range 0 (:particle-count config)))})
-
-(defn lerp-angle [current target amt]
-  (let [diff (- target current)
-        ;; Normalize diff to -PI to +PI to turn shortest direction
-        d (-> diff (+ Math/PI) (mod (* 2 Math/PI)) (- Math/PI))]
-    (+ current (* d amt))))
-
-(defn update-particle [p]
-  (let [;; 1. Sense Food (Mouse)
-        mx (q/mouse-x)
-        my (q/mouse-y)
-        dx (- mx (:x p))
-        dy (- my (:y p))
-        dist-to-food (Math/sqrt (+ (* dx dx) (* dy dy)))
-        
-        ;; 2. Determine Natural Growth Direction (Noise)
-        noise-val (q/noise (* (:x p) (:noise-zoom config)) 
-                           (* (:y p) (:noise-zoom config))
-                           (* (q/frame-count) 0.001))
-        noise-angle (* noise-val 4 Math/PI) ;; 4PI allows loops and whorls
-        
-        ;; 3. Determine Food Attraction
-        ;; Only sense if close enough, otherwise attraction is 0
-        sensed? (< dist-to-food (:sensor-radius config))
-        food-angle (Math/atan2 dy dx)
-        
-        ;; Calculate steering force based on distance (closer = stronger pull)
-        pull-strength (if sensed? 
-                        (q/map-range dist-to-food 0 (:sensor-radius config) 0.2 0.01)
-                        0)
-        
-        ;; 4. Combine Forces
-        ;; Blend natural noise with food attraction
-        final-angle (if sensed?
-                      (lerp-angle noise-angle food-angle pull-strength)
-                      noise-angle)
-        
-        ;; 5. Execute Growth (Movement)
-        speed (:growth-speed config)
-        vx (* speed (Math/cos final-angle))
-        vy (* speed (Math/sin final-angle))
-        
-        ;; Dynamic coloring: Bright white when near food, darker when far
-        base-color (rand-nth (:colors palette))
-        vitality (if sensed? 255 100)]
-    
-    (assoc p
-           :x (mod (+ (:x p) vx) menu/w)
-           :y (mod (+ (:y p) vy) menu/h)
-           :vx vx 
-           :vy vy
-           :color (if (< dist-to-food 50) 
-                    [255 255 255] ;; Hot white center
-                    base-color))))
-
-(defn sketch-update
-  "Returns the next state to render. Updates all particles' positions and velocities."
-  [{:keys [particles] :as state}]
-  (assoc state :particles (mapv update-particle particles)))
-
-(defn sketch-draw [{:keys [particles]}]
-  ;; 1. Draw the "fading" background (the substrate)
-  (if (:trail-effect config)
-    (do
+  (q/stroke-weight 1)
+  (doseq [{:keys [parents born] :as line} lines]
+    (let [age (- tick born)
+          progress (min 1 (/ age 22))
+          [a b] (clipped-endpoints line)]
+      (apply q/stroke (conj (:chord palette) 35))
+      (draw-segment (first parents) (second parents) progress)
+      (when (and a b)
+        (apply q/stroke (conj (:construction palette) (if (< age 45) 125 46)))
+        ;; The bisector unfurls outward from the parents' midpoint.
+        (draw-segment (:origin line) a progress)
+        (draw-segment (:origin line) b progress))
+      (let [[x y] (:origin line)]
+        (q/no-fill)
+        (apply q/stroke (conj (:chord palette) 100))
+        (q/ellipse x y 4 4))))
+  (doseq [{[x y] :pos :keys [born generation]} points]
+    (let [age (- tick born) bloom (max 0 (- 1 (/ age 60)))]
+      (when (pos? bloom)
+        (q/no-fill)
+        (apply q/stroke (conj (:point palette) (* 90 bloom)))
+        (q/ellipse x y (+ 5 (* 22 (- 1 bloom))) (+ 5 (* 22 (- 1 bloom)))))
       (q/no-stroke)
-      (apply q/fill (conj (:background palette) (:background-fade config)))
-      (q/rect 0 0 menu/w menu/h))
-    (apply q/background (:background palette)))
+      (apply q/fill (:point palette))
+      (q/ellipse x y (if (zero? generation) 5 3) (if (zero? generation) 5 3))))
+  (q/no-stroke)
+  (apply q/fill (conj (:point palette) 170))
+  (q/text-size 12)
+  (q/text "PERPENDICULAR GARDENS" 24 (- menu/h 44))
+  (q/text-size 10)
+  (q/text "Click to plant a point  ·  R to regrow" 24 (- menu/h 25)))
 
-  ;; 2. Draw the Hyphae
-  (doseq [p particles]
-    (let [[r g b] (:color p)]
-      ;; Low alpha makes overlapping trails glow brighter
-      (q/stroke r g b 80)
-      (q/stroke-weight (:particle-size config))
-      ;; Draw a line from previous pos to current (simulates filament)
-      (q/line (- (:x p) (:vx p)) 
-              (- (:y p) (:vy p)) 
-              (:x p) 
-              (:y p)))))
+(defn mouse-clicked [state]
+  (let [handled (menu/when-mouse-pressed state)
+        p [(q/mouse-x) (q/mouse-y)]]
+    (if (and (not (:menu-visible? state)) (not (menu/inside-burger?))
+             (inside-garden? p) (separated? (:points state) p)
+             (< (count (:points state)) (:max-points config)))
+      (-> handled
+          (update :points conj {:pos p :born (:tick state) :generation 0})
+          ;; Make room for new construction when a mature garden is planted.
+          (update :lines #(vec (take-last (dec (:max-lines config)) %))))
+      handled)))
 
-(registry/def-sketch "Flow" '(120 0 10)
-  {:host "sketch"
-   :size [menu/w menu/h]
-   :setup sketch-setup
-   :draw sketch-draw
-   :update sketch-update
-   :mouse-clicked menu/when-mouse-pressed
-   :middleware [menu/show-frame-rate
-                m/fun-mode]
-   :settings (fn []
-               (q/pixel-density 1)
-               (q/random-seed (:random-seed config))
-               (q/noise-seed (:noise-seed config)))})
+(defn key-pressed [state event]
+  (if (= :r (:key event))
+    (merge state (initial-garden))
+    state))
+
+(registry/def-sketch "Perpendicular Gardens" '(102 145 144)
+  {:host "sketch" :size [menu/w menu/h]
+   :setup sketch-setup :draw sketch-draw :update sketch-update
+   :mouse-clicked mouse-clicked :key-pressed key-pressed
+   :middleware [menu/show-frame-rate m/fun-mode]
+   :settings (fn [] (q/pixel-density 1))})
