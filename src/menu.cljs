@@ -13,7 +13,7 @@
   {"Prime Gardens" "Prime gaps guide a growing geometric garden."
    "La Cross" "Orbiting crosses, shifting angles, and color."
    "Ad Venture" "Solve arithmetic to blast incoming enemy ships."
-   "Figget-A-Balls" "Bouncing particles, collisions, and sparks."
+   "Figget-A-Balls" "Glowing particles, spiraling vortices, and sparks."
    "Euclid" "Construct with points, lines, and circles."})
 
 (def styles
