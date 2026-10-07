@@ -213,11 +213,13 @@
 (defn primitive-intersections [state a b]
   (let [p (evaluate-primitive state a) q (evaluate-primitive state b)]
     (when (and p q)
-      (case [(:kind a) (:kind b)]
-        [:line :line] (when-let [pos (intersect-lines p q)] [pos])
-        [:circle :circle] (intersect-circles p q)
-        [:line :circle] (intersect-line-circle p q)
-        [:circle :line] (intersect-line-circle q p)))))
+      (cond
+        (and (= :line (:kind a)) (= :line (:kind b)))
+        (when-let [pos (intersect-lines p q)] [pos])
+        (and (= :circle (:kind a)) (= :circle (:kind b)))
+        (intersect-circles p q)
+        (= :line (:kind a)) (intersect-line-circle p q)
+        :else (intersect-line-circle q p)))))
 
 (defn intersection-candidates [state]
   (let [items (vec (shapes state))]
