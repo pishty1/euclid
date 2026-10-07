@@ -1,162 +1,147 @@
 (ns sketches.cross
-  (:require
-   [quil.core :as q]
-   [menu :as menu]
-   [registry :as registry]
-   [quil.middleware :as m]))
+  (:require [quil.core :as q]
+            [menu :as menu]
+            [registry :as registry]
+            [quil.middleware :as m]))
 
-;; Example 1 - Cross with Circle
-;; Taken from Section 2.2.1, p20
+(def palette
+  {:background [9 16 24] :first [239 186 139]
+   :second [124 218 220] :trace [234 226 198]})
 
-;; size(500, 300);
-;; smooth();
-;; background(230, 230, 230);
-;; //draw two crossed lines
-;; stroke(130, 0, 0);
-;; strokeWeight(4);
-;; line(width/2 - 70, height/2 - 70, width/2 + 70, height/2 + 70);
-;; line(width/2 + 70, height/2 - 70, width/2 - 70, height/2 + 70);
-;; //draw a filled circle too
-;; fill(255, 150);
-;; ellipse(width/2, height/2, 50, 50);
+(defn clamp [value low high] (max low (min high value)))
+
+(defn cross-endpoints [{:keys [x y angle size]}]
+  (mapv (fn [i]
+          (let [a (+ angle (/ Math/PI 4) (* i (/ Math/PI 2)))]
+            [(+ x (* size (Math/cos a))) (+ y (* size (Math/sin a)))]))
+        (range 4)))
+
+(defn segment-intersection [[[ax ay] [bx by]] [[cx cy] [dx dy]]]
+  (let [rx (- bx ax) ry (- by ay) sx (- dx cx) sy (- dy cy)
+        det (- (* rx sy) (* ry sx))]
+    (when (> (Math/abs det) 0.00001)
+      (let [qx (- cx ax) qy (- cy ay)
+            t (/ (- (* qx sy) (* qy sx)) det)
+            u (/ (- (* qx ry) (* qy rx)) det)]
+        (when (and (<= 0 t 1) (<= 0 u 1))
+          [(+ ax (* t rx)) (+ ay (* t ry))])))))
+
+(defn arms [endpoints]
+  [[(nth endpoints 0) (nth endpoints 2)] [(nth endpoints 1) (nth endpoints 3)]])
+
+(defn geometry [width height phase separation]
+  (let [scale (min width height)
+        cx (/ width 2) cy (/ height 2)
+        spread (* scale separation)
+        sway (* 0.075 scale (Math/sin (* phase 0.43)))
+        size (* scale 0.25)]
+    {:first {:x (- cx spread) :y (+ cy sway) :angle phase :size size}
+     :second {:x (+ cx spread) :y (- cy sway)
+              :angle (+ (/ Math/PI 2) (* phase -1.37)) :size size}}))
 
 (defn setup []
-  (q/smooth)
-  (q/background 230 230 230)
-  (q/stroke 130, 0 0)
-  (q/stroke-weight 4)
-  (let [cross-size      70
-        circ-size       50
-        canvas-x-center (/ (q/width) 2)
-        canvas-y-center (/ (q/height) 2)]
-
-    {:cross1 {:angle 0
-              :base-size cross-size
-              :cross-size cross-size
-              :x (- canvas-x-center 100)  ; Position left of center
-              :y canvas-y-center
-              :hue 0}
-     :cross2 {:angle (/ Math/PI 2)  ; Start at 90 degrees
-              :base-size cross-size
-              :cross-size cross-size
-              :x (+ canvas-x-center 100)  ; Position right of center
-              :y canvas-y-center
-              :hue 180}  ; Start with opposite color
-     :circ-size circ-size
-     :canvas-x-center canvas-x-center
-     :canvas-y-center canvas-y-center}))
-
-(defn draw-cross [{:keys [angle cross-size x y hue]}]
-  (q/push-matrix)
-  (q/translate x y)
-  (q/rotate angle)
-
-  ; Draw multiple layers with more subtle colors
-  (doseq [i (range 12)]  ; More layers for smoother fade
-    (let [size (* cross-size (- 1 (* i 0.08)))  ; Even slower size reduction
-          base-opacity (- 80 (* i 6))  ; Lower max opacity, gentler falloff
-          ; Smaller hue shifts for more cohesive look
-          layer-hue (mod (+ hue (* i 2)) 360)
-          ; Lower saturation for pastel effect
-          saturation (if (even? i) 40 30)]
-      (q/stroke layer-hue saturation 85 base-opacity)
-      (q/fill layer-hue saturation 75 (/ base-opacity 4))
-      (q/stroke-weight (- 3 (* i 0.15)))  ; Thinner strokes
-      (q/begin-shape)
-      (q/vertex (- size) (- size))
-      (q/vertex size size)
-      (q/end-shape)
-      (q/begin-shape)
-      (q/vertex size (- size))
-      (q/vertex (- size) size)
-      (q/end-shape)))
-
-  (q/pop-matrix))
-
-(defn draw-state [{:keys [cross1 cross2 canvas-x-center canvas-y-center circ-size time]}]
-  (q/color-mode :hsb 360 100 100 100)
-  (let [bg-hue (mod (* time 0.1) 360)]  ; Slower background color shift
-    ; More transparent, subtle background
-    (q/fill bg-hue 10 20 15)  ; Lower saturation and brightness
-    (q/no-stroke)
-    (q/rect 0 0 (q/width) (q/height)))
-
-  (q/stroke-weight 2)  ; Thinner strokes overall
-
-  ; Draw crosses
-  (draw-cross cross1)
-  (draw-cross cross2)
-
-  ; Subtler center circle
-  (let [circle-hue (mod (+ (:hue cross1) (:hue cross2)) 360)]
-    (q/fill circle-hue 30 80 100)
-    (q/no-stroke)
-    (q/ellipse canvas-x-center canvas-y-center circ-size circ-size)))
-
-(defn calculate-interaction [cross1 cross2]
-  (let [dx (- (:x cross2) (:x cross1))
-        dy (- (:y cross2) (:y cross1))
-        distance (Math/sqrt (+ (* dx dx) (* dy dy)))
-        angle (Math/atan2 dy dx)
-        interaction-factor (/ 200 (+ distance 100))]  ; Even smoother falloff
-    {:distance distance
-     :angle angle
-     :factor interaction-factor}))
-
-(defn update-cross-position [cross center-x center-y orbit-radius time]
-  (let [orbit-speed 0.005  ; Slower orbital motion
-        x (+ center-x (* orbit-radius (Math/cos (* time orbit-speed))))
-        y (+ center-y (* orbit-radius (Math/sin (* time orbit-speed))))]
-    (assoc cross :x x :y y)))
+  (q/frame-rate 60)
+  (when-let [host (.getElementById js/document "sketch")]
+    (set! (.-tabIndex host) 0)
+    (.focus host))
+  {:phase 0 :speed 0.009 :separation 0.13 :traces [] :mode :both :paused? false
+   :geometry (geometry (q/width) (q/height) 0 0.13) :dimensions [(q/width) (q/height)]})
 
 (defn update-state [state]
-  (let [time (:time state 0)
-        interaction (calculate-interaction (:cross1 state) (:cross2 state))
-        orbit-radius 150  ; Larger orbit for gentler motion
+  (when (or (not= (q/width) (.-innerWidth js/window))
+            (not= (q/height) (.-innerHeight js/window)))
+    (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window)))
+  (let [dims [(q/width) (q/height)]
+        state (if (= dims (:dimensions state)) state
+                  (assoc state :dimensions dims :traces []
+                         :geometry (geometry (first dims) (second dims) (:phase state) (:separation state))))]
+    (if (or (:paused? state) (:menu-visible? state)) state
+      (let [pointer? (and (pos? (q/mouse-x)) (pos? (q/mouse-y)))
+            target-spacing (if pointer? (+ 0.035 (* 0.22 (clamp (/ (q/mouse-x) (q/width)) 0 1))) 0.13)
+            target-speed (if pointer? (+ 0.004 (* 0.014 (clamp (/ (q/mouse-y) (q/height)) 0 1))) 0.009)
+            spacing (+ (:separation state) (* 0.025 (- target-spacing (:separation state))))
+            speed (+ (:speed state) (* 0.025 (- target-speed (:speed state))))
+            phase (+ (:phase state) speed)
+            shapes (geometry (q/width) (q/height) phase spacing)
+            a (cross-endpoints (:first shapes)) b (cross-endpoints (:second shapes))
+            intersections (keep identity (for [sa (arms a) sb (arms b)] (segment-intersection sa sb)))]
+        (assoc state :phase phase :speed speed :separation spacing :geometry shapes
+               :traces (vec (take-last 1200 (concat (:traces state) intersections))))))))
 
-        ; Update cross1
-        cross1 (-> (:cross1 state)
-                   (update-cross-position (:canvas-x-center state)
-                                          (:canvas-y-center state)
-                                          orbit-radius
-                                          time)
-                   ; Slower rotation
-                   (update :angle #(+ % (* 0.01 (:factor interaction))))
-                   ; Gentler size pulsing
-                   (assoc :cross-size (* (:base-size (:cross1 state))
-                                         (+ 1 (* 0.2 (q/sin (* time 0.05))
-                                                 (:factor interaction)))))
-                   ; Slower color shifts
-                   (update :hue #(mod (+ % (* 0.5 (:factor interaction))) 360)))
+(defn draw-line [[ax ay] [bx by]] (q/line ax ay bx by))
 
-        ; Update cross2
-        cross2 (-> (:cross2 state)
-                   (update-cross-position (:canvas-x-center state)
-                                          (:canvas-y-center state)
-                                          orbit-radius
-                                          (- time))
-                   ; Slower rotation
-                   (update :angle #(- % (* 0.008 (:factor interaction))))
-                   ; Gentler size pulsing
-                   (assoc :cross-size (* (:base-size (:cross2 state))
-                                         (+ 1 (* 0.2 (q/cos (* time 0.05))
-                                                 (:factor interaction)))))
-                   ; Slower complementary color shifts
-                   (update :hue #(mod (+ % 180 (* 0.5 (:factor interaction))) 360)))]
+(defn draw-cross [shape color]
+  (let [points (cross-endpoints shape)]
+    (q/stroke-weight 1.2)
+    (apply q/stroke (conj color 220))
+    (doseq [[a b] (arms points)] (draw-line a b))
+    (q/no-stroke)
+    (doseq [[x y] points]
+      (apply q/fill (conj color 16))
+      (q/ellipse x y 18 18)
+      (apply q/fill color)
+      (q/ellipse x y 4 4))
+    (q/no-fill)
+    (apply q/stroke (conj color 95))
+    (q/stroke-weight 1)
+    (q/ellipse (:x shape) (:y shape) 10 10)))
 
-    (-> state
-        (assoc :cross1 cross1)
-        (assoc :cross2 cross2)
-        (update :time inc))))
+(defn draw-state [{:keys [geometry traces mode paused?]}]
+  (apply q/background (:background palette))
+  (q/rect-mode :corner)
+  (q/ellipse-mode :center)
+  (let [a (cross-endpoints (:first geometry)) b (cross-endpoints (:second geometry))
+        cx (/ (q/width) 2) cy (/ (q/height) 2) radius (* 0.32 (min (q/width) (q/height)))]
+    (q/no-fill)
+    (q/stroke-weight 1)
+    (q/stroke 105 133 153 20)
+    (q/ellipse cx cy (* 2 radius) (* 2 radius))
+    (when (contains? #{:both :weave} mode)
+      (doseq [i (range 4) j (range 4)]
+        (apply q/stroke (conj (if (even? (+ i j)) (:first palette) (:second palette)) 42))
+        (draw-line (nth a i) (nth b j))))
+    (when (contains? #{:both :traces} mode)
+      (q/no-stroke)
+      (doseq [[index [x y]] (map-indexed vector traces)]
+        (let [alpha (+ 12 (* 95 (/ index (max 1 (count traces)))))]
+          (apply q/fill (conj (:trace palette) alpha))
+          (q/ellipse x y 1.6 1.6))))
+    (draw-cross (:first geometry) (:first palette))
+    (draw-cross (:second geometry) (:second palette))
+    (q/no-stroke)
+    (doseq [sa (arms a) sb (arms b)]
+      (when-let [[x y] (segment-intersection sa sb)]
+        (apply q/fill (conj (:trace palette) 25))
+        (q/ellipse x y 16 16)
+        (apply q/fill (:trace palette))
+        (q/ellipse x y 4 4))))
+  (q/no-stroke)
+  (q/text-font "monospace")
+  (q/text-align :left :bottom)
+  (q/text-size 11)
+  (q/fill 183 196 202)
+  (q/text "LA CROSS / KINETIC LOOM" 22 (- (q/height) 56))
+  (q/text-size 10)
+  (q/fill 103 131 148)
+  (q/text "Move to shape · Click to change view" 22 (- (q/height) 37))
+  (q/text "Space pauses · R resets" 22 (- (q/height) 20))
+  (q/text-align :right :top)
+  (q/text (str (case mode :both "WEAVE + TRACES" :weave "WEAVE" :traces "TRACES")
+               (when paused? " / PAUSED")) (- (q/width) 22) 76))
 
-(registry/def-sketch "La Cross" '(120 100 10)
-  {:host "sketch"
-   :title "Cross with circle"
-   :setup setup
-   :update update-state
-   :draw draw-state
-   :renderer :p2d
-   :mouse-clicked menu/when-mouse-pressed
-   :size [menu/w menu/h]
-   :middleware [menu/show-frame-rate
-                m/fun-mode]})
+(defn mouse-clicked [state]
+  (if (:menu-visible? state) state
+      (update state :mode {:both :traces :traces :weave :weave :both})))
+
+(defn key-pressed [state event]
+  (if (:menu-visible? state) state
+    (case (:key event)
+      :space (update state :paused? not)
+      :r (merge state (setup))
+      state)))
+
+(registry/def-sketch "La Cross" '(239 186 139)
+  {:host "sketch" :title "Kinetic loom" :setup setup :update update-state :draw draw-state
+   :mouse-clicked mouse-clicked :key-pressed key-pressed :size [menu/w menu/h]
+   :middleware [menu/show-frame-rate m/fun-mode]
+   :settings (fn [] (q/pixel-density 1))})
