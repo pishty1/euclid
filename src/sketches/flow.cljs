@@ -6,13 +6,26 @@
 
 (def config
   {:seed 42 :growth-interval 12 :max-points 140 :max-lines 220
-   :min-spacing 13 :margin 55 :neighbor-count 6})
+   :min-spacing 13 :margin 55 :neighbor-count 8})
 
 (def palette
   {:background [16 23 25]
    :construction [102 145 144]
    :chord [190 143 93]
    :point [233 222 192]})
+
+(defn prime? [n]
+  (and (>= n 2)
+       (or (= n 2)
+           (and (odd? n)
+                (not-any? #(zero? (mod n %))
+                          (range 3 (inc (int (Math/sqrt n))) 2))))))
+
+(defn prime-gap? [a b]
+  (prime? (Math/abs (- (:number a) (:number b)))))
+
+(defn numbered-point [points attributes]
+  (assoc attributes :number (inc (count points))))
 
 (defn distance-squared [[ax ay] [bx by]]
   (+ (* (- ax bx) (- ax bx)) (* (- ay by) (- ay by))))
@@ -52,13 +65,16 @@
 
 (defn initial-garden []
   (let [cx (/ menu/w 2) cy (/ menu/h 2)
-        radius (* 0.23 (min menu/w menu/h))]
+        radius (* 0.27 (min menu/w menu/h))
+        phase (q/random (* 2 Math/PI))
+        golden-angle (* Math/PI (- 3 (Math/sqrt 5)))]
     {:points (mapv (fn [i]
-                     (let [angle (+ -0.7 (* i (/ (* 2 Math/PI) 7)))
-                           r (* radius (q/random 0.65 1.2))]
+                     (let [n (inc i)
+                           angle (+ phase (* n golden-angle))
+                           r (* radius (Math/sqrt (/ n 13)))]
                        {:pos [(+ cx (* r (Math/cos angle)))
                               (+ cy (* r (Math/sin angle)))]
-                        :born 0 :generation 0})) (range 7))
+                        :number n :born 0 :generation 0})) (range 13))
      :lines [] :pairs #{} :tick 0}))
 
 (defn sketch-setup []
@@ -69,6 +85,7 @@
 (defn neighbor-indices [points a]
   (->> (range (count points))
        (remove #{a})
+       (filter #(prime-gap? (nth points a) (nth points %)))
        (sort-by #(distance-squared (:pos (nth points a)) (:pos (nth points %))))
        (take (:neighbor-count config))
        vec))
@@ -105,6 +122,7 @@
             pa (:pos (nth points a)) pb (:pos (nth points b))
             line (assoc (bisector pa pb)
                         :parents [pa pb] :parent-ids pair :born (:tick state)
+                        :prime-gap (Math/abs (- (:number (nth points a)) (:number (nth points b))))
                         :generation (inc (max (:generation (nth points a))
                                               (:generation (nth points b)))))
             ;; Fill the largest vacant pocket first; new seeds suppress others.
@@ -114,9 +132,9 @@
                                   (if (and (< (count acc) (:max-points config))
                                            (separated? acc pos)
                                            (empty-circle? acc pos radius-squared))
-                                    (conj acc {:pos pos :born (:tick state)
+                                    (conj acc (numbered-point acc {:pos pos :born (:tick state)
                                                :generation (:generation line)
-                                               :bloom-radius (Math/sqrt radius-squared)})
+                                               :bloom-radius (Math/sqrt radius-squared)}))
                                     acc)) points sites)]
         (-> state
             (assoc :points next-points)
@@ -151,7 +169,7 @@
         (q/no-fill)
         (apply q/stroke (conj (:chord palette) 100))
         (q/ellipse x y 4 4))))
-  (doseq [{[x y] :pos :keys [born generation bloom-radius]} points]
+  (doseq [{[x y] :pos :keys [born generation bloom-radius number]} points]
     (let [age (- tick born) bloom (max 0 (- 1 (/ age 60)))]
       (when (pos? bloom)
         (q/no-fill)
@@ -159,14 +177,19 @@
         (let [diameter (+ 5 (* 2 (or bloom-radius 11) (- 1 bloom)))]
           (q/ellipse x y diameter diameter)))
       (q/no-stroke)
-      (apply q/fill (:point palette))
-      (q/ellipse x y (if (zero? generation) 5 3) (if (zero? generation) 5 3))))
+      (apply q/fill (if (prime? number) [244 192 103] (:construction palette)))
+      (let [size (if (prime? number) 6 3)]
+        (q/ellipse x y size size))
+      (when (prime? number)
+        (q/text-size 9)
+        (q/text (str number) (+ x 7) (- y 5)))))
   (q/no-stroke)
   (apply q/fill (conj (:point palette) 170))
   (q/text-size 12)
-  (q/text "PERPENDICULAR GARDENS / OPEN SPACE" 24 (- menu/h 44))
+  (q/text "PRIME GARDENS" 24 (- menu/h 56))
   (q/text-size 10)
-  (q/text "Click to plant a point  ·  R to regrow" 24 (- menu/h 25)))
+  (q/text "Prime gaps connect · Gold points are prime" 24 (- menu/h 37))
+  (q/text "Click to plant a point · R to regrow" 24 (- menu/h 20)))
 
 (defn mouse-clicked [state]
   (let [handled (menu/when-mouse-pressed state)
@@ -175,7 +198,7 @@
              (inside-garden? p) (separated? (:points state) p)
              (< (count (:points state)) (:max-points config)))
       (-> handled
-          (update :points conj {:pos p :born (:tick state) :generation 0})
+          (update :points #(conj % (numbered-point % {:pos p :born (:tick state) :generation 0})))
           ;; Make room for new construction when a mature garden is planted.
           (update :lines #(vec (take-last (dec (:max-lines config)) %))))
       handled)))
@@ -185,7 +208,7 @@
     (merge state (initial-garden))
     state))
 
-(registry/def-sketch "Gardens: Open Space" '(102 145 144)
+(registry/def-sketch "Prime Gardens" '(102 145 144)
   {:host "sketch" :size [menu/w menu/h]
    :setup sketch-setup :draw sketch-draw :update sketch-update
    :mouse-clicked mouse-clicked :key-pressed key-pressed
