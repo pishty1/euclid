@@ -175,7 +175,7 @@
           (update :enemies #(filterv (fn [e] (not= (:id e) (:id enemy))) %))
           (update :effects conj {:lane (:lane enemy) :progress (:progress enemy) :age 0 :kind :hit})))
     (if (empty? (:input state)) state
-      (assoc state :combo 0 :message "NO MATCH — TRY AGAIN" :message-timer 1.2))))
+      (assoc state :input "" :combo 0 :message "NO MATCH — TRY AGAIN" :message-timer 1.2))))
 
 (defn handle-action [state key]
   (cond
