@@ -174,7 +174,7 @@
 (defn apply-action [state action]
   (cond
     (contains? #{:move :point :line :circle} action)
-    (assoc state :tool action :selection nil :motion? false)
+    (assoc state :tool action :selection nil :dragging nil :motion? false)
     (contains? #{:triangle :vesica :rose} action)
     (remember (load-scene state action) (snapshot state))
     (= action :play) (assoc state :motion? (not (:motion? state)) :selection nil :tool :move)
@@ -182,6 +182,12 @@
     (= action :undo) (undo state)
     (= action :clear) (remember (load-scene state :free) (snapshot state))
     :else state))
+
+(defn drain-actions [state]
+  ;; Consume toolbar changes before pointer events, even between animation frames.
+  (let [pending @actions]
+    (reset! actions [])
+    (if (:menu-visible? state) state (reduce apply-action state pending))))
 
 (defn transform []
   {:center [(/ (q/width) 2) (* 0.44 (q/height))]
@@ -283,6 +289,7 @@
       state)))
 
 (defn mouse-pressed [state _]
+  (let [state (drain-actions state)]
   (if (:menu-visible? state) state
     (let [pos (world [(q/mouse-x) (q/mouse-y)])
           nearest (closest state pos true)]
@@ -290,7 +297,7 @@
       (if (and (= :move (:tool state)) nearest)
         (assoc state :dragging (:id nearest) :drag-origin (snapshot state)
                      :drag-start pos :drag-moved? false :motion? false)
-        state))))
+        state)))))
 
 (defn mouse-dragged [state _]
   (if (or (:menu-visible? state) (nil? (:dragging state))) state
@@ -300,6 +307,7 @@
           (assoc :trails [] :drag-moved? (or (:drag-moved? state) (> (distance pos (:drag-start state)) 0.01)))))))
 
 (defn mouse-released [state _]
+  (let [state (drain-actions state)]
   (cond
     (:menu-visible? state) state
     (:dragging state) (-> (if (:drag-moved? state) (remember state (:drag-origin state)) state)
@@ -307,7 +315,7 @@
     (= :move (:tool state)) state
     :else (let [pos (world [(q/mouse-x) (q/mouse-y)])
                 snapped (closest state pos false)]
-            (construct state (or (:pos snapped) pos)))))
+            (construct state (or (:pos snapped) pos))))))
 
 (defn key-pressed [state event]
   (if (:menu-visible? state) state
