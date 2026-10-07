@@ -66,6 +66,14 @@ jobs:
           npm install
           npm install -g shadow-cljs
           shadow-cljs release prod
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'docs/index.html';
+          const html = fs.readFileSync(path, 'utf8');
+          const versioned = html.replace(/src="js\/main\.js(?:\?[^"]*)?"/, `src="js/main.js?v=${process.env.GITHUB_SHA}"`);
+          if (versioned === html) throw new Error('Could not version the production script URL');
+          fs.writeFileSync(path, versioned);
+          NODE
         
       - name: Execute clojure code
         run: | 
@@ -74,7 +82,7 @@ jobs:
           
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add -f docs/js/main.js 
+          git add -f docs/js/main.js docs/index.html
           git commit -m "Build artifacts [skip ci]" || echo "No changes to commit"
           git checkout -b publish
           git push --force origin publish
