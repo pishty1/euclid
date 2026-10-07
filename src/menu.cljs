@@ -14,12 +14,11 @@
    "La Cross" "Rotating crosses weave threads and trace intersections."
    "Ad Venture" "Solve arithmetic to blast incoming enemy ships."
    "Figget-A-Balls" "Glowing particles, spiraling vortices, and sparks."
-   "Euclid" "Construct with points, lines, and circles."})
+   "Euclid" "Living proofs, compass roses, and draggable geometry."})
 
 (def styles
   "#euclid-nav,#euclid-menu{font-family:system-ui,-apple-system,sans-serif;color:#eee9dd;font-size:14px;box-sizing:border-box}
    #euclid-nav{position:fixed;z-index:20;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px;padding:11px 15px;border:1px solid #ffffff28;border-radius:12px;background:#101719e8;box-shadow:0 4px 24px #0003;cursor:pointer;touch-action:manipulation;backdrop-filter:blur(12px)}
-   #euclid-nav[data-sketch=Euclid]{top:72px}
    #euclid-nav:hover{background:#243335;border-color:#ffffff50}
    #euclid-nav .menu-icon{font-size:20px;line-height:1}
    #euclid-nav .current-name{font-size:12px;color:#adbbb7;border-left:1px solid #ffffff28;padding-left:12px}
