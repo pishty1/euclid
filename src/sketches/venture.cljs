@@ -225,6 +225,10 @@
         (update :effects #(mapv remap %)))))
 
 (defn update-state [state]
+  ;; Quil does not forward p5's windowResized callback; resize in the draw loop.
+  (when (or (not= (q/width) (.-innerWidth js/window))
+            (not= (q/height) (.-innerHeight js/window)))
+    (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window)))
   (let [now (/ (q/millis) 1000)
         dt (min 0.05 (max 0 (- now (or (:last-time state) now))))
         pending @actions]
@@ -385,12 +389,8 @@
   (if (and (not (:menu-visible? state)) (contains? #{:ready :over} (:mode state)))
     (new-game state) state))
 
-(defn resized [state]
-  (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window))
-  (resize-state state (.-innerWidth js/window) (.-innerHeight js/window)))
-
 (registry/def-sketch "Ad Venture" '(99 230 209)
   {:host "sketch" :setup setup :update update-state :draw draw-state
-   :mouse-clicked mouse-clicked :resized resized :size [menu/w menu/h]
+   :mouse-clicked mouse-clicked :size [menu/w menu/h]
    :middleware [menu/show-frame-rate m/fun-mode]
    :settings (fn [] (q/pixel-density 1))})
