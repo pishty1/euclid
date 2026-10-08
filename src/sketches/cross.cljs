@@ -97,7 +97,7 @@
     (q/stroke 105 133 153 20)
     (when (not= mode :interactions)
       (q/ellipse cx cy (* 2 radius) (* 2 radius)))
-    (when (contains? #{:both :weave :interactions} mode)
+    (when (contains? #{:both :weave} mode)
       (doseq [i (range 4) j (range 4)]
         (apply q/stroke (conj (if (even? (+ i j)) (:first palette) (:second palette)) 42))
         (draw-line (nth a i) (nth b j))))
@@ -129,7 +129,7 @@
   (q/text "Space pauses · R resets" 22 (- (q/height) 20))
   (q/text-align :right :top)
   (q/text (str (case mode :both "WEAVE + TRACES" :weave "WEAVE" :traces "TRACES"
-                         :interactions "INTERACTIONS ONLY / CROSSES HIDDEN")
+                         :interactions "INTERSECTIONS + TRAILS ONLY")
                (when paused? " / PAUSED")) (- (q/width) 22) 76))
 
 (defn mouse-clicked [state]
