@@ -13,7 +13,7 @@
   {"Prime Gardens" "Prime gaps guide a growing geometric garden."
    "La Cross" "Rotating crosses weave threads and trace intersections."
    "Ad Venture" "Solve arithmetic to blast incoming enemy ships."
-   "Figget-A-Balls" "Bonded organisms swim, feed, and recycle energy in drifting currents."
+   "Figget-A-Balls" "A dense sea of cell chains, rings, and colonies, tuned to your frame rate."
    "Euclid" "Living proofs, compass roses, and draggable geometry."})
 
 (def styles
