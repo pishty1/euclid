@@ -23,6 +23,9 @@ and game over have separate cues. Impact sound follows projectile arrival.
 Pausing, opening the sketch menu, hiding the page, and leaving the game stop
 scheduled voices and suspend audio. Replay reuses a single AudioContext. Games
 still work when the browser has no Web Audio support. No audio files are loaded.
+Opening Audio automatically freezes gameplay and answer input while music keeps
+playing for volume preview. The effects slider previews a short player shot.
+Closing Audio resumes play, unless the game was manually paused.
 
 La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
 the four live segment intersections from the crosses' endpoints. Instanced light

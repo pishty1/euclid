@@ -14,7 +14,8 @@
   (= "Add Venture" (:name (registry/get-sketch @menu/selected-sketch))))
 
 (defn enqueue! [key]
-  (when (and (active?) (not @menu/menu-visible))
+  (when (and (active?) (not @menu/menu-visible)
+             (or (not (audio/settingsOpen)) (contains? #{"p" "P"} key)))
     (when (contains? #{"Enter" "p" "P"} key) (audio/unlock))
     (swap! actions conj key)))
 
@@ -300,12 +301,14 @@
     (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window)))
   (let [now (/ (q/millis) 1000)
         dt (min 0.05 (max 0 (- now (or (:last-time state) now))))
-        pending @actions]
+        audio-open? (audio/settingsOpen)
+        pending (if audio-open? (filter #(contains? #{"p" "P"} %) @actions) @actions)]
     (reset! actions [])
     (let [state (if (or (not= (:width state) (q/width)) (not= (:height state) (q/height)))
                   (resize-state state (q/width) (q/height)) state)
           state (if (:menu-visible? state) state (reduce handle-action state pending))
-          state (if (:menu-visible? state) state
+          state (assoc state :audio-open? audio-open?)
+          state (if (or (:menu-visible? state) audio-open?) state
                   (case (:mode state)
                     :playing (update-aim (advance-game state dt) dt)
                     :over (-> state
@@ -496,7 +499,7 @@
                   (q/line x y (+ x (* 7 (Math/cos angle))) (+ y (* 7 (Math/sin angle)))))))))))))
 
 (defn draw-effects [state]
-  (let [effects (if (or (:menu-visible? state) (= :paused (:mode state))) [] (:effects state))]
+  (let [effects (if (or (:menu-visible? state) (:audio-open? state) (= :paused (:mode state))) [] (:effects state))]
     (when-not (gpu/draw (:gpu state) (:width state) (:height state)
                        (into-array (map #(gpu-effect state %) effects)))
       (draw-effects-canvas (assoc state :effects effects)))))
@@ -531,7 +534,8 @@
     (q/text "SECTOR CLEAR" (/ (:width state) 2) (/ (:height state) 2))))
 
 (defn draw-overlay [state]
-  (when (contains? #{:ready :paused :over} (:mode state))
+  (let [view (if (and (:audio-open? state) (= :playing (:mode state))) :audio-settings (:mode state))]
+  (when (contains? #{:ready :paused :over :audio-settings} view)
     (q/no-stroke)
     (q/fill 3 10 17 220)
     (q/rect 0 94 (:width state) (- (:height state) 94))
@@ -544,22 +548,24 @@
       (q/text "ADD VENTURE / ARITHMETIC DEFENSE" cx (- cy 70))
       (q/fill 235 244 228)
       (q/text-size (if small? 27 44))
-      (q/text (case (:mode state) :ready "MATH FLEET" :paused "PAUSED" :over "FLIGHT ENDED") cx (- cy 30))
+      (q/text (case view :ready "MATH FLEET" :paused "PAUSED" :over "FLIGHT ENDED" :audio-settings "AUDIO SETTINGS") cx (- cy 30))
       (q/text-size 12)
       (q/fill 148 186 192)
-      (q/text (case (:mode state)
+      (q/text (case view
                 :ready "Wrong answers provoke enemy fire."
                 :paused "Take a breath. The fleet can wait."
-                :over (str "Score " (:score state) "  ·  Best " @best-score)) cx (+ cy 8))
+                :over (str "Score " (:score state) "  ·  Best " @best-score)
+                :audio-settings "Gameplay paused while you adjust sound.") cx (+ cy 8))
       (when (= :ready (:mode state))
         (q/text-size 10)
         (q/text "Solve to fire. Each enemy hit costs one shield." cx (+ cy 27)))
       (q/text-size 11)
       (q/fill 134 250 218)
-      (q/text (case (:mode state)
+      (q/text (case view
                 :ready "CLICK OR PRESS ENTER TO LAUNCH"
                 :paused "PRESS P OR RESUME TO CONTINUE"
-                :over "CLICK OR PRESS ENTER TO PLAY AGAIN") cx (+ cy 46)))))
+                :over "CLICK OR PRESS ENTER TO PLAY AGAIN"
+                :audio-settings "CLOSE AUDIO TO CONTINUE") cx (+ cy 46))))))
 
 (defn draw-state [state]
   (q/rect-mode :corner)
@@ -577,7 +583,7 @@
   (draw-overlay state))
 
 (defn mouse-clicked [state]
-  (if (and (not (:menu-visible? state)) (contains? #{:ready :over} (:mode state)))
+  (if (and (not (:menu-visible? state)) (not (audio/settingsOpen)) (contains? #{:ready :over} (:mode state)))
     (do (audio/unlock) (new-game state)) state))
 
 (registry/def-sketch "Add Venture" '(99 230 209)

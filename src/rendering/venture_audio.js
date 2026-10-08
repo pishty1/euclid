@@ -2,6 +2,7 @@
 let context=null, music=null, effects=null, master=null, noiseBuffer=null;
 let unlocked=false, mode='ready', wave=1, clear=false, blocked=true;
 let timer=null, suspendTimer=null, observer=null, owner=null, step=0, nextBeat=0, duckUntil=0;
+let lastPreview=-Infinity;
 const voices=new Set();
 const defaults={music:0.25,effects:0.6,muted:false};
 let preferences={...defaults};
@@ -14,12 +15,13 @@ try {
 } catch (_) {}
 
 function supported(){return !!(window.AudioContext||window.webkitAudioContext);}
+function settingsOpen(){return document.getElementById('venture-audio')?.open===true;}
 function available(){return unlocked && context && context.state==='running' && !preferences.muted && !blocked && !document.hidden;}
 function save(){try{localStorage.setItem('euclid-addventure-audio',JSON.stringify(preferences));}catch(_) {}}
 function ui(){
   const mute=document.getElementById('venture-mute'),status=document.getElementById('venture-audio-status');
   if(mute){mute.textContent=preferences.muted?'Unmute':'Mute';mute.setAttribute('aria-pressed',String(preferences.muted));mute.disabled=!supported();}
-  if(status)status.textContent=!supported()?'Sound unavailable':preferences.muted?'Muted':!unlocked?'Starts on launch':mode==='playing'&&!blocked?'Sound on':'Sound paused';
+  if(status)status.textContent=!supported()?'Sound unavailable':preferences.muted?'Muted':!unlocked?'Starts on launch':mode==='playing'&&!blocked?(settingsOpen()?'Gameplay paused · audio preview':'Sound on'):'Sound paused';
 }
 function levels(){
   if(!context)return;
@@ -134,16 +136,22 @@ function init(host,toolbar){
     const mute=document.createElement('button');mute.id='venture-mute';mute.type='button';mute.setAttribute('aria-label','Mute game audio');
     mute.addEventListener('click',()=>{preferences.muted=!preferences.muted;save();if(!preferences.muted)unlock();reconcile();});
     const panel=document.createElement('details');panel.id='venture-audio';
+    panel.addEventListener('toggle',ui);
     const summary=document.createElement('summary');summary.textContent='Audio';panel.appendChild(summary);
     const content=document.createElement('div');content.className='audio-settings';content.appendChild(mute);
     for(const [key,label] of [['music','Music volume'],['effects','Effects volume']]){
       const row=document.createElement('label');row.textContent=label;
       const input=document.createElement('input');input.type='range';input.min='0';input.max='100';input.step='1';input.value=String(Math.round(preferences[key]*100));input.setAttribute('aria-label',label);
-      input.addEventListener('input',()=>{preferences[key]=Number(input.value)/100;save();levels();reconcile();});row.appendChild(input);content.appendChild(row);
+      input.addEventListener('input',()=>{
+        preferences[key]=Number(input.value)/100;save();levels();reconcile();
+        if(key==='effects'&&available()&&context.currentTime-lastPreview>0.2){lastPreview=context.currentTime;play('player','');}
+      });row.appendChild(input);content.appendChild(row);
     }
+    const note=document.createElement('p');note.textContent='Gameplay pauses while Audio is open. Close it to continue.';note.style.cssText='font-size:11px;line-height:1.5;color:#86b6bd;margin:0 0 10px';content.appendChild(note);
     const status=document.createElement('div');status.id='venture-audio-status';status.setAttribute('role','status');content.appendChild(status);panel.appendChild(content);toolbar.appendChild(panel);
   }
+  document.getElementById('venture-audio').open=false;
   ui();
 }
 if(typeof document!=='undefined')document.addEventListener('visibilitychange',reconcile);
-module.exports={init,unlock,sync,play};
+module.exports={init,unlock,sync,play,settingsOpen};
