@@ -35,9 +35,9 @@
   (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window))
   (q/frame-rate 60) (q/pixel-density 1)
   (let [w (q/width) h (q/height)
-        ctx (some-> (.querySelector js/document "#sketch canvas") (.getContext "2d"))
+        ctx (some-> (.querySelector js/document "#sketch canvas:not([data-ecosystem-gpu])") (.getContext "2d"))
         target (max 750 (min 4200 (int (/ (* w h) 450))))
-        overlay (.querySelector js/document "#sketch canvas")]
+        overlay (.querySelector js/document "#sketch canvas:not([data-ecosystem-gpu])")]
     {:world (cells/populate! (cells/make-world w h) target)
      :auto? true :builder-open? false :placing nil :builder-status "" :colors cells/colors
      :ctx ctx :sprites (when ctx (cells/cell-sprites cells/colors)) :settled-at (+ (.now js/performance) 2000) :gradient (background-gradient ctx w h)
