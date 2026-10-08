@@ -14,6 +14,16 @@ the answer clears. Shots originate at its rotated nose. Enemy hulls have distinc
 armour panels and glowing weapon mounts. Hit effects combine an initial flash,
 two shockwaves, sparks, and tumbling shards, with 64 GPU sprites per impact.
 
+Add Venture also synthesizes its soundtrack and effects with Web Audio. Audio is
+unlocked by a launch/resume gesture. The Audio menu offers mute and independent
+music/effects levels, saved locally when storage is available. A minor-key bass
+and arpeggio loop gains hats, kick, and snare in later waves. Each enemy weapon
+has a distinct timbre; player shots, impacts, shield damage, sector completion,
+and game over have separate cues. Impact sound follows projectile arrival.
+Pausing, opening the sketch menu, hiding the page, and leaving the game stop
+scheduled voices and suspend audio. Replay reuses a single AudioContext. Games
+still work when the browser has no Web Audio support. No audio files are loaded.
+
 La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
 the four live segment intersections from the crosses' endpoints. Instanced light
 sprites draw the intersection blooms, pulsing rings, flares, and fading trails.

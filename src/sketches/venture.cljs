@@ -4,7 +4,8 @@
             [quil.middleware :as m]
             [registry :as registry]
             [menu :as menu]
-            ["../rendering/venture_gpu.js" :as gpu]))
+            ["../rendering/venture_gpu.js" :as gpu]
+            ["../rendering/venture_audio.js" :as audio]))
 
 (defonce actions (atom []))
 (defonce best-score (atom 0))
@@ -14,12 +15,15 @@
 
 (defn enqueue! [key]
   (when (and (active?) (not @menu/menu-visible))
+    (when (contains? #{"Enter" "p" "P"} key) (audio/unlock))
     (swap! actions conj key)))
 
 (defonce keyboard-handler
   (let [handler (fn [event]
                   (let [key (.-key event)]
                     (when (and (active?) (not @menu/menu-visible)
+                               (not (and (.-closest (.-target event))
+                                         (.closest (.-target event) "#venture-audio,#venture-mute")))
                                (not (.-ctrlKey event)) (not (.-metaKey event))
                                (or (re-matches #"[0-9]" key)
                                    (contains? #{"Enter" "Backspace" "p" "P"} key)))
@@ -40,6 +44,15 @@
    #venture-controls button:focus-visible{outline:2px solid #f1ba68;outline-offset:3px}
    #venture-controls .game-toolbar{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));display:flex;gap:6px;pointer-events:auto}
    #venture-controls .game-toolbar button{height:40px;padding:0 12px}
+   #venture-audio{position:relative;pointer-events:auto;color:#bdfcf0;font-size:12px}
+   #venture-audio summary{list-style:none;cursor:pointer;border:1px solid #70dace50;background:#081e25ed;border-radius:9px;padding:12px}
+   #venture-audio summary:focus-visible{outline:2px solid #f1ba68;outline-offset:3px}
+   #venture-audio .audio-settings{position:absolute;right:0;top:48px;width:210px;padding:14px;background:#081e25f5;border:1px solid #70dace50;border-radius:10px;box-shadow:0 8px 30px #0007}
+   #venture-audio .audio-settings button{width:100%;margin-bottom:14px}
+   #venture-audio label{display:block;margin-bottom:12px}
+   #venture-audio input{display:block;width:100%;margin-top:8px;accent-color:#96ead7}
+   #venture-audio-status{color:#86b6bd;font-size:11px}
+   @media(max-width:400px){#venture-controls .game-toolbar{gap:4px}#venture-controls .game-toolbar button{padding:0 8px}#venture-audio summary{padding:12px 8px}}
    #venture-keypad{display:none;position:absolute;bottom:max(12px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(380px,calc(100vw - 24px));grid-template-columns:repeat(6,1fr);gap:6px;pointer-events:auto}
    #venture-keypad button{min-height:42px;font-size:18px}
    #venture-keypad .fire{background:#96ead7;color:#07232a;font-size:12px;font-weight:700}
@@ -146,6 +159,7 @@
   (reset! actions [])
   (q/frame-rate 60)
   (q/text-font "monospace")
+  (audio/init (.getElementById js/document "sketch") (.querySelector js/document "#venture-controls .game-toolbar"))
   (let [width (q/width) height (q/height)
         overlay (.querySelector js/document "#sketch canvas:not([data-venture-gpu])")]
     (assoc (new-game {:width width :height height
@@ -195,6 +209,7 @@
     (let [combo (inc (:combo state))
           score (+ (:score state) 100 (* 10 (min combo 20)))]
       (swap! best-score max score)
+      (audio/play "player" (name (or (:operation enemy) :add)))
       (-> state
           (assoc :input "" :score score :combo combo :message "DIRECT HIT" :message-timer 0.65
                  :ship-angle (aim-angle state enemy) :aim-target (select-keys enemy [:lane :progress])
@@ -210,9 +225,10 @@
                                :message (if attacker (str "WRONG — " (:name weapon) " INCOMING") "NO TARGETS — TRY AGAIN")
                                :message-timer 1.2)]
         (if attacker
-          (update state :effects conj {:lane (:lane attacker) :progress (:progress attacker)
+          (do (audio/play "enemy" (name operation))
+            (update state :effects conj {:lane (:lane attacker) :progress (:progress attacker)
                                       :operation operation :duration (:duration weapon)
-                                      :age 0 :kind :incoming})
+                                      :age 0 :kind :incoming}))
           state)))))
 
 (defn handle-action [state key]
@@ -230,6 +246,10 @@
     :else state))
 
 (defn advance-effects [effects dt]
+  (doseq [effect effects
+          :when (and (= :hit (:kind effect)) (< (:age effect) (:duration effect))
+                     (>= (+ (:age effect) dt) (:duration effect)))]
+    (audio/play "blast" (name (:operation effect))))
   (let [effects (mapv #(update % :age + dt) effects)
         impacts (count (filter #(and (= :incoming (:kind %)) (>= (:age %) (:duration %))) effects))]
     {:impacts impacts
@@ -250,7 +270,8 @@
                      (update :clock + dt)
                      (update :flash #(max 0 (- % dt)))
                      (update :message-timer #(max 0 (- % dt))))
-        advanced (if (pos? (+ escaped impacts)) (assoc advanced :combo 0 :flash 0.35) advanced)]
+        advanced (if (pos? (+ escaped impacts))
+                   (do (audio/play "shield" "") (assoc advanced :combo 0 :flash 0.35)) advanced)]
     (cond
       (zero? shields) (assoc advanced :mode :over :input "")
       (and (>= (:spawned advanced) (wave-size (:wave advanced))) (empty? (:enemies advanced)))
@@ -293,6 +314,7 @@
                     state))]
       (when-let [button (.getElementById js/document "venture-pause")]
         (set! (.-textContent button) (case (:mode state) :paused "Resume" :ready "Start" :over "Replay" "Pause")))
+      (audio/sync (name (:mode state)) (:wave state) (boolean (:menu-visible? state)) (pos? (:wave-timer state)))
       (assoc state :last-time now))))
 
 (defn draw-background [state]
@@ -556,7 +578,7 @@
 
 (defn mouse-clicked [state]
   (if (and (not (:menu-visible? state)) (contains? #{:ready :over} (:mode state)))
-    (new-game state) state))
+    (do (audio/unlock) (new-game state)) state))
 
 (registry/def-sketch "Add Venture" '(99 230 209)
   {:host "sketch" :setup setup :update update-state :draw draw-state
