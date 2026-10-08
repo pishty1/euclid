@@ -152,7 +152,19 @@
     (aset world "grid" (js/Int32Array. (* (aget world "cols") (aget world "rows"))))
     world))
 
-(defn draw! [world ctx gradient]
+(defn cell-sprites []
+  (into-array
+   (for [kind (range 3)]
+     (let [canvas (.createElement js/document "canvas")]
+       (set! (.-width canvas) 14) (set! (.-height canvas) 14)
+       (let [ctx (.getContext canvas "2d") r (if (= kind 2) 1.65 1.9)]
+         (set! (.-strokeStyle ctx) (nth colors kind))
+         (.beginPath ctx) (.arc ctx 7 7 r 0 (* 2 js/Math.PI))
+         (set! (.-globalAlpha ctx) 0.08) (set! (.-lineWidth ctx) 5) (.stroke ctx)
+         (set! (.-globalAlpha ctx) 0.85) (set! (.-lineWidth ctx) 0.9) (.stroke ctx))
+       canvas))))
+
+(defn draw! [world ctx gradient sprites]
   (.save ctx)
   (set! (.-fillStyle ctx) gradient) (.fillRect ctx 0 0 (aget world "width") (aget world "height"))
   (let [x (aget world "x") y (aget world "y") kinds (aget world "kind")]
@@ -163,12 +175,9 @@
         (let [a (aget (aget world "ba") b) other (aget (aget world "bb") b)]
           (when (= kind (aget kinds a))
             (.moveTo ctx (aget x a) (aget y a)) (.lineTo ctx (aget x other) (aget y other)))))
-      (set! (.-globalAlpha ctx) 0.24) (set! (.-lineWidth ctx) 0.65) (.stroke ctx)
-      (.beginPath ctx)
-      (dotimes [i (aget world "n")]
-        (when (= kind (aget kinds i))
-          (let [r (if (= kind 2) 1.65 1.9) px (aget x i) py (aget y i)]
-            (.moveTo ctx (+ px r) py) (.arc ctx px py r 0 (* 2 js/Math.PI)))))
-      (set! (.-globalAlpha ctx) 0.07) (set! (.-lineWidth ctx) 5) (.stroke ctx)
-      (set! (.-globalAlpha ctx) 0.77) (set! (.-lineWidth ctx) 0.9) (.stroke ctx)))
+      (set! (.-globalAlpha ctx) 0.24) (set! (.-lineWidth ctx) 0.65) (.stroke ctx))
+    ;; Cached sprites avoid rasterizing thousands of overlapping stroked arcs.
+    (set! (.-globalAlpha ctx) 1)
+    (dotimes [i (aget world "n")]
+      (.drawImage ctx (aget sprites (aget kinds i)) (- (aget x i) 7) (- (aget y i) 7))))
   (.restore ctx))

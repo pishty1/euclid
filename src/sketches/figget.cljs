@@ -35,9 +35,9 @@
   (q/frame-rate 60) (q/pixel-density 1)
   (let [w (q/width) h (q/height)
         ctx (some-> (.querySelector js/document "#sketch canvas") (.getContext "2d"))
-        target (max 750 (min 4200 (int (/ (* w h) 280))))]
+        target (max 750 (min 4200 (int (/ (* w h) 450))))]
     {:world (cells/populate! (cells/make-world w h) target)
-     :ctx ctx :gradient (background-gradient ctx w h)
+     :ctx ctx :sprites (when ctx (cells/cell-sprites)) :settled-at (+ (.now js/performance) 2000) :gradient (background-gradient ctx w h)
      :tick 0 :paused? false :currents? true :frame-ms 16.67 :last-frame nil
      :healthy 0 :slow 0 :next-probe 0 :ceiling cells/max-cells :tuning "Measuring"}))
 
@@ -47,19 +47,20 @@
         :reset (merge state (setup)) state))
 
 (defn tune-density [state now]
-  (let [elapsed (if-let [last (:last-frame state)] (min 150 (max 1 (- now last))) 16.67)
+  (let [elapsed (if-let [last (:last-frame state)] (min 1000 (max 1 (- now last))) 16.67)
         average (+ (* (:frame-ms state) 0.94) (* elapsed 0.06))
         healthy (if (< average 18.8) (inc (:healthy state)) 0)
         slow (if (> average 24) (inc (:slow state)) 0)
-        state (assoc state :frame-ms average :healthy healthy :slow slow :last-frame now)
+        slow-since (when (> average 24) (or (:slow-since state) now))
+        state (assoc state :frame-ms average :healthy healthy :slow slow :slow-since slow-since :last-frame now)
         world (:world state) n (aget world "n")]
     (cond
       ;; Let shader/canvas initialization and the first paint settle.
-      (< (:tick state) 120) state
-      (and (> slow 45) (> n 550))
+      (< now (:settled-at state)) state
+      (and slow-since (> (- now slow-since) 1400) (> n 550))
       (let [target (max 500 (int (* n 0.85)))]
         (cells/trim! world target)
-        (assoc state :healthy 0 :slow 0 :ceiling (min (:ceiling state) target)
+        (assoc state :healthy 0 :slow 0 :slow-since nil :ceiling (min (:ceiling state) target)
                      :next-probe (+ now 5000) :tuning "Balanced"))
       (and (> healthy 90) (>= now (:next-probe state)) (< n (- (:ceiling state) 60)))
       (do (cells/populate! world (min (:ceiling state) (+ n (max 150 (int (* n 0.12))))))
@@ -87,8 +88,8 @@
       (.setAttribute button "aria-pressed" (str (:currents? state))))
     state))
 
-(defn draw-state [{:keys [world ctx gradient paused? frame-ms tuning]}]
-  (when ctx (cells/draw! world ctx gradient))
+(defn draw-state [{:keys [world ctx gradient sprites paused? frame-ms tuning]}]
+  (when ctx (cells/draw! world ctx gradient sprites))
   (q/no-stroke) (q/text-font "monospace") (q/text-size 11)
   (q/fill 151 186 202) (q/text-align :right :top)
   (q/text (str (aget world "n") " cells / " (.-length (aget world "bodies")) " organisms") (- (q/width) 20) 76)
