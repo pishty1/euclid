@@ -44,7 +44,7 @@
   (when-let [host (.getElementById js/document "sketch")]
     (set! (.-tabIndex host) 0)
     (.focus host))
-  {:phase 0 :speed 0.009 :separation 0.13 :traces [] :mode :both :paused? false
+  {:phase 0 :speed 0.009 :separation 0.13 :traces [] :mode :interactions :paused? false
    :geometry (geometry (q/width) (q/height) 0 0.13) :dimensions [(q/width) (q/height)]})
 
 (defn update-state [state]
