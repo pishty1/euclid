@@ -11,9 +11,21 @@
      :count (let [n (js/parseInt (value "builder-count"))]
               (max 1 (min 80 (if (js/Number.isFinite n) n 1))))}))
 
+(def organism-guides
+  ["Chains swim head-first and bend as they move. Nearby colonies attract their cells; rings and other chains only push them away on close contact."
+   "Rings drift and gently rotate back and forth. They push away all other organisms on close contact, with no attraction to any type."
+   "Colonies drift slowly in a compact lattice. They attract nearby chains, but do not move toward chains in return. Close contact pushes both organisms apart."])
+
+(defn describe-organism! []
+  (when-let [guide (.getElementById js/document "builder-organism-guide")]
+    (set! (.-textContent guide) (nth organism-guides (:kind (settings))))))
+
 (defn init! [enqueue]
   (when-not (.getElementById js/document "ecosystem-builder")
     (.appendChild (.-head js/document) (menu/element "style" "" css))
+    (.appendChild (.-head js/document)
+                  (menu/element "style" ""
+                    "#builder-organism-guide{padding:10px;border-left:2px solid #76cab1;background:#142b3a;border-radius:4px;color:#c8dee0}#ecosystem-builder details{margin:12px 0 18px;font-size:12px}#ecosystem-builder summary{cursor:pointer;color:#a5dacf;padding:5px 0}#ecosystem-builder table{width:100%;border-collapse:collapse;table-layout:fixed;margin:10px 0;font-size:10px}#ecosystem-builder caption{text-align:left;color:#8cabb8;line-height:1.5;margin-bottom:8px}#ecosystem-builder th,#ecosystem-builder td{border:1px solid #618b9c55;padding:5px 3px;overflow-wrap:anywhere;text-align:left}#ecosystem-builder details p{margin:10px 0 0}"))
     (let [panel (menu/element "section" "" nil)
           field! (fn [label id tag]
                    (let [row (menu/element "label" "" label) input (menu/element tag "" nil)]
@@ -33,7 +45,23 @@
       (.appendChild panel (menu/element "p" "" "Mix organisms, scatter a population, or place them yourself."))
       (let [kind (select! "Organism" "builder-kind" [[0 "Chain"] [1 "Ring"] [2 "Colony"]])]
         (.addEventListener kind "change"
-                          (fn [_] (enqueue {:type :choose-kind :kind (js/parseInt (.-value kind))}))))
+                          (fn [_] (describe-organism!)
+                            (enqueue {:type :choose-kind :kind (js/parseInt (.-value kind))}))))
+      (let [guide (menu/element "p" "" (first organism-guides))]
+        (set! (.-id guide) "builder-organism-guide")
+        (.setAttribute guide "aria-live" "polite")
+        (.appendChild panel guide))
+      (let [details (menu/element "details" "" nil)
+            summary (menu/element "summary" "" "How organisms interact")
+            table (.createElement js/document "table")]
+        (set! (.-innerHTML table)
+              "<caption>Rows show how each organism responds to its neighbour.</caption><thead><tr><th scope='col'>Responds to →</th><th scope='col'>Chain</th><th scope='col'>Ring</th><th scope='col'>Colony</th></tr></thead><tbody><tr><th scope='row'>Chain</th><td>Push</td><td>Push</td><td>Attract + push</td></tr><tr><th scope='row'>Ring</th><td>Push</td><td>Push</td><td>Push</td></tr><tr><th scope='row'>Colony</th><td>Push</td><td>Push</td><td>Push</td></tr></tbody>")
+        (.appendChild details summary) (.appendChild details table)
+        (.appendChild details (menu/element "p" "" "Attraction acts only at short range (within 20 pixels between cells). Push means cells repel on close contact (under 4.8 pixels). Elastic bonds hold each body together; contact can bend or turn it. These organisms do not eat, reproduce, or merge."))
+        (.appendChild details (menu/element "p" "" "Body size changes spacing within a body. Movement changes its swimming or drifting strength, and ring rotation; it does not change attraction or contact forces. Colour changes appearance only."))
+        (let [current (menu/element "p" "" nil)]
+          (set! (.-id current) "builder-current-guide") (.appendChild details current))
+        (.appendChild panel details))
       (let [size (select! "Body size" "builder-size" [[0.7 "Small"] [1 "Medium"] [1.4 "Large"]])]
         (set! (.-value size) "1"))
       (let [motion (select! "Movement" "builder-motion" [[0.2 "Drift"] [1 "Swim"] [1.8 "Lively"]])]
@@ -67,4 +95,8 @@
   (when-let [panel (.getElementById js/document "ecosystem-builder")]
     (set! (.-hidden panel) (not (:builder-open? state)))
     (set! (.-checked (.getElementById js/document "builder-auto")) (:auto? state))
+    (let [guide (.getElementById js/document "builder-current-guide")
+          text (if (:currents? state) "Currents are on: a shared flow carries every type. Turn Currents off to observe swimming and local interactions alone."
+                   "Currents are off: organisms move through their own propulsion and local interactions.")]
+      (when (not= (.-textContent guide) text) (set! (.-textContent guide) text)))
     (set! (.-textContent (.getElementById js/document "builder-status")) (:builder-status state ""))))
