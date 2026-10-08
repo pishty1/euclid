@@ -1,6 +1,6 @@
 (ns sketches.figget
   (:require [quil.core :as q] [menu :as menu] [registry :as registry]
-            [quil.middleware :as m] [sketches.cell-world :as cells]))
+            [quil.middleware :as m] [sketches.ecosystem-builder :as builder] [sketches.cell-world :as cells]))
 
 ;; Cellular patterns inspired by ALIEN: https://github.com/chrxh/alien
 (defonce actions (atom []))
@@ -13,7 +13,7 @@
     (let [panel (menu/element "div" "" nil)]
       (set! (.-id panel) "figget-controls")
       (.appendChild (.-head js/document) (menu/element "style" "" control-css))
-      (doseq [[label action] [["Pause" :pause] ["Currents" :currents] ["Reseed" :reset]]]
+      (doseq [[label action] [["Pause" :pause] ["Currents" :currents] ["Reseed" :reset] ["Builder" :builder] ["Done placing" :finish]]]
         (let [button (menu/element "button" "" label)]
           (set! (.-type button) "button")
           (.setAttribute button "data-ecosystem-action" (name action))
@@ -30,21 +30,49 @@
       gradient)))
 
 (defn setup []
-  (init-controls!) (reset! actions [])
+  (init-controls!) (builder/init! #(swap! actions conj %)) (reset! actions [])
   (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window))
   (q/frame-rate 60) (q/pixel-density 1)
   (let [w (q/width) h (q/height)
         ctx (some-> (.querySelector js/document "#sketch canvas") (.getContext "2d"))
         target (max 750 (min 4200 (int (/ (* w h) 450))))]
     {:world (cells/populate! (cells/make-world w h) target)
-     :ctx ctx :sprites (when ctx (cells/cell-sprites)) :settled-at (+ (.now js/performance) 2000) :gradient (background-gradient ctx w h)
+     :auto? true :builder-open? false :placing nil :builder-status "" :colors cells/colors
+     :ctx ctx :sprites (when ctx (cells/cell-sprites cells/colors)) :settled-at (+ (.now js/performance) 2000) :gradient (background-gradient ctx w h)
      :tick 0 :paused? false :currents? true :frame-ms 16.67 :last-frame nil
      :healthy 0 :slow 0 :next-probe 0 :ceiling cells/max-cells :tuning "Measuring"}))
 
+(defn add-population [state options count]
+  (let [world (:world state)
+        added (loop [i 0]
+                (if (and (< i count) (cells/add-body! world options)) (recur (inc i)) i))]
+    (assoc state :auto? false :tuning "Manual population"
+                 :builder-status (if (= added count) (str "Added " added " organisms")
+                                     (str "Added " added " — cell capacity reached")))))
+
 (defn apply-action [state action]
-  (case action :pause (assoc (update state :paused? not) :last-frame nil)
-        :currents (update state :currents? not)
-        :reset (merge state (setup)) state))
+  (if (map? action)
+    (case (:type action)
+      :scatter (add-population state (select-keys action [:kind :scale :drive]) (:count action))
+      :place (assoc state :auto? false :placing (select-keys action [:kind :scale :drive])
+                          :builder-open? false :tuning "Manual population" :builder-status "Tap the canvas to place organisms")
+      :auto (assoc state :auto? (:enabled? action) :last-frame nil :healthy 0 :slow-since nil
+                         :next-probe (+ (.now js/performance) 2000))
+      :color (let [colors (assoc (:colors state) (:kind action) (:color action))]
+               (assoc state :colors colors :sprites (when (:ctx state) (cells/cell-sprites colors))))
+      :choose-kind (do (set! (.-value (.getElementById js/document "builder-color"))
+                             (nth (:colors state) (:kind action))) state)
+      state)
+    (case action
+      :pause (assoc (update state :paused? not) :last-frame nil)
+      :currents (update state :currents? not)
+      :builder (if (:builder-open? state) (assoc state :builder-open? false)
+                   (assoc state :builder-open? true :auto? false :placing nil :tuning "Manual population"))
+      :finish (assoc state :placing nil)
+      :empty (let [world (:world state)]
+               (aset world "n" 0) (aset world "bn" 0) (aset world "bodies" #js [])
+               (assoc state :auto? false :placing nil :tuning "Manual population" :builder-status "Empty ecosystem — scatter or place organisms"))
+      :reset (merge state (setup)) state)))
 
 (defn tune-density [state now]
   (let [elapsed (if-let [last (:last-frame state)] (min 1000 (max 1 (- now last))) 16.67)
@@ -56,6 +84,7 @@
         world (:world state) n (aget world "n")]
     (cond
       ;; Let shader/canvas initialization and the first paint settle.
+      (not (:auto? state)) (assoc state :tuning "Manual population")
       (< now (:settled-at state)) state
       (and slow-since (> (- now slow-since) 1400) (> n 180))
       (let [target (max 150 (int (* n 0.85)))]
@@ -86,10 +115,15 @@
       (set! (.-textContent button) (if (:paused? state) "Resume" "Pause")))
     (when-let [button (.querySelector js/document "[data-ecosystem-action=currents]")]
       (.setAttribute button "aria-pressed" (str (:currents? state))))
+    (when-let [button (.querySelector js/document "[data-ecosystem-action=builder]")]
+      (.setAttribute button "aria-expanded" (str (:builder-open? state))))
+    (when-let [button (.querySelector js/document "[data-ecosystem-action=finish]")]
+      (set! (.-hidden button) (nil? (:placing state))))
+    (builder/sync! state)
     state))
 
-(defn draw-state [{:keys [world ctx gradient sprites paused? frame-ms tuning]}]
-  (when ctx (cells/draw! world ctx gradient sprites))
+(defn draw-state [{:keys [world ctx gradient sprites colors placing paused? frame-ms tuning]}]
+  (when ctx (cells/draw! world ctx gradient sprites colors))
   (q/no-stroke) (q/text-font "monospace") (q/text-size 11)
   (q/fill 151 186 202) (q/text-align :right :top)
   (q/text (str (aget world "n") " cells / " (.-length (aget world "bodies")) " organisms") (- (q/width) 20) 76)
@@ -98,19 +132,36 @@
   (q/text-align :left :bottom) (q/text-size 11) (q/fill 151 186 202)
   (q/text "FIGGET-A-BALLS / CELLULAR SEA" 20 (- (q/height) 62))
   (q/text-size 10) (q/fill 90 131 158)
-  (q/text "Green chains / Blue rings / Orange colonies" 20 (- (q/height) 43))
-  (q/text "Density adapts to frame rate / R reseeds" 20 (- (q/height) 25))
+  (q/text "Chains / Rings / Colonies" 20 (- (q/height) 43))
+  (q/text (if placing "Tap canvas to place / Esc finishes" "Builder creates ecosystems / R reseeds") 20 (- (q/height) 25))
   (when paused?
     (q/text-align :center :center) (q/text-size 16) (q/fill 204 222 214)
     (q/text "PAUSED" (/ (q/width) 2) (/ (q/height) 2))))
 
 (defn key-pressed [state event]
   (if (or (:menu-visible? state)
-          (some-> (.-activeElement js/document) (.closest "#figget-controls"))) state
-    (case (:key event) :space (apply-action state :pause) :c (apply-action state :currents)
+          (some-> (.-activeElement js/document) (.closest "#figget-controls,#ecosystem-builder"))) state
+    (case (:key event) :escape (assoc state :placing nil :builder-open? false) :space (apply-action state :pause) :c (apply-action state :currents)
           :r (apply-action state :reset) state)))
+
+(defn mouse-clicked [state]
+  (let [pending @actions _ (reset! actions [])
+        state (if (:menu-visible? state) state (reduce apply-action state pending))
+        pos [(q/mouse-x) (q/mouse-y)] now (.now js/performance)
+        over-ui? (when (.-elementFromPoint js/document)
+                   (some-> (.elementFromPoint js/document (first pos) (second pos))
+                           (.closest "#figget-controls,#ecosystem-builder,#euclid-nav,#euclid-menu")))]
+    (if (or (:menu-visible? state) (:builder-open? state) (nil? (:placing state))
+            (menu/inside-burger?) over-ui?
+            (let [[x y] pos] (or (< x 0) (< y 0) (> x (q/width)) (> y (q/height))))
+            (and (:last-place state) (< (- now (:time (:last-place state))) 400)
+                 (< (js/Math.hypot (- (first pos) (first (:pos (:last-place state))))
+                                     (- (second pos) (second (:pos (:last-place state))))) 3)))
+      state
+      (assoc (add-population state (assoc (:placing state) :location pos) 1)
+             :last-place {:pos pos :time now}))))
 
 (registry/def-sketch "Figget-A-Balls" '(86 219 137)
   {:host "sketch" :title "Cellular sea" :setup setup :update update-state :draw draw-state
-   :renderer :p2d :key-pressed key-pressed :size [menu/w menu/h]
+   :renderer :p2d :key-pressed key-pressed :mouse-clicked mouse-clicked :size [menu/w menu/h]
    :middleware [menu/show-frame-rate m/fun-mode]})

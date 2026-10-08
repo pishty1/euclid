@@ -28,16 +28,18 @@
     2 (vec (for [a (range -2 3) b (range -2 3) :when (<= (js/Math.abs (+ a b)) 2)]
              [(* 4.8 (+ a (* b 0.5))) (* b 4.16)]))))
 
-(defn add-body! [world]
-  (let [kind (let [r (js/Math.random)] (cond (< r 0.3) 0 (< r 0.73) 1 :else 2))
-        shape (body-shape kind) count (count shape) start (aget world "n")
+(defn add-body!
+  ([world] (add-body! world {}))
+  ([world {:keys [kind scale location drive] :or {scale 1 drive 1}}]
+  (let [kind (or kind (let [r (js/Math.random)] (cond (< r 0.3) 0 (< r 0.73) 1 :else 2)))
+        shape (mapv (fn [[x y]] [(* x scale) (* y scale)]) (body-shape kind)) count (count shape) start (aget world "n")
         angle (random 0 6.28) cs (js/Math.cos angle) sn (js/Math.sin angle)
         rotated (mapv (fn [[x y]] [(- (* x cs) (* y sn)) (+ (* x sn) (* y cs))]) shape)
         min-x (reduce min (map first rotated)) max-x (reduce max (map first rotated))
         min-y (reduce min (map second rotated)) max-y (reduce max (map second rotated))
         ;; A denser habitat at the right, with open water to the left.
-        preferred-x (* (aget world "width") (if (< (js/Math.random) 0.65) (random 0.48 0.98) (random 0.02 0.98)))
-        preferred-y (random 85 (max 100 (- (aget world "height") 90)))
+        preferred-x (or (first location) (* (aget world "width") (if (< (js/Math.random) 0.65) (random 0.48 0.98) (random 0.02 0.98))))
+        preferred-y (or (second location) (random 85 (max 100 (- (aget world "height") 90))))
         cx (max (- 4 min-x) (min (- (aget world "width") 4 max-x) preferred-x))
         cy (max (- 4 min-y) (min (- (aget world "height") 4 max-y) preferred-y))
         body-id (.-length (aget world "bodies")) bond-start (aget world "bn")]
@@ -57,16 +59,16 @@
           (doseq [i (range (dec count))] (bond! i (inc i)))
           (doseq [a (range count) b (range (inc a) count)
                   :let [[ax ay] (nth shape a) [bx by] (nth shape b)]
-                  :when (< (js/Math.hypot (- ax bx) (- ay by)) (if (= kind 1) 9.5 5.4))]
+                  :when (< (js/Math.hypot (- ax bx) (- ay by)) (* scale (if (= kind 1) 9.5 5.4)))]
             (bond! a b)))
         (when (= kind 1)
           (let [outer (- count 6)]
             (doseq [i (range 0 outer 3)]
               (bond! i (+ outer (mod (int (js/Math.round (/ (* i 6) outer))) 6)))))))
       (.push (aget world "bodies") #js {:start start :end (+ start count) :bond-start bond-start :bond-end (aget world "bn")
-                                 :kind kind :angle angle :phase (random 0 6.28)})
+                                 :kind kind :drive drive :angle angle :phase (random 0 6.28)})
       (aset world "n" (+ start count))
-      true)))
+      true))))
 
 (defn populate! [world target]
   (loop [] (when (and (< (aget world "n") target) (< (aget world "n") (- max-cells 60)))
@@ -126,9 +128,9 @@
           (when (< i end)
             (let [motor (if (= kind 0) (if (< (- i start) 3) 2.5 0.25) (if (= kind 2) 0.15 0.4))
                   dx (- (aget x i) (aget x start)) dy (- (aget y i) (aget y start))
-                  spin (if (= kind 1) (* 0.0008 (js/Math.sin (+ (aget body "phase") (* tick 0.01)))) 0)]
-              (aset fx i (+ (aget fx i) (* ax motor) (* (- dy) spin)))
-              (aset fy i (+ (aget fy i) (* ay motor) (* dx spin))))
+                  spin (if (= kind 1) (* 0.0008 (or (aget body "drive") 1) (js/Math.sin (+ (aget body "phase") (* tick 0.01)))) 0)]
+              (aset fx i (+ (aget fx i) (* ax motor (or (aget body "drive") 1)) (* (- dy) spin)))
+              (aset fy i (+ (aget fy i) (* ay motor (or (aget body "drive") 1)) (* dx spin))))
             (recur (inc i))))))
     (dotimes [i n]
       (let [px (aget x i) py (aget y i)
@@ -152,24 +154,24 @@
     (aset world "grid" (js/Int32Array. (* (aget world "cols") (aget world "rows"))))
     world))
 
-(defn cell-sprites []
+(defn cell-sprites [palette]
   (into-array
    (for [kind (range 3)]
      (let [canvas (.createElement js/document "canvas")]
        (set! (.-width canvas) 14) (set! (.-height canvas) 14)
        (let [ctx (.getContext canvas "2d") r (if (= kind 2) 1.65 1.9)]
-         (set! (.-strokeStyle ctx) (nth colors kind))
+         (set! (.-strokeStyle ctx) (nth palette kind))
          (.beginPath ctx) (.arc ctx 7 7 r 0 (* 2 js/Math.PI))
          (set! (.-globalAlpha ctx) 0.08) (set! (.-lineWidth ctx) 5) (.stroke ctx)
          (set! (.-globalAlpha ctx) 0.85) (set! (.-lineWidth ctx) 0.9) (.stroke ctx))
        canvas))))
 
-(defn draw! [world ctx gradient sprites]
+(defn draw! [world ctx gradient sprites palette]
   (.save ctx)
   (set! (.-fillStyle ctx) gradient) (.fillRect ctx 0 0 (aget world "width") (aget world "height"))
   (let [x (aget world "x") y (aget world "y") kinds (aget world "kind")]
     (dotimes [kind 3]
-      (set! (.-strokeStyle ctx) (nth colors kind))
+      (set! (.-strokeStyle ctx) (nth palette kind))
       (.beginPath ctx)
       (dotimes [b (aget world "bn")]
         (let [a (aget (aget world "ba") b) other (aget (aget world "bb") b)]
