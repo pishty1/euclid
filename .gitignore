@@ -3,6 +3,8 @@
 .cpcache
 .lsp
 docs/js
+dist/
+release.tar.gz
 target
 .nrepl-port
 .rebel_readline_history

@@ -65,13 +65,25 @@ The project uses a **Registry & Manifest** pattern to manage sketches dynamicall
 
 ## 📦 Deployment
 
-The project is configured to deploy to GitHub Pages automatically via GitHub Actions.
+Production: **https://pishty.uk/apps/euclid/** (static hosting, separate from WordPress).
 
 ### Automated Deployment
-Pushing to the `main` branch triggers a workflow that:
-1.  Builds the project using `shadow-cljs release prod`.
-2.  Commits the artifacts to the `publish` branch.
-3.  GitHub Pages serves the content from the `publish` branch.
+Pushing to `main` triggers `.github/workflows/pwork.yaml`, which:
+1. Installs locked npm dependencies and builds with Java 17 / `shadow-cljs release prod` on GitHub.
+2. Packages an allowlisted static release with a fingerprinted JavaScript asset and commit metadata.
+3. Deploys over restricted SSH, atomically switching the server's current release.
+4. Checks the public release commit and HTTPS response.
+
+GitHub repository secrets `EUCLID_DEPLOY_KEY` and `EUCLID_KNOWN_HOSTS` are required. The dedicated `euclid-deploy` account cannot execute arbitrary SSH commands or modify WordPress. GitHub Pages publishing is no longer part of the workflow; the old Pages site is left as a historical copy.
+
+Previous releases are retained for rollback. Server configuration, receiver tests, backup records, and rollback instructions live in `~/ws/pishty.uk/docs/euclid-integration.md`. Never deploy this repository into the WordPress document root.
+
+For a manual package after building:
+```bash
+GITHUB_SHA=$(git rev-parse HEAD) node scripts/package-release.mjs
+(cd dist && tar -czf ../release.tar.gz index.html images/fav.png release.json js/main-*.js)
+```
+Use a clean `dist/` directory for each build (GitHub runners start clean).
 
 ### Manual Build
 To build for production locally:
@@ -81,4 +93,4 @@ npx shadow-cljs release prod
 This generates the optimized assets in `docs/`.
 
 ## 🔗 Links
-[Blog Post](https://pishty.uk/euclid/)
+[Open Euclid](https://pishty.uk/apps/euclid/) · [Blog Post](https://pishty.uk/euclid/)

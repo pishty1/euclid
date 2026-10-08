@@ -1,102 +1,67 @@
-name: Example workflow
+name: Deploy Euclid to pishty.uk
 
-on: 
+on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: euclid-production
+  cancel-in-progress: false
 
 jobs:
-
-  clojure:
+  deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://pishty.uk/apps/euclid/
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_TOKEN }}
-
-      # It is important to install java before installing clojure tools which needs java
-      # exclusions: babashka, clj-kondo and cljstyle
-      - name: Prepare java
-        uses: actions/setup-java@v3
+          persist-credentials: false
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: temurin
           java-version: '17'
-
-      - name: Install clojure tools
-        uses: DeLaGuardo/setup-clojure@12.1
+      - uses: actions/setup-node@v4
         with:
-          # Install just one or all simultaneously
-          # The value must indicate a particular version of the tool, or use 'latest'
-          # to always provision the latest version
-          cli: 1.11.1.1347              # Clojure CLI based on tools.deps
-          # lein: 2.9.1                  # Leiningen
-          # boot: 2.8.3                  # Boot.clj
-          # bb: 0.7.8                    # Babashka
-          # clj-kondo: 2022.05.31        # Clj-kondo
-          # cljfmt: 0.10.2               # cljfmt
-          # cljstyle: 0.15.0             # cljstyle
-          # cmd-exe-workaround: 'latest' # Replaces `clojure` with `deps.clj` on Windows
-          # zprint: 1.2.3                # zprint
-          
-      # Optional step:
-      - name: Cache clojure dependencies
-        uses: actions/cache@v3
+          node-version: '22'
+          cache: npm
+      - uses: actions/cache@v4
         with:
-          path: |
-            ~/.m2/repository
-            ~/.gitlibs
-            ~/.deps.clj
-          # List all files containing dependencies:
-          key: cljdeps-${{ hashFiles('deps.edn') }}
-          # key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
-          # key: cljdeps-${{ hashFiles('project.clj') }}
-          # key: cljdeps-${{ hashFiles('build.boot') }}
-          restore-keys: cljdeps-
-
-      - name: install node 
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: 'npm'
-
-      - name: Install shadow cljs
-        run: | 
-          npm install
-          npm install -g shadow-cljs
-          shadow-cljs release prod
-          node <<'NODE'
-          const fs = require('fs');
-          const path = 'docs/index.html';
-          const html = fs.readFileSync(path, 'utf8');
-          const versioned = html.replace(/src="js\/main\.js(?:\?[^"]*)?"/, `src="js/main.js?v=${process.env.GITHUB_SHA}"`);
-          if (versioned === html) throw new Error('Could not version the production script URL');
-          fs.writeFileSync(path, versioned);
-          NODE
-        
-      - name: Execute clojure code
-        run: | 
-          java --version
-          clojure -version
-          
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'actions@github.com'
-          git add -f docs/js/main.js docs/index.html
-          git commit -m "Build artifacts [skip ci]" || echo "No changes to commit"
-          git checkout -b publish
-          git push --force origin publish
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+          path: ~/.m2/repository
+          key: euclid-maven-${{ runner.os }}-${{ hashFiles('shadow-cljs.edn', 'package-lock.json') }}
+      - name: Build and package static app
+        run: |
+          npm ci
+          npx shadow-cljs release prod
+          node scripts/package-release.mjs
+          (cd dist && tar -czf ../release.tar.gz index.html images/fav.png release.json js/main-*.js)
+      - name: Configure restricted deployment credentials
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-    # - name: Commit and Push Changes
-    #   run: |
-    #     git config --global user.name 'GitHub Actions'
-    #     git config --global user.email 'actions@github.com'
-    #     git add -A
-    #     git diff --staged --quiet && echo "No changes to commit" && exit 0
-    #     git commit -m "Automated build commit [skip ci]"
-    #     git push
-        
+          DEPLOY_KEY: ${{ secrets.EUCLID_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EUCLID_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/euclid
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Deploy atomically
+        run: |
+          ssh -i ~/.ssh/euclid -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            euclid-deploy@pishty.uk "deploy $GITHUB_SHA" < release.tar.gz
+      - name: Verify public release
+        run: |
+          curl --fail --silent --show-error --retry 3 \
+            "https://pishty.uk/apps/euclid/release.json?verify=$GITHUB_SHA" > deployed.json
+          node -e 'const d=require("./deployed.json"); if(d.commit!==process.env.GITHUB_SHA) process.exit(1)'
+          curl --fail --silent --show-error --output /dev/null https://pishty.uk/apps/euclid/
+      - name: Remove deployment key
+        if: always()
+        run: rm -f ~/.ssh/euclid

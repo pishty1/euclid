@@ -46,6 +46,9 @@
    #euclid-menu .restart-sketch{padding:9px 12px;border-radius:8px;border:1px solid #ffffff25;background:transparent;color:#eee9dd;cursor:pointer;font-size:12px}
    #euclid-menu .restart-sketch:hover{background:#ffffff0c}
    #euclid-menu .hint{font-size:10px;color:#899c96}
+   #euclid-menu .home-link{display:inline-block;margin-top:18px;padding:8px 0;color:#c4d6cf;font-size:12px;text-decoration:none}
+   #euclid-menu .home-link:hover{text-decoration:underline;color:#eee9dd}
+   #euclid-menu .home-link:focus-visible{outline:2px solid #edc778;outline-offset:4px}
    @media(max-width:400px){#euclid-nav .current-name{display:none}#euclid-menu .menu-shell{padding:18px}#euclid-menu .sketch-card{padding:13px;gap:10px}}
    @media(prefers-reduced-motion:no-preference){#euclid-menu[open]{animation:euclid-menu-in .16s ease-out}@keyframes euclid-menu-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}}")
 
@@ -146,7 +149,8 @@
           close (element "button" "close-menu" "×")
           list (element "div" "sketch-list" nil)
           footer (element "div" "menu-footer" nil)
-          restart (element "button" "restart-sketch" "Restart sketch")]
+          restart (element "button" "restart-sketch" "Restart sketch")
+          home (element "a" "home-link" "← Back to Pishty")]
       (set! (.-id dialog) "euclid-menu")
       (set! (.-id title) "euclid-menu-title")
       (set! (.-id list) "euclid-sketch-list")
@@ -161,7 +165,8 @@
       (.appendChild heading close)
       (.appendChild footer restart)
       (.appendChild footer (element "span" "hint" "↑ ↓ to browse · Esc to close"))
-      (doseq [node [heading list footer]] (.appendChild shell node))
+      (set! (.-href home) "https://pishty.uk/")
+      (doseq [node [heading list footer home]] (.appendChild shell node))
       (.appendChild dialog shell)
       (.addEventListener close "click" (fn [_] (close-menu!)))
       (.addEventListener restart "click" (fn [_] (choose-sketch! @selected-sketch)))
