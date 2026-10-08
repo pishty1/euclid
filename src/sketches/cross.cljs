@@ -95,19 +95,21 @@
     (q/no-fill)
     (q/stroke-weight 1)
     (q/stroke 105 133 153 20)
-    (q/ellipse cx cy (* 2 radius) (* 2 radius))
-    (when (contains? #{:both :weave} mode)
+    (when (not= mode :interactions)
+      (q/ellipse cx cy (* 2 radius) (* 2 radius)))
+    (when (contains? #{:both :weave :interactions} mode)
       (doseq [i (range 4) j (range 4)]
         (apply q/stroke (conj (if (even? (+ i j)) (:first palette) (:second palette)) 42))
         (draw-line (nth a i) (nth b j))))
-    (when (contains? #{:both :traces} mode)
+    (when (contains? #{:both :traces :interactions} mode)
       (q/no-stroke)
       (doseq [[index [x y]] (map-indexed vector traces)]
         (let [alpha (+ 12 (* 95 (/ index (max 1 (count traces)))))]
           (apply q/fill (conj (:trace palette) alpha))
           (q/ellipse x y 1.6 1.6))))
-    (draw-cross (:first geometry) (:first palette))
-    (draw-cross (:second geometry) (:second palette))
+    (when (not= mode :interactions)
+      (draw-cross (:first geometry) (:first palette))
+      (draw-cross (:second geometry) (:second palette)))
     (q/no-stroke)
     (doseq [sa (arms a) sb (arms b)]
       (when-let [[x y] (segment-intersection sa sb)]
@@ -123,15 +125,16 @@
   (q/text "LA CROSS / KINETIC LOOM" 22 (- (q/height) 56))
   (q/text-size 10)
   (q/fill 103 131 148)
-  (q/text "Move to shape · Click to change view" 22 (- (q/height) 37))
+  (q/text "Move to shape · Tap / click to change view" 22 (- (q/height) 37))
   (q/text "Space pauses · R resets" 22 (- (q/height) 20))
   (q/text-align :right :top)
-  (q/text (str (case mode :both "WEAVE + TRACES" :weave "WEAVE" :traces "TRACES")
+  (q/text (str (case mode :both "WEAVE + TRACES" :weave "WEAVE" :traces "TRACES"
+                         :interactions "INTERACTIONS ONLY / CROSSES HIDDEN")
                (when paused? " / PAUSED")) (- (q/width) 22) 76))
 
 (defn mouse-clicked [state]
   (if (:menu-visible? state) state
-      (update state :mode {:both :traces :traces :weave :weave :both})))
+      (update state :mode {:both :interactions :interactions :traces :traces :weave :weave :both})))
 
 (defn key-pressed [state event]
   (if (:menu-visible? state) state
