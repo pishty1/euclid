@@ -2,7 +2,8 @@
   (:require [quil.core :as q]
             [menu :as menu]
             [registry :as registry]
-            [quil.middleware :as m]))
+            [quil.middleware :as m]
+            ["../rendering/cross_gpu.js" :as gpu]))
 
 (def palette
   {:background [9 16 24] :first [239 186 139]
@@ -44,8 +45,11 @@
   (when-let [host (.getElementById js/document "sketch")]
     (set! (.-tabIndex host) 0)
     (.focus host))
-  {:phase 0 :speed 0.009 :separation 0.13 :traces [] :mode :interactions :paused? false
-   :geometry (geometry (q/width) (q/height) 0 0.13) :dimensions [(q/width) (q/height)]})
+  (let [overlay (.querySelector js/document "#sketch canvas:not([data-cross-gpu])")]
+    {:phase 0 :speed 0.009 :separation 0.13 :traces [] :mode :interactions :paused? false
+     :ctx (when overlay (.getContext overlay "2d"))
+     :gpu (when overlay (gpu/create (.getElementById js/document "sketch") overlay))
+     :geometry (geometry (q/width) (q/height) 0 0.13) :dimensions [(q/width) (q/height)]}))
 
 (defn update-state [state]
   (when (or (not= (q/width) (.-innerWidth js/window))
@@ -86,7 +90,7 @@
     (q/stroke-weight 1)
     (q/ellipse (:x shape) (:y shape) 10 10)))
 
-(defn draw-state [{:keys [geometry traces mode paused?]}]
+(defn draw-canvas [{:keys [geometry traces mode phase]}]
   (apply q/background (:background palette))
   (q/rect-mode :corner)
   (q/ellipse-mode :center)
@@ -105,18 +109,30 @@
       (q/no-stroke)
       (doseq [[index [x y]] (map-indexed vector traces)]
         (let [alpha (+ 12 (* 95 (/ index (max 1 (count traces)))))]
+          (apply q/fill (conj (if (even? index) (:first palette) (:second palette)) (* alpha 0.1)))
+          (q/ellipse x y 7 7)
           (apply q/fill (conj (:trace palette) alpha))
-          (q/ellipse x y 1.6 1.6))))
+          (q/ellipse x y 1.8 1.8))))
     (when (not= mode :interactions)
       (draw-cross (:first geometry) (:first palette))
       (draw-cross (:second geometry) (:second palette)))
     (q/no-stroke)
-    (doseq [sa (arms a) sb (arms b)]
+    (doseq [[index [sa sb]] (map-indexed vector (for [sa (arms a) sb (arms b)] [sa sb]))]
       (when-let [[x y] (segment-intersection sa sb)]
-        (apply q/fill (conj (:trace palette) 25))
-        (q/ellipse x y 16 16)
-        (apply q/fill (:trace palette))
-        (q/ellipse x y 4 4))))
+        (let [pulse (+ 0.5 (* 0.5 (Math/sin (+ (* phase 3) (* index 1.7)))))
+              color (if (even? index) (:second palette) (:first palette))]
+          (doseq [[diameter alpha] [[48 5] [28 12] [14 30]]]
+            (apply q/fill (conj color (+ alpha (* pulse 5))))
+            (q/ellipse x y diameter diameter))
+          (q/no-fill) (q/stroke-weight 0.8)
+          (apply q/stroke (conj color (+ 30 (* 30 pulse))))
+          (let [diameter (+ 18 (* pulse 10))] (q/ellipse x y diameter diameter))
+          (apply q/stroke (conj (:trace palette) 75))
+          (q/line (- x 7) y (+ x 7) y) (q/line x (- y 7) x (+ y 7))
+          (q/no-stroke) (apply q/fill (:trace palette))
+          (q/ellipse x y 4 4))))))
+
+(defn draw-hud [{:keys [mode paused? gpu]}]
   (q/no-stroke)
   (q/text-font "monospace")
   (q/text-align :left :bottom)
@@ -130,7 +146,17 @@
   (q/text-align :right :top)
   (q/text (str (case mode :both "WEAVE + TRACES" :weave "WEAVE" :traces "TRACES"
                          :interactions "INTERSECTIONS + TRAILS ONLY")
-               (when paused? " / PAUSED")) (- (q/width) 22) 76))
+               (when paused? " / PAUSED")) (- (q/width) 22) 76)
+  (q/text (gpu/status gpu) (- (q/width) 22) 92))
+
+(defn draw-state [{:keys [geometry traces mode phase ctx gpu] :as state}]
+  (let [endpoints (concat (cross-endpoints (:first geometry)) (cross-endpoints (:second geometry)))
+        mode-id ({:interactions 0 :traces 1 :weave 2 :both 3} mode)]
+    (if (and ctx (gpu/draw gpu (q/width) (q/height) phase mode-id
+                          (into-array (map into-array endpoints)) (into-array (map into-array traces))))
+      (.clearRect ctx 0 0 (q/width) (q/height))
+      (draw-canvas state)))
+  (draw-hud state))
 
 (defn mouse-clicked [state]
   (if (:menu-visible? state) state

@@ -1,5 +1,13 @@
 # Optional WebGPU renderer
 
+La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
+the four live segment intersections from the crosses' endpoints. Instanced light
+sprites draw the intersection blooms, pulsing rings, flares, and fading trails.
+The CPU retains the trail history and pointer controls. Pausing freezes the
+effects as well as the geometry. The default view contains only intersections
+and trails; taps cycle through the other views. Canvas provides similar glow
+effects when WebGPU is unavailable. The view readout identifies the renderer.
+
 Figget-A-Balls attempts WebGPU rendering on startup. Its FPS readout shows
 `Starting WebGPU`, `WebGPU`, or `Canvas`. The simulation, population tuning,
 builder, and controls remain on the CPU; this change accelerates drawing only.
