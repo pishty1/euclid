@@ -1,6 +1,6 @@
 # Optional WebGPU renderer
 
-Ad Venture uses a transparent WebGPU combat layer above the Quil game canvas.
+Add Venture uses a transparent WebGPU combat layer above the Quil game canvas.
 Wrong nonempty answers provoke one on-screen enemy (the partial-answer target,
 or the closest enemy). Its projectile costs one shield on arrival, then becomes
 a ship impact effect. Addition uses a three-pulse burst, subtraction a fast rail
@@ -9,6 +9,10 @@ hits use a mint shot and an operation-coloured blast. Pausing freezes projectile
 travel and damage; replay clears pending shots. Canvas draws matching weapon
 patterns when WebGPU is unavailable. Arithmetic, scoring, and damage stay on the
 CPU; the combat readout identifies the effect renderer.
+The player ship tracks the typed-answer target and holds its firing heading after
+the answer clears. Shots originate at its rotated nose. Enemy hulls have distinct
+armour panels and glowing weapon mounts. Hit effects combine an initial flash,
+two shockwaves, sparks, and tumbling shards, with 64 GPU sprites per impact.
 
 La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
 the four live segment intersections from the crosses' endpoints. Instanced light

@@ -12,7 +12,7 @@
 (def descriptions
   {"Prime Gardens" "Prime gaps guide a growing geometric garden."
    "La Cross" "Rotating crosses weave threads and trace intersections."
-   "Ad Venture" "Solve arithmetic to blast incoming enemy ships."
+   "Add Venture" "Solve arithmetic to blast incoming enemy ships."
    "Figget-A-Balls" "Build your own ecosystem of cell chains, rings, and colonies."
    "Euclid" "Living proofs, compass roses, and draggable geometry."})
 

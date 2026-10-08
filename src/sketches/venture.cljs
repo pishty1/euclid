@@ -10,7 +10,7 @@
 (defonce best-score (atom 0))
 
 (defn active? []
-  (= "Ad Venture" (:name (registry/get-sketch @menu/selected-sketch))))
+  (= "Add Venture" (:name (registry/get-sketch @menu/selected-sketch))))
 
 (defn enqueue! [key]
   (when (and (active?) (not @menu/menu-visible))
@@ -34,7 +34,7 @@
 
 (def control-styles
   "#venture-controls{display:none;position:fixed;inset:0;pointer-events:none;z-index:15;font-family:system-ui,sans-serif}
-   body[data-sketch='Ad Venture'] #venture-controls{display:block}
+   body[data-sketch='Add Venture'] #venture-controls{display:block}
    #venture-controls button{pointer-events:auto;touch-action:manipulation;border:1px solid #70dace50;background:#081e25ed;color:#bdfcf0;border-radius:9px;cursor:pointer;font:500 13px system-ui,sans-serif}
    #venture-controls button:hover{background:#153a42}
    #venture-controls button:focus-visible{outline:2px solid #f1ba68;outline-offset:3px}
@@ -45,8 +45,8 @@
    #venture-keypad .fire{background:#96ead7;color:#07232a;font-size:12px;font-weight:700}
    @media(pointer:coarse),(max-width:600px){#venture-keypad{display:grid}}
    @media(max-height:450px){#venture-keypad button{min-height:32px}}
-   @media(max-width:600px){body[data-sketch='Ad Venture'] #euclid-nav .current-name{display:none}}
-   body[data-sketch='Ad Venture'] #sketch canvas{display:block}")
+   @media(max-width:600px){body[data-sketch='Add Venture'] #euclid-nav .current-name{display:none}}
+   body[data-sketch='Add Venture'] #sketch canvas{display:block}")
 
 (defn init-controls! []
   (when-not (.getElementById js/document "venture-controls")
@@ -133,6 +133,7 @@
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
                 :enemies [] :effects [] :spawned 0 :spawn-timer 0
                 :next-id 0 :input "" :message "" :message-timer 0
+                :ship-angle 0 :aim-target nil :aim-until 0
                 :wave-timer 0 :clock 0 :flash 0 :last-time nil}))
 
 (defn setup []
@@ -176,13 +177,28 @@
                                (str/starts-with? (str (:answer %)) (:input state)))
                             (:enemies state))))))
 
+(defn aim-angle [state enemy]
+  (if enemy
+    (Math/atan2 (- (lane-x state (:lane enemy)) (/ (:width state) 2))
+                (- (ship-y state) (enemy-y state enemy)))
+    0))
+
+(defn update-aim [state dt]
+  (let [target (if (< (:clock state) (:aim-until state)) (:aim-target state)
+                  (target-enemy state false))
+        desired (aim-angle state target) current (:ship-angle state)
+        difference (Math/atan2 (Math/sin (- desired current)) (Math/cos (- desired current)))]
+    (assoc state :ship-angle (+ current (* difference (- 1 (Math/exp (* -14 dt))))))))
+
 (defn fire-answer [state]
   (if-let [enemy (target-enemy state true)]
     (let [combo (inc (:combo state))
           score (+ (:score state) 100 (* 10 (min combo 20)))]
       (swap! best-score max score)
       (-> state
-          (assoc :input "" :score score :combo combo :message "DIRECT HIT" :message-timer 0.65)
+          (assoc :input "" :score score :combo combo :message "DIRECT HIT" :message-timer 0.65
+                 :ship-angle (aim-angle state enemy) :aim-target (select-keys enemy [:lane :progress])
+                 :aim-until (+ (:clock state) 0.45))
           (update :enemies #(filterv (fn [e] (not= (:id e) (:id enemy))) %))
           (update :effects conj {:lane (:lane enemy) :progress (:progress enemy) :age 0
                                 :operation (or (:operation enemy) :add) :duration 0.18 :kind :hit})))
@@ -220,8 +236,8 @@
      :effects (->> effects
                    (map #(if (and (= :incoming (:kind %)) (>= (:age %) (:duration %)))
                            (assoc % :kind :ship-hit :age (- (:age %) (:duration %))) %))
-                   (filter #(< (:age %) (if (= :hit (:kind %)) 0.95
-                                           (if (= :incoming (:kind %)) (:duration %) 0.8)))) vec)}))
+                   (filter #(< (:age %) (if (= :hit (:kind %)) 1.3
+                                           (if (= :incoming (:kind %)) (:duration %) 1.1)))) vec)}))
 
 (defn advance-game [state dt]
   (let [enemies (mapv #(update % :progress + (* dt (:speed %))) (:enemies state))
@@ -252,6 +268,7 @@
                 (update entity :lane #(min (dec lanes) (int (* lanes (/ (+ % 0.5) (:lanes state)))))))]
     (-> state
         (assoc :width width :height height :lanes lanes)
+        (update :aim-target #(when % (remap %)))
         (update :enemies #(mapv remap %))
         (update :effects #(mapv remap %)))))
 
@@ -269,7 +286,7 @@
           state (if (:menu-visible? state) state (reduce handle-action state pending))
           state (if (:menu-visible? state) state
                   (case (:mode state)
-                    :playing (advance-game state dt)
+                    :playing (update-aim (advance-game state dt) dt)
                     :over (-> state
                               (assoc :effects (:effects (advance-effects (:effects state) dt)))
                               (update :flash #(max 0 (- % dt))))
@@ -293,17 +310,19 @@
 
 (defn draw-ship [state]
   (let [x (/ (:width state) 2) y (ship-y state)]
+    (q/push-matrix) (q/translate x y) (q/rotate (:ship-angle state))
     (q/no-stroke)
     (q/fill 49 239 215 15)
-    (q/ellipse x y 88 88)
+    (q/ellipse 0 0 88 88)
     (q/stroke 102 255 226)
     (q/stroke-weight 1.5)
     (q/fill 10 47 56)
-    (q/triangle x (- y 20) (- x 19) (+ y 15) (+ x 19) (+ y 15))
-    (q/line x (- y 8) x (+ y 10))
+    (q/triangle 0 -24 -19 15 19 15)
+    (q/line 0 -8 0 10)
     (q/no-stroke)
     (q/fill 143 255 230 160)
-    (q/triangle (- x 6) (+ y 17) (+ x 6) (+ y 17) x (+ y 29 (* 4 (Math/sin (* (:clock state) 18)))))))
+    (q/triangle -6 17 6 17 0 (+ 29 (* 4 (Math/sin (* (:clock state) 18)))))
+    (q/pop-matrix)))
 
 (def enemy-styles
   {:add {:color [245 177 76] :symbol "+"}
@@ -317,32 +336,52 @@
   (q/end-shape :close))
 
 (defn draw-enemy-body [operation clock id]
-  ;; Silhouettes encode the operation even when colors cannot be distinguished.
-  (case operation
-    :add
-    (do
-      (outline [[-6 -19] [6 -19] [6 -6] [19 -6] [19 6] [6 6]
-                [6 19] [-6 19] [-6 6] [-19 6] [-19 -6] [-6 -6]])
-      (doseq [[x y] [[0 -15] [15 0] [0 15] [-15 0]]]
-        (q/ellipse x y 3 3)))
-    :subtract
-    (do
-      (outline [[-24 0] [-14 -10] [14 -10] [24 0] [14 10] [-14 10]])
-      (q/line -17 0 -10 0)
-      (q/line 10 0 17 0))
-    :multiply
-    (do
-      (outline [[-18 -22] [0 -11] [18 -22] [11 0] [18 22] [0 11]
-                [-18 22] [-11 0]])
-      (doseq [[x y] [[-15 -17] [15 -17] [-15 17] [15 17]]]
-        (q/ellipse x y 4 4)))
-    :divide
-    (let [spread (+ 15 (* 2 (Math/sin (+ (* clock 2) id))))]
-      (q/line 0 (- spread) 0 spread)
-      (q/ellipse 0 (- spread) 12 12)
-      (q/ellipse 0 spread 12 12)
-      (outline [[-20 0] [-12 -7] [12 -7] [20 0] [12 7] [-12 7]]))
-    nil))
+  ;; Each operation has a distinct hull, armour layout, and weapon mounts.
+  (let [color (:color (get enemy-styles operation (:add enemy-styles)))
+        plate! (fn [points]
+                 (q/fill 13 26 39) (apply q/stroke (conj color 220))
+                 (q/stroke-weight 1.2) (outline points))
+        glow! (fn [x y radius]
+                (q/no-stroke) (apply q/fill (conj color 22))
+                (q/ellipse x y (* radius 3) (* radius 3))
+                (apply q/fill (conj color (+ 150 (* 70 (Math/sin (+ (* clock 5) id))))))
+                (q/ellipse x y radius radius))]
+    (case operation
+      :add
+      (do
+        (plate! [[-7 -22] [7 -22] [10 -10] [23 -7] [26 0] [23 7] [10 10]
+                 [7 24] [-7 24] [-10 10] [-23 7] [-26 0] [-23 -7] [-10 -10]])
+        (doseq [[x y] [[0 -16] [18 0] [0 18] [-18 0]]]
+          (q/no-fill) (apply q/stroke (conj color 120)) (q/ellipse x y 10 10)
+          (glow! x y 4))
+        (plate! [[-9 -9] [9 -9] [9 9] [-9 9]]))
+      :subtract
+      (do
+        (plate! [[-28 -5] [-18 -16] [-6 -9] [0 -13] [6 -9] [18 -16] [28 -5]
+                 [20 9] [7 13] [5 24] [-5 24] [-7 13] [-20 9]])
+        (doseq [sign [-1 1]]
+          (plate! [[(* sign 8) -6] [(* sign 20) -10] [(* sign 23) 2] [(* sign 8) 6]])
+          (glow! (* sign 15) -12 3))
+        (q/stroke-weight 2) (apply q/stroke color)
+        (q/line -2 11 -2 24) (q/line 2 11 2 24))
+      :multiply
+      (do
+        (doseq [[sx sy] [[-1 -1] [1 -1] [-1 1] [1 1]]]
+          (plate! (mapv (fn [[x y]] [(* sx x) (* sy y)])
+                        [[6 4] [19 9] [25 24] [12 19] [4 6]]))
+          (glow! (* sx 18) (* sy 17) 4))
+        (plate! [[0 -12] [12 0] [0 12] [-12 0]]))
+      :divide
+      (let [spread (+ 16 (* 1.5 (Math/sin (+ (* clock 2) id))))]
+        (q/stroke-weight 2) (apply q/stroke (conj color 120))
+        (q/line 0 (- spread) 0 spread)
+        (doseq [y [(- spread) spread]]
+          (plate! [[-8 (- y 7)] [8 (- y 7)] [11 y] [8 (+ y 7)] [-8 (+ y 7)] [-11 y]])
+          (glow! 0 y 5))
+        (plate! [[-24 0] [-15 -7] [15 -7] [24 0] [15 7] [-15 7]])
+        (q/stroke-weight 1) (apply q/stroke color)
+        (q/line -19 0 -10 0) (q/line 10 0 19 0))
+      nil)))
 
 (defn draw-enemy [state enemy targeted?]
   (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
@@ -350,6 +389,7 @@
         {:keys [color symbol]} (get enemy-styles operation (:add enemy-styles))]
     (q/push-matrix)
     (q/translate x y)
+    (q/rotate (* 0.045 (Math/sin (+ (* (:clock state) 1.8) (:id enemy)))))
     (q/no-stroke)
     (apply q/fill (conj color 12))
     (q/ellipse 0 0 64 64)
@@ -382,8 +422,11 @@
 
 (defn effect-points [state {:keys [lane progress kind]}]
   (let [enemy [(lane-x state lane) (enemy-y state {:progress progress})]
-        ship [(/ (:width state) 2) (- (ship-y state) 8)]]
-    (if (= kind :hit) [ship enemy] [enemy ship])))
+        center [(/ (:width state) 2) (ship-y state)]
+        angle (aim-angle state {:lane lane :progress progress})
+        muzzle [(+ (first center) (* 24 (Math/sin angle)))
+                (- (second center) (* 24 (Math/cos angle)))]]
+    (if (= kind :hit) [muzzle enemy] [enemy center])))
 
 (defn gpu-effect [state {:keys [age duration operation kind] :as effect}]
   (let [[[sx sy] [tx ty]] (effect-points state effect)]
@@ -411,15 +454,24 @@
               (q/no-stroke) (apply q/fill (conj color 30)) (q/ellipse x y 16 16)
               (apply q/fill color) (q/ellipse x y 5 5)))))
       (let [blast-age (if (= kind :ship-hit) age (- age duration))]
-        (when (and (not incoming?) (<= 0 blast-age 0.8))
-          (let [fade (max 0 (- 1 (/ blast-age 0.8))) radius (+ 8 (* blast-age 85))]
-            (q/no-stroke) (apply q/fill (conj color (* 35 fade))) (q/ellipse tx ty 60 60)
+        (when (and (not incoming?) (<= 0 blast-age 1.1))
+          (let [fade (Math/pow (max 0 (- 1 (/ blast-age 1.1))) 2)
+                radius (+ 8 (* 90 (- 1 (Math/exp (* -3.5 blast-age)))))]
+            (q/no-stroke) (apply q/fill (conj color (* 45 fade))) (q/ellipse tx ty 90 90)
+            (q/fill 255 248 221 (* 255 (Math/exp (* -18 blast-age))))
+            (q/ellipse tx ty 34 34)
             (q/no-fill) (apply q/stroke (conj color (* 220 fade))) (q/stroke-weight 1)
             (q/ellipse tx ty (* radius 2) (* radius 2))
-            (doseq [i (range 18)]
+            (q/ellipse tx ty (* radius 1.25) (* radius 1.25))
+            (doseq [i (range 24)]
               (let [angle (+ (* i 2.39996) (if (= operation :divide) (* blast-age 6) 0))
-                    x (+ tx (* radius (Math/cos angle))) y (+ ty (* radius (Math/sin angle)))]
-                (q/line x y (+ x (* 7 (Math/cos angle))) (+ y (* 7 (Math/sin angle))))))))))))
+                    travel (* radius (+ 0.35 (* 0.1 (mod i 7))))
+                    x (+ tx (* travel (Math/cos angle))) y (+ ty (* travel (Math/sin angle)))]
+                (if (zero? (mod i 3))
+                  (do (q/push-matrix) (q/translate x y) (q/rotate (+ angle (* blast-age 5)))
+                      (apply q/fill (conj color (* 110 fade)))
+                      (outline [[-4 0] [0 -2] [4 0] [0 2]]) (q/no-fill) (q/pop-matrix))
+                  (q/line x y (+ x (* 7 (Math/cos angle))) (+ y (* 7 (Math/sin angle)))))))))))))
 
 (defn draw-effects [state]
   (let [effects (if (or (:menu-visible? state) (= :paused (:mode state))) [] (:effects state))]
@@ -467,7 +519,7 @@
       (q/text-align :center :center)
       (q/fill 118 222 211)
       (q/text-size 11)
-      (q/text "AD VENTURE / ARITHMETIC DEFENSE" cx (- cy 70))
+      (q/text "ADD VENTURE / ARITHMETIC DEFENSE" cx (- cy 70))
       (q/fill 235 244 228)
       (q/text-size (if small? 27 44))
       (q/text (case (:mode state) :ready "MATH FLEET" :paused "PAUSED" :over "FLIGHT ENDED") cx (- cy 30))
@@ -506,7 +558,7 @@
   (if (and (not (:menu-visible? state)) (contains? #{:ready :over} (:mode state)))
     (new-game state) state))
 
-(registry/def-sketch "Ad Venture" '(99 230 209)
+(registry/def-sketch "Add Venture" '(99 230 209)
   {:host "sketch" :setup setup :update update-state :draw draw-state
    :mouse-clicked mouse-clicked :size [menu/w menu/h]
    :middleware [menu/show-frame-rate m/fun-mode]

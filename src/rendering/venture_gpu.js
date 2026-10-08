@@ -43,25 +43,44 @@ fn tint(op:f32)->vec3f {
  let halo=light*0.35; return vec4f(mix(color,vec3f(1.),min(0.6,light*0.3)),min(1.,light+halo));
 }
 @vertex fn blastVertex(@builtin(vertex_index) i:u32,@builtin(instance_index) instance:u32)->Vertex {
- let e=effects[instance/32u];let seed=instance%32u;
- let age=select(e.info.x-e.info.y,e.info.x,e.info.w>1.5); let visible=e.info.w!=1. && age>=0. && age<0.8;
+ let e=effects[instance/64u];let seed=instance%64u;
+ let age=select(e.info.x-e.info.y,e.info.x,e.info.w>1.5); let visible=e.info.w!=1. && age>=0. && age<1.1;
  let op=e.info.z;let angle=f32(seed)*2.39996+op*0.8;
- var offset=vec2f(cos(angle),sin(angle))*(8.+max(0.,age)*(45.+f32(seed%7u)*14.));
+ let travel=(1.-exp(-max(0.,age)*3.5))*(22.+f32(seed%9u)*11.);
+ var offset=vec2f(cos(angle),sin(angle))*(6.+travel);
  if(op>0.5 && op<1.5){offset.x*=1.6;offset.y*=0.3;}
  if(op>1.5 && op<2.5){offset*=0.6+0.4*abs(sin(angle*2.+age*7.));}
  if(op>2.5){let a=angle+age*6.;offset=vec2f(cos(a),sin(a))*length(offset);}
- var radius=4.; if(seed==0u){offset=vec2f(0.);radius=80.;}
+ var radius=2.+f32(seed%5u)*0.8; if(seed<2u){offset=vec2f(0.);radius=90.;}
  var v:Vertex;v.uv=corner(i);v.position=clip(e.ends.zw+offset+v.uv*radius);
  v.info=vec4f(age,op,f32(seed),select(0.,1.,visible));v.extra=vec2f(radius,0.);
  if(!visible){v.position=vec4f(3.,3.,0.,1.);}return v;
 }
 @fragment fn blastLight(v:Vertex)->@location(0) vec4f {
- let age=v.info.x;let d=length(v.uv);let fade=pow(max(0.,1.-age/0.8),2.);var light=0.;
- if(v.info.z<0.5){
-   let ring=exp(-pow((d-(0.12+age*0.85))*90.,2.));
-   light=(ring*0.55+exp(-d*d*18.)*exp(-age*9.)*0.8)*fade;
- }else{light=exp(-d*d*8.)*fade;}
- return vec4f(mix(tint(v.info.y),vec3f(1.,0.95,0.85),0.25),light*v.info.w);
+ let age=v.info.x;let d=length(v.uv);let fade=pow(max(0.,1.-age/1.1),2.);var light=0.;
+ let seed=v.info.z;var color=tint(v.info.y);
+ if(seed<0.5){
+   let flash=exp(-d*d*45.)*exp(-age*18.)*1.8;
+   let ring=exp(-pow((d-(0.1+age*0.75))*85.,2.));
+   light=(ring*0.65+flash+exp(-d*d*12.)*exp(-age*7.)*0.3)*fade;
+   color=mix(color,vec3f(1.,0.98,0.9),clamp(flash,0.,1.));
+ }else if(seed<1.5){
+   let ring=exp(-pow((d-(0.07+age*0.46))*100.,2.));
+   let ripples=0.65+0.35*sin(atan2(v.uv.y,v.uv.x)*8.+age*12.);
+   light=ring*ripples*0.45*fade;
+ }else{
+   let spin=seed*0.7+age*(2.+f32(u32(seed)%5u));let c=cos(spin);let s=sin(spin);
+   let p=vec2f(c*v.uv.x-s*v.uv.y,s*v.uv.x+c*v.uv.y);
+   if(u32(seed)%3u==0u){
+     let edge=abs(p.x)*0.7+abs(p.y)*1.5;
+     light=(1.-smoothstep(0.5,0.85,edge))*fade;
+     color=mix(color,vec3f(0.13,0.2,0.26),0.45);
+   }else{
+     light=(exp(-p.y*p.y*45.-p.x*p.x*3.)+exp(-d*d*12.)*0.3)*fade;
+     color=mix(color,vec3f(1.,0.96,0.85),0.45);
+   }
+ }
+ return vec4f(color,min(1.,light)*v.info.w);
 }`;
 let active=null;
 function dispose(r){
@@ -103,7 +122,7 @@ function draw(r,width,height,effects){
    for(let i=0;i<count;i++)r.effects.set(effects[i],i*8);
    const device=r.device;device.queue.writeBuffer(r.uniform,0,r.settings);if(count)device.queue.writeBuffer(r.storage,0,r.effects,0,count*8);
    const encoder=device.createCommandEncoder();const pass=encoder.beginRenderPass({colorAttachments:[{view:r.context.getCurrentTexture().createView(),loadOp:'clear',storeOp:'store',clearValue:{r:0,g:0,b:0,a:0}}]});
-   if(count){pass.setBindGroup(0,r.group);pass.setPipeline(r.bolts);pass.draw(6,count);pass.setPipeline(r.blasts);pass.draw(6,count*32);}
+   if(count){pass.setBindGroup(0,r.group);pass.setPipeline(r.bolts);pass.draw(6,count);pass.setPipeline(r.blasts);pass.draw(6,count*64);}
    pass.end();device.queue.submit([encoder.finish()]);r.canvas.style.display='block';return true;
  }catch(_){dispose(r);return false;}
 }
