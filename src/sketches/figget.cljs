@@ -1,6 +1,7 @@
 (ns sketches.figget
   (:require [quil.core :as q] [menu :as menu] [registry :as registry]
-            [quil.middleware :as m] [sketches.ecosystem-builder :as builder] [sketches.cell-world :as cells]))
+            [quil.middleware :as m] [sketches.ecosystem-builder :as builder] [sketches.cell-world :as cells]
+            ["../rendering/ecosystem_gpu.js" :as gpu]))
 
 ;; Cellular patterns inspired by ALIEN: https://github.com/chrxh/alien
 (defonce actions (atom []))
@@ -35,10 +36,12 @@
   (q/frame-rate 60) (q/pixel-density 1)
   (let [w (q/width) h (q/height)
         ctx (some-> (.querySelector js/document "#sketch canvas") (.getContext "2d"))
-        target (max 750 (min 4200 (int (/ (* w h) 450))))]
+        target (max 750 (min 4200 (int (/ (* w h) 450))))
+        overlay (.querySelector js/document "#sketch canvas")]
     {:world (cells/populate! (cells/make-world w h) target)
      :auto? true :builder-open? false :placing nil :builder-status "" :colors cells/colors
      :ctx ctx :sprites (when ctx (cells/cell-sprites cells/colors)) :settled-at (+ (.now js/performance) 2000) :gradient (background-gradient ctx w h)
+     :gpu (when overlay (gpu/create (.getElementById js/document "sketch") overlay cells/max-cells))
      :tick 0 :paused? false :currents? true :frame-ms 16.67 :last-frame nil
      :healthy 0 :slow 0 :next-probe 0 :ceiling cells/max-cells :tuning "Measuring"}))
 
@@ -122,13 +125,16 @@
     (builder/sync! state)
     state))
 
-(defn draw-state [{:keys [world ctx gradient sprites colors placing paused? frame-ms tuning]}]
-  (when ctx (cells/draw! world ctx gradient sprites colors))
+(defn draw-state [{:keys [world ctx gradient sprites colors placing paused? frame-ms tuning gpu]}]
+  (when ctx
+    (if (gpu/draw gpu world (into-array colors))
+      (.clearRect ctx 0 0 (q/width) (q/height))
+      (cells/draw! world ctx gradient sprites colors)))
   (q/no-stroke) (q/text-font "monospace") (q/text-size 11)
   (q/fill 151 186 202) (q/text-align :right :top)
   (q/text (str (aget world "n") " cells / " (.-length (aget world "bodies")) " organisms") (- (q/width) 20) 76)
   (q/text-size 10) (q/fill 90 131 158)
-  (q/text (str (Math/round (/ 1000 frame-ms)) " FPS / " tuning) (- (q/width) 20) 94)
+  (q/text (str (Math/round (/ 1000 frame-ms)) " FPS / " tuning " / " (gpu/status gpu)) (- (q/width) 20) 94)
   (q/text-align :left :bottom) (q/text-size 11) (q/fill 151 186 202)
   (q/text "FIGGET-A-BALLS / CELLULAR SEA" 20 (- (q/height) 62))
   (q/text-size 10) (q/fill 90 131 158)
