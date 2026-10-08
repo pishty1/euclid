@@ -57,8 +57,8 @@
     (cond
       ;; Let shader/canvas initialization and the first paint settle.
       (< now (:settled-at state)) state
-      (and slow-since (> (- now slow-since) 1400) (> n 550))
-      (let [target (max 500 (int (* n 0.85)))]
+      (and slow-since (> (- now slow-since) 1400) (> n 180))
+      (let [target (max 150 (int (* n 0.85)))]
         (cells/trim! world target)
         (assoc state :healthy 0 :slow 0 :slow-since nil
                      :next-probe (+ now 8000) :tuning "Balanced"))

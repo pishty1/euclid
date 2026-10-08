@@ -74,7 +74,7 @@
 
 (defn trim! [world target]
   (loop []
-    (when (and (> (aget world "n") target) (> (.-length (aget world "bodies")) 12))
+    (when (and (> (aget world "n") target) (> (.-length (aget world "bodies")) 4))
       (let [body (.pop (aget world "bodies"))]
         (aset world "n" (aget body "start")) (aset world "bn" (aget body "bond-start")))
       (recur))) world)
