@@ -109,12 +109,14 @@
   (+ low (int (q/random (inc (- high low))))))
 
 (defn make-problem [wave]
-  (let [limit (min 30 (+ 8 (* wave 2)))
-        a (random-int 1 limit) b (random-int 1 limit)
-        op (nth (if (< wave 2) [:add :subtract] [:add :subtract :multiply :divide])
-                (random-int 0 (if (< wave 2) 1 3)))
-        factor-a (random-int 2 (min 12 (+ wave 3)))
-        factor-b (random-int 2 (min 12 (+ wave 3)))]
+  (let [limit (min 30 (+ 12 (* wave 2)))
+        a (random-int 2 limit) b (random-int 2 limit)
+        ;; Mixed operations from launch, with a gentler bias in the first wave.
+        operations (if (= wave 1) [:add :subtract :add :subtract :multiply :divide]
+                       [:add :subtract :multiply :divide])
+        op (nth operations (random-int 0 (dec (count operations))))
+        factor-a (random-int 2 (min 12 (+ wave 4)))
+        factor-b (random-int 2 (min 12 (+ wave 4)))]
     (assoc (case op
       :add {:equation (str a " + " b) :answer (+ a b)}
       :subtract {:equation (str (max a b) " − " (min a b)) :answer (Math/abs (- a b))}
@@ -162,9 +164,9 @@
       (let [lane (nth available (random-int 0 (dec (count available))))
             enemy (merge (make-problem (:wave state))
                          {:id (:next-id state) :lane lane :progress 0
-                          :speed (/ 1 (max 7 (- 19 (* (:wave state) 0.7))))})]
+                          :speed (/ 1 (max 7 (- 18 (* (:wave state) 0.7))))})]
         (-> state (update :enemies conj enemy) (update :spawned inc)
-            (update :next-id inc) (assoc :spawn-timer (max 0.7 (- 2.6 (* (:wave state) 0.12)))))))))
+            (update :next-id inc) (assoc :spawn-timer (max 0.7 (- 2.4 (* (:wave state) 0.12)))))))))
 
 (defn target-enemy [state exact?]
   (when (seq (:input state))
