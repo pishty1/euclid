@@ -3,7 +3,8 @@
             [quil.core :as q :include-macros true]
             [quil.middleware :as m]
             [registry :as registry]
-            [menu :as menu]))
+            [menu :as menu]
+            ["../rendering/venture_gpu.js" :as gpu]))
 
 (defonce actions (atom []))
 (defonce best-score (atom 0))
@@ -120,6 +121,12 @@
       :multiply {:equation (str factor-a " × " factor-b) :answer (* factor-a factor-b)}
       :divide {:equation (str (* factor-a factor-b) " ÷ " factor-a) :answer factor-b}) :operation op)))
 
+(def weapons
+  {:add {:name "PULSE BURST" :duration 0.55 :id 0}
+   :subtract {:name "RAIL SHOT" :duration 0.22 :id 1}
+   :multiply {:name "SPREAD BOLTS" :duration 0.65 :id 2}
+   :divide {:name "TWIN HELIX" :duration 0.75 :id 3}})
+
 (defn new-game [state]
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
                 :enemies [] :effects [] :spawned 0 :spawn-timer 0
@@ -136,8 +143,10 @@
   (reset! actions [])
   (q/frame-rate 60)
   (q/text-font "monospace")
-  (let [width (q/width) height (q/height)]
+  (let [width (q/width) height (q/height)
+        overlay (.querySelector js/document "#sketch canvas:not([data-venture-gpu])")]
     (assoc (new-game {:width width :height height
+                     :gpu (when overlay (gpu/create (.getElementById js/document "sketch") overlay))
                      :lanes (max 2 (min 7 (int (/ width 160))))
                      :stars (mapv (fn [_] {:x (q/random 1) :y (q/random 1) :depth (q/random 0.2 1)})
                                   (range 180))}) :mode :ready)))
@@ -173,9 +182,20 @@
       (-> state
           (assoc :input "" :score score :combo combo :message "DIRECT HIT" :message-timer 0.65)
           (update :enemies #(filterv (fn [e] (not= (:id e) (:id enemy))) %))
-          (update :effects conj {:lane (:lane enemy) :progress (:progress enemy) :age 0 :kind :hit})))
+          (update :effects conj {:lane (:lane enemy) :progress (:progress enemy) :age 0
+                                :operation (or (:operation enemy) :add) :duration 0.18 :kind :hit})))
     (if (empty? (:input state)) state
-      (assoc state :input "" :combo 0 :message "NO MATCH — TRY AGAIN" :message-timer 1.2))))
+      (let [attacker (or (target-enemy state false) (first (sort-by :progress > (:enemies state))))
+            operation (or (:operation attacker) :add)
+            weapon (get weapons operation)
+            state (assoc state :input "" :combo 0
+                               :message (if attacker (str "WRONG — " (:name weapon) " INCOMING") "NO TARGETS — TRY AGAIN")
+                               :message-timer 1.2)]
+        (if attacker
+          (update state :effects conj {:lane (:lane attacker) :progress (:progress attacker)
+                                      :operation operation :duration (:duration weapon)
+                                      :age 0 :kind :incoming})
+          state)))))
 
 (defn handle-action [state key]
   (cond
@@ -191,19 +211,28 @@
     (update state :input #(if (= % "0") key (str % key)))
     :else state))
 
+(defn advance-effects [effects dt]
+  (let [effects (mapv #(update % :age + dt) effects)
+        impacts (count (filter #(and (= :incoming (:kind %)) (>= (:age %) (:duration %))) effects))]
+    {:impacts impacts
+     :effects (->> effects
+                   (map #(if (and (= :incoming (:kind %)) (>= (:age %) (:duration %)))
+                           (assoc % :kind :ship-hit :age (- (:age %) (:duration %))) %))
+                   (filter #(< (:age %) (if (= :hit (:kind %)) 0.95
+                                           (if (= :incoming (:kind %)) (:duration %) 0.8)))) vec)}))
+
 (defn advance-game [state dt]
   (let [enemies (mapv #(update % :progress + (* dt (:speed %))) (:enemies state))
         escaped (count (filter #(>= (:progress %) 1) enemies))
-        shields (max 0 (- (:shields state) escaped))
+        {:keys [effects impacts]} (advance-effects (:effects state) dt)
+        shields (max 0 (- (:shields state) escaped impacts))
         advanced (-> state
-                     (assoc :enemies (filterv #(< (:progress %) 1) enemies) :shields shields)
+                     (assoc :enemies (filterv #(< (:progress %) 1) enemies) :shields shields :effects effects)
                      (update :spawn-timer - dt)
                      (update :clock + dt)
                      (update :flash #(max 0 (- % dt)))
-                     (update :message-timer #(max 0 (- % dt)))
-                     (update :effects #(->> % (map (fn [effect] (update effect :age + dt)))
-                                             (filter (fn [effect] (< (:age effect) 0.65))) vec)))
-        advanced (if (pos? escaped) (assoc advanced :combo 0 :flash 0.35) advanced)]
+                     (update :message-timer #(max 0 (- % dt))))
+        advanced (if (pos? (+ escaped impacts)) (assoc advanced :combo 0 :flash 0.35) advanced)]
     (cond
       (zero? shields) (assoc advanced :mode :over :input "")
       (and (>= (:spawned advanced) (wave-size (:wave advanced))) (empty? (:enemies advanced)))
@@ -236,8 +265,13 @@
     (let [state (if (or (not= (:width state) (q/width)) (not= (:height state) (q/height)))
                   (resize-state state (q/width) (q/height)) state)
           state (if (:menu-visible? state) state (reduce handle-action state pending))
-          state (if (and (= :playing (:mode state)) (not (:menu-visible? state)))
-                  (advance-game state dt) state)]
+          state (if (:menu-visible? state) state
+                  (case (:mode state)
+                    :playing (advance-game state dt)
+                    :over (-> state
+                              (assoc :effects (:effects (advance-effects (:effects state) dt)))
+                              (update :flash #(max 0 (- % dt))))
+                    state))]
       (when-let [button (.getElementById js/document "venture-pause")]
         (set! (.-textContent button) (case (:mode state) :paused "Resume" :ready "Start" :over "Replay" "Pause")))
       (assoc state :last-time now))))
@@ -340,24 +374,56 @@
       (q/rect (- x (/ width 2)) (+ y 28) width 27 4)
       (apply q/fill (if targeted? [133 255 227] color))
       (q/text-align :center :center)
-      (q/text label x (+ y 41)))))
+      (q/text label x (+ y 41))
+      (q/text-size 8) (q/fill 129 164 178)
+      (q/text (:name (get weapons operation)) x (+ y 62)))))
+
+(defn effect-points [state {:keys [lane progress kind]}]
+  (let [enemy [(lane-x state lane) (enemy-y state {:progress progress})]
+        ship [(/ (:width state) 2) (- (ship-y state) 8)]]
+    (if (= kind :hit) [ship enemy] [enemy ship])))
+
+(defn gpu-effect [state {:keys [age duration operation kind] :as effect}]
+  (let [[[sx sy] [tx ty]] (effect-points state effect)]
+    (into-array [sx sy tx ty age duration (:id (get weapons operation))
+                 ({:hit 0 :incoming 1 :ship-hit 2} kind)])))
+
+(defn draw-effects-canvas [state]
+  (doseq [{:keys [age duration operation kind] :as effect} (:effects state)]
+    (let [[[sx sy] [tx ty]] (effect-points state effect)
+          color (:color (get enemy-styles operation (:add enemy-styles)))
+          t (min 1 (/ age duration))
+          dx (- tx sx) dy (- ty sy) distance (max 1 (Math/hypot dx dy))
+          nx (/ (- dy) distance) ny (/ dx distance)
+          incoming? (= kind :incoming)]
+      (when (and (not= kind :ship-hit) (< age duration))
+        (apply q/stroke (if incoming? color [128 255 223])) (q/stroke-weight 2)
+        (if (or (not incoming?) (= operation :subtract))
+          (q/line sx sy (+ sx (* t dx)) (+ sy (* t dy)))
+          (doseq [i (range (case operation :add 3 :multiply 4 :divide 2 1))]
+            (let [at (max 0 (- t (if (= operation :add) (* i 0.04) 0)))
+                  offset (case operation
+                           :multiply (* (- i 1.5) 10 (Math/sin (* t Math/PI)))
+                           :divide (* (if (zero? i) -1 1) 9 (Math/sin (* t 25)) (Math/sin (* t Math/PI))) 0)
+                  x (+ sx (* at dx) (* nx offset)) y (+ sy (* at dy) (* ny offset))]
+              (q/no-stroke) (apply q/fill (conj color 30)) (q/ellipse x y 16 16)
+              (apply q/fill color) (q/ellipse x y 5 5)))))
+      (let [blast-age (if (= kind :ship-hit) age (- age duration))]
+        (when (and (not incoming?) (<= 0 blast-age 0.8))
+          (let [fade (max 0 (- 1 (/ blast-age 0.8))) radius (+ 8 (* blast-age 85))]
+            (q/no-stroke) (apply q/fill (conj color (* 35 fade))) (q/ellipse tx ty 60 60)
+            (q/no-fill) (apply q/stroke (conj color (* 220 fade))) (q/stroke-weight 1)
+            (q/ellipse tx ty (* radius 2) (* radius 2))
+            (doseq [i (range 18)]
+              (let [angle (+ (* i 2.39996) (if (= operation :divide) (* blast-age 6) 0))
+                    x (+ tx (* radius (Math/cos angle))) y (+ ty (* radius (Math/sin angle)))]
+                (q/line x y (+ x (* 7 (Math/cos angle))) (+ y (* 7 (Math/sin angle))))))))))))
 
 (defn draw-effects [state]
-  (doseq [{:keys [lane progress age]} (:effects state)]
-    (let [x (lane-x state lane) y (enemy-y state {:progress progress})
-          alpha (* 255 (max 0 (- 1 (/ age 0.65))))]
-      (when (< age 0.16)
-        (q/stroke 128 255 223 (* 230 (- 1 (/ age 0.16))))
-        (q/stroke-weight 2)
-        (q/line (/ (:width state) 2) (- (ship-y state) 18) x y))
-      (q/no-fill)
-      (q/stroke 247 188 85 alpha)
-      (q/stroke-weight 1)
-      (q/ellipse x y (+ 12 (* age 95)) (+ 12 (* age 95)))
-      (doseq [i (range 10)]
-        (let [angle (* i (/ (* 2 Math/PI) 10)) radius (+ 10 (* age 95))]
-          (q/line (+ x (* radius (Math/cos angle))) (+ y (* radius (Math/sin angle)))
-                  (+ x (* (+ radius 8) (Math/cos angle))) (+ y (* (+ radius 8) (Math/sin angle)))))))))
+  (let [effects (if (or (:menu-visible? state) (= :paused (:mode state))) [] (:effects state))]
+    (when-not (gpu/draw (:gpu state) (:width state) (:height state)
+                       (into-array (map #(gpu-effect state %) effects)))
+      (draw-effects-canvas (assoc state :effects effects)))))
 
 (defn draw-hud [state]
   (q/text-align :right :top)
@@ -367,6 +433,8 @@
   (q/text (str "SCORE " (:score state) "  /  WAVE " (:wave state)) (- (:width state) 18) 65)
   (q/text-align :left :top)
   (q/text (str "SHIELDS " (apply str (repeat (:shields state) "◆"))) 18 65)
+  (q/text-size 9) (q/fill 99 149 157)
+  (q/text (str "COMBAT / " (gpu/status (:gpu state))) 18 80)
   (q/stroke 61 117 126 100)
   (q/line 18 91 (- (:width state) 18) 91)
   (q/text-align :center :center)
@@ -404,9 +472,12 @@
       (q/text-size 12)
       (q/fill 148 186 192)
       (q/text (case (:mode state)
-                :ready "Solve equations. Defend your ship."
+                :ready "Wrong answers provoke enemy fire."
                 :paused "Take a breath. The fleet can wait."
                 :over (str "Score " (:score state) "  ·  Best " @best-score)) cx (+ cy 8))
+      (when (= :ready (:mode state))
+        (q/text-size 10)
+        (q/text "Solve to fire. Each enemy hit costs one shield." cx (+ cy 27)))
       (q/text-size 11)
       (q/fill 134 250 218)
       (q/text (case (:mode state)
