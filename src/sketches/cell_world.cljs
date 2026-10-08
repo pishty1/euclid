@@ -15,7 +15,7 @@
                   :rest (js/Float32Array. (* max-cells 6))}]
     (aset world "cols" (inc (js/Math.ceil (/ w grid-size))))
     (aset world "rows" (inc (js/Math.ceil (/ h grid-size))))
-    (aset world "grid" (js/Int32Array. (* (.-cols world) (.-rows world))))
+    (aset world "grid" (js/Int32Array. (* (aget world "cols") (aget world "rows"))))
     world))
 
 (defn body-shape [kind]
@@ -30,29 +30,29 @@
 
 (defn add-body! [world]
   (let [kind (let [r (js/Math.random)] (cond (< r 0.3) 0 (< r 0.73) 1 :else 2))
-        shape (body-shape kind) count (count shape) start (.-n world)
+        shape (body-shape kind) count (count shape) start (aget world "n")
         angle (random 0 6.28) cs (js/Math.cos angle) sn (js/Math.sin angle)
         rotated (mapv (fn [[x y]] [(- (* x cs) (* y sn)) (+ (* x sn) (* y cs))]) shape)
         min-x (reduce min (map first rotated)) max-x (reduce max (map first rotated))
         min-y (reduce min (map second rotated)) max-y (reduce max (map second rotated))
         ;; A denser habitat at the right, with open water to the left.
-        preferred-x (* (.-width world) (if (< (js/Math.random) 0.65) (random 0.48 0.98) (random 0.02 0.98)))
-        preferred-y (random 85 (max 100 (- (.-height world) 90)))
-        cx (max (- 4 min-x) (min (- (.-width world) 4 max-x) preferred-x))
-        cy (max (- 4 min-y) (min (- (.-height world) 4 max-y) preferred-y))
-        body-id (.-length (.-bodies world)) bond-start (.-bn world)]
+        preferred-x (* (aget world "width") (if (< (js/Math.random) 0.65) (random 0.48 0.98) (random 0.02 0.98)))
+        preferred-y (random 85 (max 100 (- (aget world "height") 90)))
+        cx (max (- 4 min-x) (min (- (aget world "width") 4 max-x) preferred-x))
+        cy (max (- 4 min-y) (min (- (aget world "height") 4 max-y) preferred-y))
+        body-id (.-length (aget world "bodies")) bond-start (aget world "bn")]
     (when (<= (+ start count) max-cells)
       (doseq [[i [x y]] (map-indexed vector shape)]
         (let [index (+ start i)]
-          (aset (.-x world) index (max 4 (min (- (.-width world) 4) (+ cx (- (* x cs) (* y sn))))))
-          (aset (.-y world) index (max 4 (min (- (.-height world) 4) (+ cy (+ (* x sn) (* y cs))))))
-          (aset (.-vx world) index (* cs 0.12)) (aset (.-vy world) index (* sn 0.12))
-          (aset (.-kind world) index kind) (aset (.-owner world) index body-id)))
+          (aset (aget world "x") index (max 4 (min (- (aget world "width") 4) (+ cx (- (* x cs) (* y sn))))))
+          (aset (aget world "y") index (max 4 (min (- (aget world "height") 4) (+ cy (+ (* x sn) (* y cs))))))
+          (aset (aget world "vx") index (* cs 0.12)) (aset (aget world "vy") index (* sn 0.12))
+          (aset (aget world "kind") index kind) (aset (aget world "owner") index body-id)))
       (let [bond! (fn [a b]
-                    (let [[ax ay] (nth shape a) [bx by] (nth shape b) index (.-bn world)]
-                      (aset (.-ba world) index (+ start a)) (aset (.-bb world) index (+ start b))
-                      (aset (.-rest world) index (js/Math.hypot (- ax bx) (- ay by)))
-                      (set! (.-bn world) (inc index))))]
+                    (let [[ax ay] (nth shape a) [bx by] (nth shape b) index (aget world "bn")]
+                      (aset (aget world "ba") index (+ start a)) (aset (aget world "bb") index (+ start b))
+                      (aset (aget world "rest") index (js/Math.hypot (- ax bx) (- ay by)))
+                      (aset world "bn" (inc index))))]
         (if (= kind 0)
           (doseq [i (range (dec count))] (bond! i (inc i)))
           (doseq [a (range count) b (range (inc a) count)
@@ -63,27 +63,27 @@
           (let [outer (- count 6)]
             (doseq [i (range 0 outer 3)]
               (bond! i (+ outer (mod (int (js/Math.round (/ (* i 6) outer))) 6)))))))
-      (.push (.-bodies world) #js {:start start :end (+ start count) :bond-start bond-start :bond-end (.-bn world)
+      (.push (aget world "bodies") #js {:start start :end (+ start count) :bond-start bond-start :bond-end (aget world "bn")
                                  :kind kind :angle angle :phase (random 0 6.28)})
-      (set! (.-n world) (+ start count))
+      (aset world "n" (+ start count))
       true)))
 
 (defn populate! [world target]
-  (loop [] (when (and (< (.-n world) target) (< (.-n world) (- max-cells 60)))
+  (loop [] (when (and (< (aget world "n") target) (< (aget world "n") (- max-cells 60)))
              (add-body! world) (recur))) world)
 
 (defn trim! [world target]
   (loop []
-    (when (and (> (.-n world) target) (> (.-length (.-bodies world)) 12))
-      (let [body (.pop (.-bodies world))]
-        (set! (.-n world) (.-start body)) (set! (.-bn world) (.-bond-start body)))
+    (when (and (> (aget world "n") target) (> (.-length (aget world "bodies")) 12))
+      (let [body (.pop (aget world "bodies"))]
+        (aset world "n" (aget body "start")) (aset world "bn" (aget body "bond-start")))
       (recur))) world)
 
 (defn step! [world tick currents?]
-  (let [n (.-n world) x (.-x world) y (.-y world) vx (.-vx world) vy (.-vy world)
-        fx (.-fx world) fy (.-fy world) kinds (.-kind world) owners (.-owner world)
-        grid (.-grid world) links (.-next world) cols (.-cols world) rows (.-rows world)
-        w (.-width world) h (.-height world)]
+  (let [n (aget world "n") x (aget world "x") y (aget world "y") vx (aget world "vx") vy (aget world "vy")
+        fx (aget world "fx") fy (aget world "fy") kinds (aget world "kind") owners (aget world "owner")
+        grid (aget world "grid") links (aget world "next") cols (aget world "cols") rows (aget world "rows")
+        w (aget world "width") h (aget world "height")]
     (.fill fx 0 0 n) (.fill fy 0 0 n) (.fill grid -1)
     (dotimes [i n]
       (let [gx (min (dec cols) (max 0 (int (/ (aget x i) grid-size))))
@@ -93,8 +93,9 @@
     (dotimes [i n]
       (let [px (aget x i) py (aget y i) gx (int (/ px grid-size)) gy (int (/ py grid-size))
             kind (aget kinds i)]
-        (doseq [yy (range (max 0 (dec gy)) (min rows (+ gy 2)))
-                xx (range (max 0 (dec gx)) (min cols (+ gx 2)))]
+        (dotimes [neighbor 9]
+          (let [yy (+ (dec gy) (int (/ neighbor 3))) xx (+ (dec gx) (mod neighbor 3))]
+            (when (and (<= 0 yy) (< yy rows) (<= 0 xx) (< xx cols))
           (loop [j (aget grid (+ xx (* yy cols)))]
             (when (>= j 0)
               (when (and (> j i) (not= (aget owners i) (aget owners j)))
@@ -107,25 +108,25 @@
                           b (+ repulsion (if (and (= other 0) (= kind 2)) weight 0))]
                       (aset fx i (+ (aget fx i) (* ux a))) (aset fy i (+ (aget fy i) (* uy a)))
                       (aset fx j (- (aget fx j) (* ux b))) (aset fy j (- (aget fy j) (* uy b)))))))
-              (recur (aget links j)))))))
-    (dotimes [index (.-bn world)]
-      (let [a (aget (.-ba world) index) b (aget (.-bb world) index)
+              (recur (aget links j)))))))))
+    (dotimes [index (aget world "bn")]
+      (let [a (aget (aget world "ba") index) b (aget (aget world "bb") index)
             dx (- (aget x b) (aget x a)) dy (- (aget y b) (aget y a))
             d (max 0.1 (js/Math.hypot dx dy)) ux (/ dx d) uy (/ dy d)
             damping (* 0.08 (+ (* (- (aget vx b) (aget vx a)) ux) (* (- (aget vy b) (aget vy a)) uy)))
-            force (+ (* 0.065 (- d (aget (.-rest world) index))) damping)]
+            force (+ (* 0.065 (- d (aget (aget world "rest") index))) damping)]
         (aset fx a (+ (aget fx a) (* ux force))) (aset fy a (+ (aget fy a) (* uy force)))
         (aset fx b (- (aget fx b) (* ux force))) (aset fy b (- (aget fy b) (* uy force)))))
-    (doseq [body (array-seq (.-bodies world))]
-      (let [start (.-start body) end (.-end body) kind (.-kind body)
-            angle (+ (.-angle body) (* 0.003 (js/Math.sin (+ (.-phase body) (* tick 0.008)))))
+    (doseq [body (array-seq (aget world "bodies"))]
+      (let [start (aget body "start") end (aget body "end") kind (aget body "kind")
+            angle (+ (aget body "angle") (* 0.003 (js/Math.sin (+ (aget body "phase") (* tick 0.008)))))
             ax (* 0.012 (js/Math.cos angle)) ay (* 0.012 (js/Math.sin angle))]
-        (set! (.-angle body) angle)
+        (aset body "angle" angle)
         (loop [i start]
           (when (< i end)
             (let [motor (if (= kind 0) (if (< (- i start) 3) 2.5 0.25) (if (= kind 2) 0.15 0.4))
                   dx (- (aget x i) (aget x start)) dy (- (aget y i) (aget y start))
-                  spin (if (= kind 1) (* 0.0008 (js/Math.sin (+ (.-phase body) (* tick 0.01)))) 0)]
+                  spin (if (= kind 1) (* 0.0008 (js/Math.sin (+ (aget body "phase") (* tick 0.01)))) 0)]
               (aset fx i (+ (aget fx i) (* ax motor) (* (- dy) spin)))
               (aset fy i (+ (aget fy i) (* ay motor) (* dx spin))))
             (recur (inc i))))))
@@ -143,28 +144,28 @@
     world))
 
 (defn resize! [world w h]
-  (let [sx (/ w (.-width world)) sy (/ h (.-height world))]
-    (dotimes [i (.-n world)] (aset (.-x world) i (* sx (aget (.-x world) i))) (aset (.-y world) i (* sy (aget (.-y world) i))))
-    (set! (.-width world) w) (set! (.-height world) h)
-    (set! (.-cols world) (inc (js/Math.ceil (/ w grid-size))))
-    (set! (.-rows world) (inc (js/Math.ceil (/ h grid-size))))
-    (set! (.-grid world) (js/Int32Array. (* (.-cols world) (.-rows world))))
+  (let [sx (/ w (aget world "width")) sy (/ h (aget world "height"))]
+    (dotimes [i (aget world "n")] (aset (aget world "x") i (* sx (aget (aget world "x") i))) (aset (aget world "y") i (* sy (aget (aget world "y") i))))
+    (aset world "width" w) (aset world "height" h)
+    (aset world "cols" (inc (js/Math.ceil (/ w grid-size))))
+    (aset world "rows" (inc (js/Math.ceil (/ h grid-size))))
+    (aset world "grid" (js/Int32Array. (* (aget world "cols") (aget world "rows"))))
     world))
 
 (defn draw! [world ctx gradient]
   (.save ctx)
-  (set! (.-fillStyle ctx) gradient) (.fillRect ctx 0 0 (.-width world) (.-height world))
-  (let [x (.-x world) y (.-y world) kinds (.-kind world)]
+  (set! (.-fillStyle ctx) gradient) (.fillRect ctx 0 0 (aget world "width") (aget world "height"))
+  (let [x (aget world "x") y (aget world "y") kinds (aget world "kind")]
     (dotimes [kind 3]
       (set! (.-strokeStyle ctx) (nth colors kind))
       (.beginPath ctx)
-      (dotimes [b (.-bn world)]
-        (let [a (aget (.-ba world) b) other (aget (.-bb world) b)]
+      (dotimes [b (aget world "bn")]
+        (let [a (aget (aget world "ba") b) other (aget (aget world "bb") b)]
           (when (= kind (aget kinds a))
             (.moveTo ctx (aget x a) (aget y a)) (.lineTo ctx (aget x other) (aget y other)))))
       (set! (.-globalAlpha ctx) 0.24) (set! (.-lineWidth ctx) 0.65) (.stroke ctx)
       (.beginPath ctx)
-      (dotimes [i (.-n world)]
+      (dotimes [i (aget world "n")]
         (when (= kind (aget kinds i))
           (let [r (if (= kind 2) 1.65 1.9) px (aget x i) py (aget y i)]
             (.moveTo ctx (+ px r) py) (.arc ctx px py r 0 (* 2 js/Math.PI)))))

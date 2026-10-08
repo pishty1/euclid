@@ -52,7 +52,7 @@
         healthy (if (< average 18.8) (inc (:healthy state)) 0)
         slow (if (> average 24) (inc (:slow state)) 0)
         state (assoc state :frame-ms average :healthy healthy :slow slow :last-frame now)
-        world (:world state) n (.-n world)]
+        world (:world state) n (aget world "n")]
     (cond
       ;; Let shader/canvas initialization and the first paint settle.
       (< (:tick state) 120) state
@@ -72,7 +72,7 @@
   (let [pending @actions _ (reset! actions [])
         state (if (:menu-visible? state) state (reduce apply-action state pending))
         world (:world state) w (.-innerWidth js/window) h (.-innerHeight js/window)
-        state (if (or (not= w (.-width world)) (not= h (.-height world)))
+        state (if (or (not= w (aget world "width")) (not= h (aget world "height")))
                 (do (q/resize-sketch w h) (cells/resize! world w h)
                     (assoc state :gradient (background-gradient (:ctx state) w h)
                                  :ceiling cells/max-cells :healthy 0 :slow 0 :next-probe 0 :last-frame nil)) state)
@@ -91,7 +91,7 @@
   (when ctx (cells/draw! world ctx gradient))
   (q/no-stroke) (q/text-font "monospace") (q/text-size 11)
   (q/fill 151 186 202) (q/text-align :right :top)
-  (q/text (str (.-n world) " cells / " (.-length (.-bodies world)) " organisms") (- (q/width) 20) 76)
+  (q/text (str (aget world "n") " cells / " (.-length (aget world "bodies")) " organisms") (- (q/width) 20) 76)
   (q/text-size 10) (q/fill 90 131 158)
   (q/text (str (Math/round (/ 1000 frame-ms)) " FPS / " tuning) (- (q/width) 20) 94)
   (q/text-align :left :bottom) (q/text-size 11) (q/fill 151 186 202)
