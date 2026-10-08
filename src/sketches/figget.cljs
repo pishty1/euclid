@@ -60,8 +60,8 @@
       (and slow-since (> (- now slow-since) 1400) (> n 550))
       (let [target (max 500 (int (* n 0.85)))]
         (cells/trim! world target)
-        (assoc state :healthy 0 :slow 0 :slow-since nil :ceiling (min (:ceiling state) target)
-                     :next-probe (+ now 5000) :tuning "Balanced"))
+        (assoc state :healthy 0 :slow 0 :slow-since nil
+                     :next-probe (+ now 8000) :tuning "Balanced"))
       (and (> healthy 90) (>= now (:next-probe state)) (< n (- (:ceiling state) 60)))
       (do (cells/populate! world (min (:ceiling state) (+ n (max 150 (int (* n 0.12))))))
           (assoc state :healthy 0 :next-probe (+ now 2500) :tuning "Increasing density"))
