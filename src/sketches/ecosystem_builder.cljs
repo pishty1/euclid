@@ -17,7 +17,8 @@
     (let [panel (menu/element "section" "" nil)
           field! (fn [label id tag]
                    (let [row (menu/element "label" "" label) input (menu/element tag "" nil)]
-                     (set! (.-id input) id) (.appendChild row input) (.appendChild panel row) input))
+                     (set! (.-id input) id) (.setAttribute input "aria-label" label)
+                     (.appendChild row input) (.appendChild panel row) input))
           select! (fn [label id choices]
                     (let [input (field! label id "select")]
                       (doseq [[value text] choices]
