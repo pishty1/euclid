@@ -13,7 +13,7 @@
   {"Prime Gardens" "Prime gaps guide a growing geometric garden."
    "La Cross" "Rotating crosses weave threads and trace intersections."
    "Ad Venture" "Solve arithmetic to blast incoming enemy ships."
-   "Figget-A-Balls" "Charged particles, drifting dipoles, and reversing vortices."
+   "Figget-A-Balls" "Bonded organisms swim, feed, and recycle energy in drifting currents."
    "Euclid" "Living proofs, compass roses, and draggable geometry."})
 
 (def styles
