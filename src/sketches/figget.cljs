@@ -63,6 +63,7 @@
           (set! (.-type button) "button")
           (.setAttribute button "data-ecosystem-action" (name action))
           (.addEventListener button "click" (fn [_] (swap! actions conj action)))
+          (.addEventListener button "mousedown" (fn [event] (.preventDefault event)))
           (.appendChild panel button)))
       (.appendChild (.-body js/document) panel))))
 
@@ -240,7 +241,8 @@
     (q/text (if paused? "PAUSED" "ECOSYSTEM RESTING / RESEED TO BEGIN") (/ (q/width) 2) (/ (q/height) 2))))
 
 (defn key-pressed [state event]
-  (if (:menu-visible? state) state
+  (if (or (:menu-visible? state)
+          (some-> (.-activeElement js/document) (.closest "#figget-controls"))) state
     (case (:key event) :space (apply-action state :pause) :c (apply-action state :currents)
           :r (apply-action state :reset) state)))
 
