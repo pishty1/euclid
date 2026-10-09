@@ -90,7 +90,7 @@ function dispose(r){
 function create(host,overlay){
  dispose(active);const canvas=document.createElement('canvas');
  canvas.setAttribute('data-venture-gpu','');canvas.setAttribute('aria-hidden','true');
- canvas.style.cssText='position:absolute;inset:0;z-index:1;pointer-events:none;display:none;max-width:100vw;max-height:100lvh';
+ canvas.style.cssText='position:absolute;inset:0;z-index:1;pointer-events:none;display:none';
  host.appendChild(canvas);overlay.style.position='relative';
  const r={canvas,ready:false,stopped:false,label:'Canvas'};active=r;
  r.observer=new MutationObserver(()=>{if(!canvas.isConnected || !overlay.isConnected)dispose(r);});r.observer.observe(host,{childList:true});

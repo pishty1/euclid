@@ -1,10 +1,26 @@
 (ns viewport)
 
+(defn standalone? []
+  (or (true? (.-standalone (.-navigator js/window)))
+      (.-matches (.matchMedia js/window "(display-mode: standalone)"))
+      (.-matches (.matchMedia js/window "(display-mode: fullscreen)"))))
+
 (defn canvas-height []
-  ;; The host uses 100lvh so art continues behind translucent browser chrome.
-  ;; Interactive controls stay in the visible viewport (window.innerHeight).
-  (let [host (.getElementById js/document "sketch")]
-    (max (.-innerHeight js/window) (if host (.-clientHeight host) 0))))
+  ;; Home Screen Safari can report a layout viewport shorter than its screen.
+  ;; Fit the actual drawing surface; do not constrain it to body/innerHeight.
+  (let [host (.getElementById js/document "sketch")
+        screen (.-screen js/window)
+        screen-height (if (> (.-innerWidth js/window) (.-innerHeight js/window))
+                        (min (.-width screen) (.-height screen))
+                        (max (.-width screen) (.-height screen)))
+        minimum (if (standalone?) (max (.-innerHeight js/window) screen-height)
+                    (.-innerHeight js/window))]
+    (when host
+      (let [value (str minimum "px")]
+        (when (not= value (.. host -style -minHeight))
+          (set! (.. host -style -minHeight) value))))
+    (js/Math.ceil (max minimum (if host (.-height (.getBoundingClientRect host)) 0)
+                       (if host (.-clientHeight host) 0)))))
 
 (def backgrounds
   {"Prime Gardens" "#101719" "La Cross" "#091018"

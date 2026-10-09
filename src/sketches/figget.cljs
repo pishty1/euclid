@@ -8,7 +8,7 @@
 (defonce actions (atom []))
 
 (def control-css
-  "body[data-sketch='Figget-A-Balls'] #sketch canvas{display:block;max-width:100vw;max-height:100lvh}#figget-controls{display:none;position:fixed;bottom:18px;right:18px;z-index:15;gap:6px}body[data-sketch='Figget-A-Balls'] #figget-controls{display:flex}#figget-controls button{background:#10242deb;border:1px solid #76cab14d;color:#bde8db;border-radius:8px;padding:9px 12px;cursor:pointer;font:12px system-ui;touch-action:manipulation}#figget-controls button:focus-visible{outline:2px solid #eec077}@media(max-width:600px){#figget-controls{bottom:92px;right:14px}}")
+  "body[data-sketch='Figget-A-Balls'] #sketch canvas{display:block}#figget-controls{display:none;position:fixed;bottom:18px;right:18px;z-index:15;gap:6px}body[data-sketch='Figget-A-Balls'] #figget-controls{display:flex}#figget-controls button{background:#10242deb;border:1px solid #76cab14d;color:#bde8db;border-radius:8px;padding:9px 12px;cursor:pointer;font:12px system-ui;touch-action:manipulation}#figget-controls button:focus-visible{outline:2px solid #eec077}@media(max-width:600px){#figget-controls{bottom:92px;right:14px}}")
 
 (defn init-controls! []
   (when-not (.getElementById js/document "figget-controls")

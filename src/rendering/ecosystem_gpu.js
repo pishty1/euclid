@@ -53,7 +53,7 @@ function create(host, overlay, capacity) {
   const canvas = document.createElement('canvas');
   canvas.setAttribute('aria-hidden', 'true');
   canvas.setAttribute('data-ecosystem-gpu', '');
-  canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;display:none;max-width:100vw;max-height:100lvh';
+  canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;display:none';
   host.insertBefore(canvas, overlay);
   overlay.style.position = 'relative';
   const r = {canvas, ready:false, stopped:false, label:'Canvas', device:null};

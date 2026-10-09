@@ -42,9 +42,11 @@ browser tab retains browser-controlled bars.
 All sketches launch and resize using the shared `viewport/canvas-height` helper,
 which covers the host's large viewport. Both Canvas and GPU layers extend behind
 translucent browser toolbars. Bottom captions use the visible viewport height.
-The host also covers the bottom safe-area inset, and the document background and
-Safari theme colour follow the active sketch to avoid a separate home-indicator
-strip. iPhone Safari does not allow websites to hide the URL bar automatically;
+Home Screen mode uses the orientation-correct screen size as a minimum when
+Safari reports a shorter layout viewport. Canvas dimensions follow the measured
+host; the document has no fixed-height clipping and canvases have no CSS height
+cap. The document background and Safari theme colour follow the active sketch.
+iPhone Safari does not allow websites to hide the URL bar automatically;
 Home Screen launch is required for the standalone view.
 
 La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
