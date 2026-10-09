@@ -19,7 +19,7 @@ function init(panel, handle) {
   const keys = new Map(buttons.map(button => [button.dataset["key"], button]));
   const right = document.createElement('div');
   right.id = 'venture-keypad-right'; right.className = 'venture-keypad'; right.dataset["side"] = 'right';
-  right.setAttribute('role', 'group'); right.setAttribute('aria-label', 'Right answer keypad: 5 to 9 and Fire');
+  right.setAttribute('role', 'group'); right.setAttribute('aria-label', 'Right answer keypad: 6 to 9, 0 and Fire');
   const rightHandle = document.createElement('div');
   rightHandle.className = 'command-display'; rightHandle.textContent = ''; right.appendChild(rightHandle);
   panel.parentElement.appendChild(right);
@@ -50,10 +50,10 @@ function init(panel, handle) {
     handle.firstChild.nodeValue = '';
     const choice = document.getElementById('venture-pad-layout');
     if (choice) choice.value = mode;
-    panel.setAttribute('aria-label', mode === 'split' ? 'Left answer keypad: 0 to 4 and Delete' : 'Answer keypad');
+    panel.setAttribute('aria-label', mode === 'split' ? 'Left answer keypad: 1 to 5 and Delete' : 'Answer keypad');
     if (mode === 'split') {
-      for (const key of ['0','1','2','3','4','Backspace']) panel.appendChild(keys.get(key));
-      for (const key of ['5','6','7','8','9','Enter']) right.appendChild(keys.get(key));
+      for (const key of ['1','2','3','4','5','Backspace']) panel.appendChild(keys.get(key));
+      for (const key of ['6','7','8','9','0','Enter']) right.appendChild(keys.get(key));
     } else for (const button of buttons) panel.appendChild(button);
     move(heightOffset);
     try { window.localStorage.setItem(layoutKey, mode); } catch (_) {}

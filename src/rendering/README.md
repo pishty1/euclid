@@ -84,8 +84,8 @@ Opening Settings automatically freezes gameplay and answer input while music kee
 playing for volume preview. The effects slider previews a short player shot.
 Closing Settings resumes play, unless the game was manually paused.
 
-On touch screens, new users get split pads: 0–4 and Delete on the left, with
-5–9 and Fire on the right. Settings offers Split, Left, and Right layouts beside
+On touch screens, new users get split pads: 1–5 and Delete on the left, with
+6–9, 0 and Fire on the right. Settings offers Split, Left, and Right layouts beside
 the audio controls. Saved choices are preserved. The pads have translucent
 backgrounds and only keys plus small drag grips; enemy flight passes behind
 controls without reacting to their placement. Drag either grip vertically to
