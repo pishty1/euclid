@@ -50,25 +50,27 @@
    #venture-audio{position:relative;pointer-events:auto;color:#bdfcf0;font-size:12px}
    #venture-audio summary{list-style:none;cursor:pointer;border:1px solid #70dace50;background:#081e25ed;border-radius:9px;padding:12px}
    #venture-audio summary:focus-visible{outline:2px solid #f1ba68;outline-offset:3px}
-   #venture-audio .audio-settings{position:absolute;right:0;top:48px;width:210px;padding:14px;background:#081e25f5;border:1px solid #70dace50;border-radius:10px;box-shadow:0 8px 30px #0007}
+   #venture-audio .audio-settings{position:absolute;right:0;top:48px;width:210px;padding:14px;box-sizing:border-box;max-height:calc(100dvh - 120px - env(safe-area-inset-top));overflow:auto;overscroll-behavior:contain;background:#081e25f5;border:1px solid #70dace50;border-radius:10px;box-shadow:0 8px 30px #0007}
    #venture-audio .audio-settings button{width:100%;margin-bottom:14px}
    #venture-audio label{display:block;margin-bottom:12px}
    #venture-audio input{display:block;width:100%;margin-top:8px;accent-color:#96ead7}
+   #venture-audio select{display:block;width:100%;margin-top:8px;padding:8px;border:1px solid #70dace50;border-radius:7px;background:#102b32;color:#bdfcf0;font:inherit}
    #venture-audio-status{color:#86b6bd;font-size:11px}
    @media(max-width:400px){#venture-controls .game-toolbar{gap:4px}#venture-controls .game-toolbar button{padding:0 8px}#venture-audio summary{padding:12px 8px}}
-   .venture-keypad{display:none;position:absolute;bottom:calc(max(2px,env(safe-area-inset-bottom)) + var(--keypad-lift,0px));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#071923f2;box-shadow:0 6px 25px #0007;grid-template-columns:repeat(3,1fr);gap:3px;pointer-events:auto}
-   .venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:18px;padding:0 2px 3px;color:#7aadaf;font:9px monospace;letter-spacing:.08em;touch-action:none;cursor:ns-resize;user-select:none}
+   .venture-keypad{display:none;position:absolute;bottom:calc(max(2px,env(safe-area-inset-bottom)) + var(--keypad-lift,0px));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#07192324;box-shadow:none;grid-template-columns:repeat(3,1fr);gap:3px;pointer-events:auto}
+   .venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:center;min-height:18px;padding:0 2px 3px;color:#7aadaf;font:9px monospace;letter-spacing:.08em;touch-action:none;cursor:ns-resize;user-select:none}
+   .venture-keypad .command-display::before{content:\"\";width:18px;height:3px;border-radius:3px;background:#bdfcf070}
    .venture-keypad .command-display:focus-visible{outline:2px solid #edc778;border-radius:4px}
    .venture-keypad *{box-sizing:border-box}.venture-keypad{max-width:calc(100vw - 20px)}
-   #venture-answer{color:#bdfcf0;font-size:16px;letter-spacing:0}
-   .venture-keypad button{min-height:40px;font-size:17px}
-   .venture-keypad .fire{background:#96ead7;color:#07232a;font-size:12px;font-weight:700}
+   #venture-answer{display:none;color:#bdfcf0;font-size:16px;letter-spacing:0}
+   .venture-keypad button{min-height:40px;font-size:17px;background:#07192345;color:#bdfcf0;text-shadow:0 1px 3px #000,0 0 5px #000}
+   .venture-keypad button:hover{background:#173b425c}
+   .venture-keypad .fire{background:#96ead738;color:#c4fff1;font-size:12px;font-weight:700}
    @media(pointer:coarse),(max-width:600px){.venture-keypad{display:grid}}
    @media(max-height:450px){.venture-keypad{width:180px;grid-template-columns:repeat(4,1fr);padding:5px;gap:3px}.venture-keypad button{min-height:40px;font-size:17px}.venture-keypad .command-display{min-height:18px;padding-bottom:3px}}
    @media(max-height:450px) and (min-width:600px){.venture-keypad{width:264px;grid-template-columns:repeat(6,1fr)}}
    .venture-keypad[data-side=right]{left:auto;right:max(4px,env(safe-area-inset-right))}
    .venture-keypad[hidden]{display:none!important}
-   .venture-keypad .keypad-layout{grid-column:1/-1;min-height:28px;font-size:10px;display:flex;align-items:center;justify-content:center;margin:0}
    .venture-keypad[data-layout=split]{width:56px;grid-template-columns:1fr;padding:4px}
    .venture-keypad[data-layout=split] .command-display{justify-content:center;font-size:10px}
    .venture-keypad[data-layout=split] #venture-answer{display:none}
@@ -106,7 +108,7 @@
         (.addEventListener button "mousedown" (fn [event] (.preventDefault event))))
       (.appendChild toolbar full)
       (.appendChild toolbar pause)
-      (let [display (menu/element "div" "command-display" "COMMAND BASE ↕")
+      (let [display (menu/element "div" "command-display" " ")
             answer (menu/element "span" "" "_")]
         (set! (.-id answer) "venture-answer")
         (.appendChild display answer) (.appendChild keypad display))
@@ -137,8 +139,8 @@
                  (if (= layout "split") (if short? 98 56)
                    (if short? (if (>= (:width state) 600) 264 180) 148)))
      :height (max (controls/padHeight)
-                  (if (= layout "split") (if short? 188 317)
-                    (if short? (if (>= (:width state) 600) 150 193) 236)))
+                  (if (= layout "split") (if short? 160 289)
+                    (if short? (if (>= (:width state) 600) 122 165) 205)))
      :bottom (+ (max 2 (:safe-bottom state 0)) (controls/lift))
      :left (max 4 (:safe-left state 0)) :right (max 4 (:safe-right state 0))}))
 
@@ -162,15 +164,8 @@
      :safe-left (value "--safe-left") :safe-right (value "--safe-right")}))
 
 (defn enemy-y [state enemy]
-  (let [top (+ 108 (:safe-top state 0))
-        {:keys [width height bottom left right layout]} (command-layout state)
-        x (when (:lane enemy) (* (:width state) (/ (+ (:lane enemy) 0.5) (:lanes state))))
-        left-overlap? (or (nil? x) (<= (- x 70) (+ left width 8)))
-        right-overlap? (or (nil? x) (>= (+ x 70) (- (:width state) right width 8)))
-        over-console? (and (touch-controls? (:width state))
-                           (case layout "right" right-overlap? "split" (or left-overlap? right-overlap?) left-overlap?))
-        end (if over-console? (min (- (ship-y state) 37) (- (:height state) height bottom 78))
-                (- (ship-y state) 37))]
+  ;; Controls are overlays: enemy flight never depends on their layout/position.
+  (let [top (+ 108 (:safe-top state 0)) end (- (ship-y state) 37)]
     (+ top (* (:progress enemy) (max 20 (- end top))))))
 
 (defn lane-x [state lane]
@@ -218,6 +213,7 @@
   (q/frame-rate 60)
   (q/text-font "monospace")
   (audio/init (.getElementById js/document "sketch") (.querySelector js/document "#venture-controls .game-toolbar"))
+  (controls/settings (.querySelector js/document "#venture-audio .audio-settings"))
   (let [width (q/width) height (.-innerHeight js/window)
         overlay (.querySelector js/document "#sketch canvas:not([data-venture-gpu])")]
     (assoc (new-game (merge (viewport-insets) {:width width :height height
@@ -615,7 +611,7 @@
       (q/text "ADD VENTURE / ARITHMETIC DEFENSE" cx (- cy 70))
       (q/fill 235 244 228)
       (q/text-size (if small? 27 44))
-      (q/text (case view :ready "MATH FLEET" :paused "PAUSED" :over "FLIGHT ENDED" :audio-settings "AUDIO SETTINGS") cx (- cy 30))
+      (q/text (case view :ready "MATH FLEET" :paused "PAUSED" :over "FLIGHT ENDED" :audio-settings "SETTINGS") cx (- cy 30))
       (q/text-size 12)
       (q/fill 148 186 192)
       (q/text (case view

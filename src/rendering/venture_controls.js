@@ -1,5 +1,5 @@
 // Thumb position and keypad layout are independent of arithmetic input.
-let heightOffset = 0, mode = 'left', applyLayout = null, owner = null;
+let heightOffset = 0, mode = 'split', applyLayout = null, owner = null;
 const storageKey = 'euclid-addventure-keypad-lift', layoutKey = 'euclid-addventure-keypad-layout';
 const modes = ['left', 'right', 'split'];
 function lift() { return heightOffset; }
@@ -17,17 +17,11 @@ function init(panel, handle) {
   } catch (_) {}
   const buttons = [...panel.querySelectorAll('button[data-key]')];
   const keys = new Map(buttons.map(button => [button.dataset["key"], button]));
-  const toggle = document.createElement('button');
-  toggle.type = 'button'; toggle.className = 'keypad-layout';
-  toggle.setAttribute('aria-label', 'Change keypad layout: left, right, or split');
-  toggle.title = 'Tap to cycle Left, Right, Split'; panel.insertBefore(toggle, handle.nextSibling);
   const right = document.createElement('div');
   right.id = 'venture-keypad-right'; right.className = 'venture-keypad'; right.dataset["side"] = 'right';
   right.setAttribute('role', 'group'); right.setAttribute('aria-label', 'Right answer keypad: 5 to 9 and Fire');
   const rightHandle = document.createElement('div');
-  rightHandle.className = 'command-display'; rightHandle.textContent = '↕'; right.appendChild(rightHandle);
-  const rightLabel = document.createElement('div');
-  rightLabel.className = 'keypad-layout'; rightLabel.textContent = '5–9'; right.appendChild(rightLabel);
+  rightHandle.className = 'command-display'; rightHandle.textContent = ''; right.appendChild(rightHandle);
   panel.parentElement.appendChild(right);
   const panels = [panel, right], handles = [handle, rightHandle];
   let drag = null;
@@ -35,7 +29,7 @@ function init(panel, handle) {
     const style = window.getComputedStyle(document.documentElement);
     const bottom = Math.max(2, parseFloat(style.getPropertyValue('--safe-bottom')) || 0);
     const top = Math.max(100, (parseFloat(style.getPropertyValue('--safe-top')) || 0) + 100);
-    return Math.max(0, window.innerHeight - bottom - (panel.offsetHeight || (mode === 'split' ? 317 : 236)) - top);
+    return Math.max(0, window.innerHeight - bottom - (panel.offsetHeight || (mode === 'split' ? 289 : 205)) - top);
   }
   function move(value, persist = false) {
     const maximum = limit();
@@ -53,9 +47,9 @@ function init(panel, handle) {
     panel.dataset["layout"] = right.dataset["layout"] = mode;
     panel.dataset["side"] = mode === 'right' ? 'right' : 'left';
     right.hidden = mode !== 'split';
-    toggle.textContent = mode === 'split' ? 'Split' : `Layout: ${mode === 'left' ? 'Left' : 'Right'}`;
-    toggle.setAttribute('aria-label', `Keypad layout: ${mode}. Tap for ${modes[(modes.indexOf(mode)+1)%3]}`);
-    handle.firstChild.nodeValue = mode === 'split' ? '↕' : 'COMMAND BASE ↕';
+    handle.firstChild.nodeValue = '';
+    const choice = document.getElementById('venture-pad-layout');
+    if (choice) choice.value = mode;
     panel.setAttribute('aria-label', mode === 'split' ? 'Left answer keypad: 0 to 4 and Delete' : 'Answer keypad');
     if (mode === 'split') {
       for (const key of ['0','1','2','3','4','Backspace']) panel.appendChild(keys.get(key));
@@ -64,10 +58,6 @@ function init(panel, handle) {
     move(heightOffset);
     try { window.localStorage.setItem(layoutKey, mode); } catch (_) {}
   };
-  toggle.addEventListener('mousedown', event => event.preventDefault());
-  toggle.addEventListener('click', event => {
-    event.stopPropagation(); setLayout(modes[(modes.indexOf(mode)+1)%3]);
-  });
   for (const grip of handles) {
     grip.tabIndex = 0; grip.setAttribute('role', 'slider');
     grip.setAttribute('aria-label', 'Keypad height. Drag up or down, or use arrow keys');
@@ -98,4 +88,15 @@ function init(panel, handle) {
   window.addEventListener('resize', fit); window.visualViewport?.addEventListener('resize', fit);
   applyLayout(); window.requestAnimationFrame(fit);
 }
-module.exports = { init, lift, layout, setLayout, padHeight };
+function settings(content) {
+  if (!content || document.getElementById('venture-pad-layout')) return;
+  const label = document.createElement('label'); label.textContent = 'Keypad layout';
+  const choice = document.createElement('select'); choice.id = 'venture-pad-layout';
+  for (const value of ['split','left','right']) {
+    const option = document.createElement('option'); option.value = value;
+    option.textContent = value[0].toUpperCase() + value.slice(1); choice.appendChild(option);
+  }
+  choice.value = mode; choice.addEventListener('change', () => setLayout(choice.value));
+  label.appendChild(choice); content.prepend(label);
+}
+module.exports = { init, lift, layout, setLayout, padHeight, settings };

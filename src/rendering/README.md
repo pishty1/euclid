@@ -15,7 +15,7 @@ armour panels and glowing weapon mounts. Hit effects combine an initial flash,
 two shockwaves, sparks, and tumbling shards, with 64 GPU sprites per impact.
 
 Add Venture also synthesizes its soundtrack and effects with Web Audio. Audio is
-unlocked by a launch/resume gesture. The Audio menu offers mute and independent
+unlocked by a launch/resume gesture. The Settings menu offers mute and independent
 music/effects levels, saved locally when storage is available. A minor-key bass
 and arpeggio loop gains hats, kick, and snare in later waves. Each enemy weapon
 has a distinct timbre; player shots, impacts, shield damage, sector completion,
@@ -23,20 +23,19 @@ and game over have separate cues. Impact sound follows projectile arrival.
 Pausing, opening the sketch menu, hiding the page, and leaving the game stop
 scheduled voices and suspend audio. Replay reuses a single AudioContext. Games
 still work when the browser has no Web Audio support. No audio files are loaded.
-Opening Audio automatically freezes gameplay and answer input while music keeps
+Opening Settings automatically freezes gameplay and answer input while music keeps
 playing for volume preview. The effects slider previews a short player shot.
-Closing Audio resumes play, unless the game was manually paused.
+Closing Settings resumes play, unless the game was manually paused.
 
-On touch screens, the number pad is a command console in the bottom-left corner.
-The ship and answer sit to its right, and enemy labels stop above the console.
-Drag the COMMAND BASE ↕ header vertically to adjust thumb reach. Its height is
-saved locally when storage is available and clamped to fit after rotation.
-Keyboard users can focus the handle and use Up/Down, Home, or End.
-The Layout button cycles Left → Right → Split and saves the selection locally.
-Split mode stacks 0–4 and Delete against the left edge, with 5–9 and Fire against
-the right. Drag either header to move both halves vertically. Short screens use
-two columns per half. Single-pad layouts move the ship to the opposite side;
-split mode centres it, and enemy labels clear both halves.
+On touch screens, new users get split pads: 0–4 and Delete on the left, with
+5–9 and Fire on the right. Settings offers Split, Left, and Right layouts beside
+the audio controls. Saved choices are preserved. The pads have translucent
+backgrounds and only keys plus small drag grips; enemy flight passes behind
+controls without reacting to their placement. Drag either grip vertically to
+adjust thumb reach. Height is saved locally when storage is available and
+clamped after rotation. Keyboard users can focus a grip and use Up/Down, Home,
+or End. Short screens use two columns per split half. Single-pad layouts move
+the ship to the opposite side; split mode centres it.
 Short screens use fewer keypad rows. The sketch background extends through the large viewport behind browser chrome,
 while gameplay and controls stay within the visible viewport. The sketch
 respects display safe areas; the sketch menu becomes compact on phones and uses
