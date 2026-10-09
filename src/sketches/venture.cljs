@@ -230,6 +230,29 @@
       :multiply {:equation (str factor-a " × " factor-b) :answer (* factor-a factor-b)}
       :divide {:equation (str (* factor-a factor-b) " ÷ " factor-a) :answer factor-b}) :operation op)))
 
+(defn stack-problem [problem wave]
+  (let [result (:answer problem)
+        operation (nth [:add :subtract :multiply :divide] (random-int 0 3))
+        operand (case operation
+                  :subtract (random-int 1 (max 1 (min 9 result)))
+                  :divide (let [divisors (filterv #(zero? (mod result %)) (range 2 10))]
+                            (when (seq divisors) (nth divisors (random-int 0 (dec (count divisors))))))
+                  :multiply (random-int 2 (min 5 (+ 2 wave)))
+                  (random-int 2 9))]
+    ;; No fractional or negative answers; division falls back to multiplication.
+    (if (or (nil? operand) (and (= operation :subtract) (zero? result)))
+      (assoc problem :base-operation (:operation problem) :operation :multiply
+                     :stack-operand 2 :answer (* result 2))
+      (assoc problem :base-operation (:operation problem) :operation operation
+                     :stack-operand operand
+                     :answer (case operation :add (+ result operand) :subtract (- result operand)
+                                   :multiply (* result operand) :divide (/ result operand))))))
+
+(defn make-enemy-problem [wave]
+  (let [problem (make-problem wave)]
+    (if (< (q/random 1) (min 0.3 (+ 0.12 (* wave 0.03))))
+      (stack-problem problem wave) problem)))
+
 (def weapons
   {:add {:name "PULSE BURST" :duration 0.55 :id 0}
    :subtract {:name "RAIL SHOT" :duration 0.22 :id 1}
@@ -277,19 +300,21 @@
 (defn wave-size [wave] (min 22 (+ 4 (* 2 wave))))
 
 (defn spawn-enemy [state]
-  (let [available (filterv (fn [lane]
+  (let [problem (make-enemy-problem (:wave state))
+        progress (if (:stack-operand problem)
+                   (/ 68 (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))) 0)
+        start-y (enemy-y state {:progress progress})
+        available (filterv (fn [lane]
                              (not-any? #(and (= lane (:lane %))
-                                             (or (< (:progress %) 0.18)
-                                                 (and (touch-controls? (:width state))
-                                                      (< (- (enemy-y state %) 108 (:safe-top state 0)) 90))))
+                                             (< (- (enemy-y state %) start-y)
+                                                (if (:stack-operand %) 160 92)))
                                        (:enemies state)))
                            (range (:lanes state)))]
     (if (empty? available)
       state
       (let [lane (nth available (random-int 0 (dec (count available))))
-            enemy (merge (make-problem (:wave state))
-                         {:id (:next-id state) :lane lane :progress 0
-                          :speed (/ 1 (max 7 (- 18 (* (:wave state) 0.7))))})]
+            enemy (merge problem {:id (:next-id state) :lane lane :progress progress
+                                  :speed (/ 1 (max 7 (- 18 (* (:wave state) 0.7))))})]
         (-> state (update :enemies conj enemy) (update :spawned inc)
             (update :next-id inc) (assoc :spawn-timer (max 0.7 (- 2.4 (* (:wave state) 0.12)))))))))
 
@@ -331,6 +356,12 @@
         (if (> (:shields rewarded) (:shields state))
           (assoc rewarded :wave-shield-earned? true) rewarded)))))
 
+(defn hit-effects [enemy effect]
+  (cond-> [effect]
+    (:stack-operand enemy)
+    (conj (assoc effect :target-id nil :points 0 :correct? false
+                        :silent? true :y-offset -68))))
+
 (defn fire-answer [state]
   (if-let [enemy (target-enemy state true)]
     (let [combo (inc (:combo state))
@@ -342,10 +373,10 @@
                  :aim-until (+ (:clock state) 0.45))
           (update :enemies #(mapv (fn [e] (if (= (:id e) (:id enemy))
                                          (assoc e :pending-hit? true) e)) %))
-          (update :effects conj {:lane (:lane enemy) :progress (:progress enemy) :age 0
+          (update :effects into (hit-effects enemy {:lane (:lane enemy) :progress (:progress enemy) :age 0
                                 :operation (or (:operation enemy) :add) :duration 0.18 :kind :hit
                                 :target-id (:id enemy) :points (- score (:score state))
-                                :correct? true :accuracy-epoch (:accuracy-epoch state 0)})))
+                                :correct? true :accuracy-epoch (:accuracy-epoch state 0)}))))
     (if (empty? (:input state)) state
       (let [attacker (or (target-enemy state false) (first (sort-by :progress > (available-enemies state))))
             operation (or (:operation attacker) :add)
@@ -389,11 +420,11 @@
                  :aim-until (+ (:clock state) 0.5))
           (update :enemies #(mapv (fn [enemy] (if (contains? ids (:id enemy))
                                                (assoc enemy :pending-hit? true) enemy)) %))
-          (update :effects into (mapv (fn [enemy]
-                                       {:lane (:lane enemy) :progress (:progress enemy)
+          (update :effects into (mapcat (fn [enemy]
+                                       (hit-effects enemy {:lane (:lane enemy) :progress (:progress enemy)
                                         :operation (or (:operation enemy) :add)
                                         :kind :hit :age 0 :target-id (:id enemy) :points 50
-                                        :duration (if (= key "arc") 0.24 0.38)}) victims))))))
+                                        :duration (if (= key "arc") 0.24 0.38)})) victims))))))
 
 (defn handle-action [state key]
   (cond
@@ -415,7 +446,7 @@
 
 (defn advance-effects [effects dt]
   (doseq [effect effects
-          :when (and (= :hit (:kind effect)) (< (:age effect) (:duration effect))
+          :when (and (= :hit (:kind effect)) (not (:silent? effect)) (< (:age effect) (:duration effect))
                      (>= (+ (:age effect) dt) (:duration effect)))]
     (audio/play "blast" (name (:operation effect))))
   (let [effects (mapv #(update % :age + dt) effects)
@@ -618,7 +649,7 @@
         (q/line -19 0 -10 0) (q/line 10 0 19 0))
       nil)))
 
-(defn draw-enemy [state enemy targeted?]
+(defn draw-single-enemy [state enemy targeted?]
   (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
         operation (:operation enemy)
         {:keys [color symbol]} (get enemy-styles operation (:add enemy-styles))]
@@ -645,18 +676,38 @@
     (q/text symbol 0 0)
     (q/pop-matrix)
     (q/text-size 16)
-    (let [label (:equation enemy) width (+ 20 (q/text-width label))]
+    (let [label (or (:equation enemy) "") width (+ 20 (q/text-width label))]
       (q/no-stroke)
       (q/fill 3 12 18 230)
-      (q/rect (- x (/ width 2)) (+ y 28) width 27 4)
+      (when (seq label) (q/rect (- x (/ width 2)) (+ y 28) width 27 4))
       (apply q/fill (if targeted? [133 255 227] color))
       (q/text-align :center :center)
-      (q/text label x (+ y 41))
-      (q/text-size 8) (q/fill 129 164 178)
-      (q/text (:name (get weapons operation)) x (+ y 62)))))
+      (when (seq label) (q/text label x (+ y 41))))))
 
-(defn effect-points [state {:keys [lane progress kind]}]
-  (let [enemy [(lane-x state lane) (enemy-y state {:progress progress :lane lane})]
+(defn draw-enemy [state enemy targeted?]
+  (if-not (:stack-operand enemy)
+    (draw-single-enemy state enemy targeted?)
+    (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
+          {:keys [color symbol]} (get enemy-styles (:operation enemy))]
+      ;; Read bottom first, then follow the connector to the upper operation.
+      (q/stroke 133 255 227 150) (q/stroke-weight 1)
+      (q/line x (- y 30) x (- y 38))
+      (q/line x (- y 38) (- x 3) (- y 34))
+      (q/line x (- y 38) (+ x 3) (- y 34))
+      (draw-single-enemy state (assoc enemy :operation (:base-operation enemy)) targeted?)
+      (q/push-matrix) (q/translate 0 -68)
+      (draw-single-enemy state (assoc enemy :equation "") targeted?)
+      (q/no-stroke) (q/fill 3 12 18 230)
+      (let [label (str symbol " " (:stack-operand enemy)) width (+ 12 (q/text-width label))
+            right? (< x (- (:width state) (+ 40 width)))
+            lx (+ x (if right? (+ 36 (/ width 2)) (- (+ 36 (/ width 2)))))]
+        (q/rect (- lx (/ width 2)) (- y 13) width 26 4)
+        (apply q/fill (if targeted? [133 255 227] color))
+        (q/text-size 16) (q/text-align :center :center) (q/text label lx y))
+      (q/pop-matrix))))
+
+(defn effect-points [state {:keys [lane progress kind y-offset]}]
+  (let [enemy [(lane-x state lane) (+ (enemy-y state {:progress progress :lane lane}) (or y-offset 0))]
         center [(ship-x state) (ship-y state)]
         angle (aim-angle state {:lane lane :progress progress})
         muzzle [(+ (first center) (* 24 (Math/sin angle)))
@@ -896,14 +947,15 @@
       (when (= :ready (:mode state))
         (q/text-size 10)
         (q/text "Solve to fire. Each enemy hit costs one shield." cx (+ cy 27))
-        (q/text "SHIELD: 8 CORRECT / PERFECT WAVE · MAX 5" cx (+ cy 46)))
+        (q/text "STACKS: SOLVE BOTTOM, THEN TOP" cx (+ cy 46))
+        (q/text "SHIELD: 8 CORRECT / PERFECT WAVE · MAX 5" cx (+ cy 65)))
       (q/text-size 11)
       (q/fill 134 250 218)
       (q/text (case view
                 :ready "CLICK OR PRESS ENTER TO LAUNCH"
                 :paused "PRESS P OR RESUME TO CONTINUE"
                 :over (if (recovery-choice? state) "" "CLICK OR PRESS ENTER TO RESTART")
-                :audio-settings "CLOSE SETTINGS TO CONTINUE") cx (+ cy (if (= view :ready) 66 46)))))))
+                :audio-settings "CLOSE SETTINGS TO CONTINUE") cx (+ cy (if (= view :ready) 85 46)))))))
 
 (defn draw-state [state]
   (q/rect-mode :corner)

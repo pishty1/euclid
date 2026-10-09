@@ -19,6 +19,15 @@ the answer clears. Shots originate at its rotated nose. Enemy hulls have distinc
 armour panels and glowing weapon mounts. Hit effects combine an initial flash,
 two shockwaves, sparks, and tumbling shards, with 64 GPU sprites per impact.
 
+Weapon-name captions are omitted under enemy ships. Occasional two-ship stacks
+are one moving target: solve the lower equation first, then apply the upper
+ship’s operation and adjacent operand. A lower `4 + 9` with upper `× 3` needs
+`39`. An upward connector indicates the order; normal arithmetic precedence
+does not override it. Stacks only produce nonnegative whole-number answers,
+use the upper operation for retaliation, and grant one kill/streak reward. Both
+hulls disappear and produce impact effects together. Spawn spacing accounts
+for the taller formation, including on mobile.
+
 Flights begin with three shields and can hold five. Every eight correct answers
 restores one shield; wrong answers reset charge, while charge carries across
 waves. A wave completed without wrong answers or damage restores one shield
