@@ -14,6 +14,13 @@ the answer clears. Shots originate at its rotated nose. Enemy hulls have distinc
 armour panels and glowing weapon mounts. Hit effects combine an initial flash,
 two shockwaves, sparks, and tumbling shards, with 64 GPU sprites per impact.
 
+Flights begin with three shields and can hold five. Every eight correct answers
+restores one shield; wrong answers reset charge, while charge carries across
+waves. A wave completed without wrong answers or damage restores one shield
+unless that wave already granted a streak shield. Wave rewards are checked once.
+At the cap, shields are never banked. The HUD shows shield charge, and restoration
+has a message and rising audio cue. Replay resets reward progress.
+
 Add Venture also synthesizes its soundtrack and effects with Web Audio. Audio is
 unlocked by a launch/resume gesture. The Settings menu offers mute and independent
 music/effects levels, saved locally when storage is available. A minor-key bass

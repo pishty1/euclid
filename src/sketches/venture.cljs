@@ -197,6 +197,7 @@
 
 (defn new-game [state]
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
+                :shield-charge 0 :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
                 :enemies [] :effects [] :spawned 0 :spawn-timer 0
                 :next-id 0 :input "" :message "" :message-timer 0
                 :ship-angle 0 :aim-target nil :aim-until 0
@@ -262,6 +263,19 @@
         difference (Math/atan2 (Math/sin (- desired current)) (Math/cos (- desired current)))]
     (assoc state :ship-angle (+ current (* difference (- 1 (Math/exp (* -14 dt))))))))
 
+(defn award-shield [state reason]
+  (if (>= (:shields state) 5) state
+    (do (audio/play "restore" "")
+        (assoc state :shields (inc (:shields state))
+                     :message (str "+1 SHIELD / " reason) :message-timer 1.8))))
+
+(defn charge-shield [state]
+  (let [charge (inc (:shield-charge state 0))]
+    (if (< charge 8) (assoc state :shield-charge charge)
+      (let [rewarded (award-shield (assoc state :shield-charge 0) "8 CORRECT")]
+        (if (> (:shields rewarded) (:shields state))
+          (assoc rewarded :wave-shield-earned? true) rewarded)))))
+
 (defn fire-answer [state]
   (if-let [enemy (target-enemy state true)]
     (let [combo (inc (:combo state))
@@ -273,15 +287,17 @@
                  :ship-angle (aim-angle state enemy) :aim-target (select-keys enemy [:lane :progress])
                  :aim-until (+ (:clock state) 0.45))
           (update :enemies #(filterv (fn [e] (not= (:id e) (:id enemy))) %))
+          (charge-shield)
           (update :effects conj {:lane (:lane enemy) :progress (:progress enemy) :age 0
                                 :operation (or (:operation enemy) :add) :duration 0.18 :kind :hit})))
     (if (empty? (:input state)) state
       (let [attacker (or (target-enemy state false) (first (sort-by :progress > (:enemies state))))
             operation (or (:operation attacker) :add)
             weapon (get weapons operation)
-            state (assoc state :input "" :combo 0
+            state (cond-> (assoc state :input "" :combo 0
                                :message (if attacker (str "WRONG — " (:name weapon) " INCOMING") "NO TARGETS — TRY AGAIN")
-                               :message-timer 1.2)]
+                               :message-timer 1.2)
+                    attacker (assoc :shield-charge 0 :wave-perfect? false))]
         (if attacker
           (do (audio/play "enemy" (name operation))
             (update state :effects conj {:lane (:lane attacker) :progress (:progress attacker)
@@ -329,13 +345,18 @@
                      (update :flash #(max 0 (- % dt)))
                      (update :message-timer #(max 0 (- % dt))))
         advanced (if (pos? (+ escaped impacts))
-                   (do (audio/play "shield" "") (assoc advanced :combo 0 :flash 0.35)) advanced)]
+                   (do (audio/play "shield" "") (assoc advanced :combo 0 :flash 0.35 :wave-perfect? false)) advanced)]
     (cond
       (zero? shields) (assoc advanced :mode :over :input "")
       (and (>= (:spawned advanced) (wave-size (:wave advanced))) (empty? (:enemies advanced)))
-      (let [waiting (update advanced :wave-timer + dt)]
+      (let [settled (if (:wave-reward-checked? advanced) advanced
+                      (cond-> (assoc advanced :wave-reward-checked? true)
+                        (and (:wave-perfect? advanced) (not (:wave-shield-earned? advanced)))
+                        (award-shield "PERFECT WAVE")))
+            waiting (update settled :wave-timer + dt)]
         (if (> (:wave-timer waiting) 2)
-          (-> waiting (update :wave inc) (assoc :spawned 0 :spawn-timer 0 :wave-timer 0 :input ""))
+          (-> waiting (update :wave inc) (assoc :spawned 0 :spawn-timer 0 :wave-timer 0 :input ""
+                                               :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false))
           waiting))
       (and (< (:spawned advanced) (wave-size (:wave advanced))) (<= (:spawn-timer advanced) 0))
       (spawn-enemy advanced)
@@ -573,7 +594,7 @@
   (q/text-align :left :top)
   (q/text (str "SHIELDS " (apply str (repeat (:shields state) "◆"))) (+ 18 (:safe-left state 0)) (+ 65 (:safe-top state 0)))
   (q/text-size 9) (q/fill 99 149 157)
-  (q/text (str "COMBAT / " (gpu/status (:gpu state))) (+ 18 (:safe-left state 0)) (+ 80 (:safe-top state 0)))
+  (q/text (str "SHIELD CHARGE " (:shield-charge state 0) "/8 · " (gpu/status (:gpu state))) (+ 18 (:safe-left state 0)) (+ 80 (:safe-top state 0)))
   (q/stroke 61 117 126 100)
   (q/line 18 (+ 91 (:safe-top state 0)) (- (:width state) 18) (+ 91 (:safe-top state 0)))
   (q/text-align :center :center)
@@ -618,17 +639,18 @@
                 :ready "Wrong answers provoke enemy fire."
                 :paused "Take a breath. The fleet can wait."
                 :over (str "Score " (:score state) "  ·  Best " @best-score)
-                :audio-settings "Gameplay paused while you adjust sound.") cx (+ cy 8))
+                :audio-settings "Gameplay paused while you adjust settings.") cx (+ cy 8))
       (when (= :ready (:mode state))
         (q/text-size 10)
-        (q/text "Solve to fire. Each enemy hit costs one shield." cx (+ cy 27)))
+        (q/text "Solve to fire. Each enemy hit costs one shield." cx (+ cy 27))
+        (q/text "SHIELD: 8 CORRECT / PERFECT WAVE · MAX 5" cx (+ cy 46)))
       (q/text-size 11)
       (q/fill 134 250 218)
       (q/text (case view
                 :ready "CLICK OR PRESS ENTER TO LAUNCH"
                 :paused "PRESS P OR RESUME TO CONTINUE"
                 :over "CLICK OR PRESS ENTER TO PLAY AGAIN"
-                :audio-settings "CLOSE AUDIO TO CONTINUE") cx (+ cy 46))))))
+                :audio-settings "CLOSE SETTINGS TO CONTINUE") cx (+ cy (if (= view :ready) 66 46)))))))
 
 (defn draw-state [state]
   (q/rect-mode :corner)

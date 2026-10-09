@@ -104,6 +104,7 @@ function unlock(){
 function play(kind,operation){
   if(!available()||preferences.effects===0)return;
   const time=context.currentTime+0.003;
+  if(kind==='restore')for(let i=0;i<3;i++)tone(440*Math.pow(2,i/3),440*Math.pow(2,i/3),0.16,0.09,'sine','effects',time+i*0.1);
   if(kind==='player')tone(1050,190,0.14,0.16,'triangle','effects',time);
   if(kind==='enemy'){
     if(operation==='add')for(let i=0;i<3;i++)tone(380,160,0.06,0.09,'square','effects',time+i*0.055);
