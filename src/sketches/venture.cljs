@@ -293,13 +293,16 @@
         (-> state (update :enemies conj enemy) (update :spawned inc)
             (update :next-id inc) (assoc :spawn-timer (max 0.7 (- 2.4 (* (:wave state) 0.12)))))))))
 
+(defn available-enemies [state]
+  (remove :pending-hit? (:enemies state)))
+
 (defn target-enemy [state exact?]
   (when (seq (:input state))
     (first (sort-by :progress >
                     (filter #(if exact?
                                (= (:input state) (str (:answer %)))
                                (str/starts-with? (str (:answer %)) (:input state)))
-                            (:enemies state))))))
+                            (available-enemies state))))))
 
 (defn aim-angle [state enemy]
   (if enemy
@@ -332,24 +335,26 @@
   (if-let [enemy (target-enemy state true)]
     (let [combo (inc (:combo state))
           score (+ (:score state) 100 (* 10 (min combo 20)))]
-      (swap! best-score max score)
       (audio/play "player" (name (or (:operation enemy) :add)))
       (-> state
-          (assoc :input "" :score score :combo combo :message "DIRECT HIT" :message-timer 0.65
+          (assoc :input "" :combo combo :message "SHOT FIRED" :message-timer 0.65
                  :ship-angle (aim-angle state enemy) :aim-target (select-keys enemy [:lane :progress])
                  :aim-until (+ (:clock state) 0.45))
-          (update :enemies #(filterv (fn [e] (not= (:id e) (:id enemy))) %))
-          (charge-shield)
+          (update :enemies #(mapv (fn [e] (if (= (:id e) (:id enemy))
+                                         (assoc e :pending-hit? true) e)) %))
           (update :effects conj {:lane (:lane enemy) :progress (:progress enemy) :age 0
-                                :operation (or (:operation enemy) :add) :duration 0.18 :kind :hit})))
+                                :operation (or (:operation enemy) :add) :duration 0.18 :kind :hit
+                                :target-id (:id enemy) :points (- score (:score state))
+                                :correct? true :accuracy-epoch (:accuracy-epoch state 0)})))
     (if (empty? (:input state)) state
-      (let [attacker (or (target-enemy state false) (first (sort-by :progress > (:enemies state))))
+      (let [attacker (or (target-enemy state false) (first (sort-by :progress > (available-enemies state))))
             operation (or (:operation attacker) :add)
             weapon (get weapons operation)
             state (cond-> (assoc state :input "" :combo 0
                                :message (if attacker (str "WRONG — " (:name weapon) " INCOMING") "NO TARGETS — TRY AGAIN")
                                :message-timer 1.2)
-                    attacker (assoc :shield-charge 0 :wave-perfect? false))]
+                    attacker (assoc :shield-charge 0 :wave-perfect? false
+                                    :accuracy-epoch (inc (:accuracy-epoch state 0))))]
         (if attacker
           (do (audio/play "enemy" (name operation))
             (update state :effects conj {:lane (:lane attacker) :progress (:progress attacker)
@@ -365,30 +370,30 @@
   (let [{:keys [cost targets]} (get special-weapons key)]
     (and cost (= :playing (:mode state)) (not (:menu-visible? state)) (not (:audio-open? state))
          (> (:shields state) cost)
-         (>= (count (:enemies state)) targets))))
+         (>= (count (available-enemies state)) targets))))
 
 (defn fire-special [state key]
   (if-not (special-ready? state key) state
     (let [{:keys [cost targets name]} (get special-weapons key)
-          victims (vec (take targets (shuffle (:enemies state))))
+          victims (vec (take targets (shuffle (available-enemies state))))
           ids (set (map :id victims))
-          score (+ (:score state) (* 50 targets))
           target (first victims)]
-      (swap! best-score max score)
       (audio/play key "")
       (-> state
-          (assoc :shields (- (:shields state) cost) :score score :input ""
+          (assoc :shields (- (:shields state) cost) :input ""
                  :wave-perfect? false :special-name name :special-pulse (if (= key "arc") 0.85 1.8)
                  :special-duration (if (= key "arc") 0.85 1.8)
                  :special-targets (mapv #(select-keys % [:lane :progress]) victims)
                  :message (str name " / -" cost " SHIELD" (if (> cost 1) "S" "")) :message-timer 1.5
                  :ship-angle (aim-angle state target) :aim-target (select-keys target [:lane :progress])
                  :aim-until (+ (:clock state) 0.5))
-          (update :enemies #(filterv (fn [enemy] (not (contains? ids (:id enemy)))) %))
+          (update :enemies #(mapv (fn [enemy] (if (contains? ids (:id enemy))
+                                               (assoc enemy :pending-hit? true) enemy)) %))
           (update :effects into (mapv (fn [enemy]
                                        {:lane (:lane enemy) :progress (:progress enemy)
                                         :operation (or (:operation enemy) :add)
-                                        :kind :hit :age 0 :duration (if (= key "arc") 0.24 0.38)}) victims))))))
+                                        :kind :hit :age 0 :target-id (:id enemy) :points 50
+                                        :duration (if (= key "arc") 0.24 0.38)}) victims))))))
 
 (defn handle-action [state key]
   (cond
@@ -422,8 +427,25 @@
                    (filter #(< (:age %) (if (= :hit (:kind %)) 1.3
                                            (if (= :incoming (:kind %)) (:duration %) 1.1)))) vec)}))
 
+(defn resolve-hits [state dt]
+  ;; Keep a struck ship at its captured coordinates until the projectile arrives.
+  (reduce (fn [state effect]
+            (if (and (= :hit (:kind effect)) (:target-id effect)
+                     (< (:age effect) (:duration effect))
+                     (>= (+ (:age effect) dt) (:duration effect))
+                     (some #(= (:id %) (:target-id effect)) (:enemies state)))
+              (let [score (+ (:score state) (:points effect 0))
+                    hit (-> state (assoc :score score)
+                            (update :enemies #(filterv (fn [enemy] (not= (:id enemy) (:target-id effect))) %)))]
+                (swap! best-score max score)
+                (if (and (:correct? effect)
+                         (= (:accuracy-epoch effect) (:accuracy-epoch state 0)))
+                  (charge-shield (assoc hit :message "DIRECT HIT" :message-timer 0.65)) hit))
+              state)) state (:effects state)))
+
 (defn advance-game [state dt]
-  (let [enemies (mapv #(update % :progress + (* dt (:speed %))) (:enemies state))
+  (let [state (resolve-hits state dt)
+        enemies (mapv #(if (:pending-hit? %) % (update % :progress + (* dt (:speed %)))) (:enemies state))
         escaped (count (filter #(>= (:progress %) 1) enemies))
         {:keys [effects impacts]} (advance-effects (:effects state) dt)
         shields (max 0 (- (:shields state) escaped impacts))
@@ -753,9 +775,10 @@
           (let [tx (lane-x state (:lane target)) ty (enemy-y state target)
                 dx (- tx x) dy (- ty y) distance (max 1 (Math/hypot dx dy))
                 nx (/ (- dy) distance) ny (/ dx distance)
+                front (min 1 (/ age 0.24))
                 strength (* fade (+ 0.55 (* 0.45 (Math/pow (Math/sin (* age 32)) 2))))]
-            (doseq [j (range 10)]
-              (let [a (/ j 10) b (/ (inc j) 10)
+            (doseq [j (range 10) :when (< (/ j 10) front)]
+              (let [a (/ j 10) b (min front (/ (inc j) 10))
                     offset (fn [t] (* 12 (Math/sin (* t Math/PI))
                                       (Math/sin (+ (* t 53) (* age 45)))))
                     ax (+ x (* dx a) (* nx (offset a))) ay (+ y (* dy a) (* ny (offset a)))
@@ -766,7 +789,8 @@
                   (q/stroke 105 205 255 (* 140 strength)) (q/stroke-weight 1)
                   (q/line bx by (+ bx (* nx 18)) (+ by (* ny 18))))))
             (q/no-fill) (q/stroke 150 225 255 (* 180 fade)) (q/stroke-weight 1)
-            (q/ellipse tx ty (+ 18 (* age 42)) (+ 18 (* age 42)))))
+            (when (>= age 0.24)
+              (q/ellipse tx ty (+ 18 (* age 42)) (+ 18 (* age 42))))))
         ;; Nova: a charged star, three curling comets and large stellar impacts.
         (do
           (q/no-stroke) (q/fill 225 140 255 (* 45 fade))

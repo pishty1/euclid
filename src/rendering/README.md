@@ -5,7 +5,12 @@ Wrong nonempty answers provoke one on-screen enemy (the partial-answer target,
 or the closest enemy). Its projectile costs one shield on arrival, then becomes
 a ship impact effect. Addition uses a three-pulse burst, subtraction a fast rail
 shot, multiplication four spread bolts, and division twin helix bolts. Player
-hits use a mint shot and an operation-coloured blast. Pausing freezes projectile
+hits use a mint shot and an operation-coloured blast. Normal shots arrive after
+0.18 seconds, Twin Arc after 0.24 seconds, and Nova after 0.38 seconds. Selected
+ships remain visible at their impact coordinates during flight and cannot be
+targeted twice. Removal, points, blast audio, and streak rewards resolve at
+arrival; a wrong answer during flight still resets the streak. Arc grows towards
+its targets rather than drawing a complete beam before impact. Pausing freezes projectile
 travel and damage; replay clears pending shots. Canvas draws matching weapon
 patterns when WebGPU is unavailable. Arithmetic, scoring, and damage stay on the
 CPU; the combat readout identifies the effect renderer.
