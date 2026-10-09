@@ -2,7 +2,8 @@
   (:require [quil.core :as q]
             [quil.middleware :as m]
             [menu :as menu]
-            [registry :as registry]))
+            [registry :as registry]
+            [viewport :as viewport]))
 
 (def epsilon 0.000001)
 (def limits {:points 40 :lines 32 :circles 18})
@@ -164,7 +165,7 @@
   (init-controls!)
   (reset! actions [])
   (q/frame-rate 60)
-  (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window))
+  (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height))
   (when-let [host (.getElementById js/document "sketch")]
     (set! (.-tabIndex host) 0)
     (.setAttribute host "aria-label" "Living geometry: drag points or use the construction instruments")
@@ -312,8 +313,8 @@
     (triangle-proof (point-pos state 0) (point-pos state 1) (point-pos state 2))))
 
 (defn update-state [state]
-  (when (or (not= (q/width) (.-innerWidth js/window)) (not= (q/height) (.-innerHeight js/window)))
-    (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window)))
+  (when (or (not= (q/width) (.-innerWidth js/window)) (not= (q/height) (viewport/canvas-height)))
+    (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height)))
   (let [pending @actions]
     (reset! actions [])
     (let [state (if (:menu-visible? state) state (reduce apply-action state pending))
@@ -556,7 +557,7 @@
   (q/text-size 10)
   (q/fill 147 171 181)
   (let [panel (.getElementById js/document "euclid-instruments")
-        y (- (q/height) (if panel (+ 34 (.-offsetHeight panel)) 164))
+        y (- (.-innerHeight js/window) (if panel (+ 34 (.-offsetHeight panel)) 164))
         hint (if (seq (:status state)) (:status state)
                (if (:selection state) "Choose the second point · Esc cancels"
                  (case (:tool state) :move "Drag anchors · Drag intersections to move their construction"

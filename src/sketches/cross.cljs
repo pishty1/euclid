@@ -2,6 +2,7 @@
   (:require [quil.core :as q]
             [menu :as menu]
             [registry :as registry]
+            [viewport :as viewport]
             [quil.middleware :as m]
             ["../rendering/cross_gpu.js" :as gpu]))
 
@@ -53,8 +54,8 @@
 
 (defn update-state [state]
   (when (or (not= (q/width) (.-innerWidth js/window))
-            (not= (q/height) (.-innerHeight js/window)))
-    (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window)))
+            (not= (q/height) (viewport/canvas-height)))
+    (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height)))
   (let [dims [(q/width) (q/height)]
         state (if (= dims (:dimensions state)) state
                   (assoc state :dimensions dims :traces []
@@ -138,11 +139,11 @@
   (q/text-align :left :bottom)
   (q/text-size 11)
   (q/fill 183 196 202)
-  (q/text "LA CROSS / KINETIC LOOM" 22 (- (q/height) 56))
+  (q/text "LA CROSS / KINETIC LOOM" 22 (- (.-innerHeight js/window) 56))
   (q/text-size 10)
   (q/fill 103 131 148)
-  (q/text "Move to shape · Tap / click to change view" 22 (- (q/height) 37))
-  (q/text "Space pauses · R resets" 22 (- (q/height) 20))
+  (q/text "Move to shape · Tap / click to change view" 22 (- (.-innerHeight js/window) 37))
+  (q/text "Space pauses · R resets" 22 (- (.-innerHeight js/window) 20))
   (q/text-align :right :top)
   (q/text (str (case mode :both "WEAVE + TRACES" :weave "WEAVE" :traces "TRACES"
                          :interactions "INTERSECTIONS + TRAILS ONLY")

@@ -36,6 +36,10 @@ two columns in landscape. On iPhone, use Safari's Share → Add to Home Screen,
 then launch Euclid from its icon to hide Safari's address toolbar. A normal
 browser tab retains browser-controlled bars.
 
+All sketches launch and resize using the shared `viewport/canvas-height` helper,
+which covers the host's large viewport. Both Canvas and GPU layers extend behind
+translucent browser toolbars. Bottom captions use the visible viewport height.
+
 La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
 the four live segment intersections from the crosses' endpoints. Instanced light
 sprites draw the intersection blooms, pulsing rings, flares, and fading trails.

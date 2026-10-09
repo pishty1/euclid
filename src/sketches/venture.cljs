@@ -3,6 +3,7 @@
             [quil.core :as q :include-macros true]
             [quil.middleware :as m]
             [registry :as registry]
+            [viewport :as viewport]
             [menu :as menu]
             ["../rendering/venture_gpu.js" :as gpu]
             ["../rendering/venture_audio.js" :as audio]))
@@ -183,13 +184,9 @@
                 :ship-angle 0 :aim-target nil :aim-until 0
                 :wave-timer 0 :clock 0 :flash 0 :last-time nil}))
 
-(defn canvas-height []
-  (let [host (.getElementById js/document "sketch")]
-    (max (.-innerHeight js/window) (if host (.-clientHeight host) 0))))
-
 (defn setup []
   (init-controls!)
-  (q/resize-sketch (.-innerWidth js/window) (canvas-height))
+  (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height))
   (when-let [host (.getElementById js/document "sketch")]
     (set! (.-tabIndex host) 0)
     (.setAttribute host "aria-label" "Arithmetic defense: type answers and press Enter to fire")
@@ -339,8 +336,8 @@
 (defn update-state [state]
   ;; Quil does not forward p5's windowResized callback; resize in the draw loop.
   (when (or (not= (q/width) (.-innerWidth js/window))
-            (not= (q/height) (canvas-height)))
-    (q/resize-sketch (.-innerWidth js/window) (canvas-height)))
+            (not= (q/height) (viewport/canvas-height)))
+    (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height)))
   (let [now (/ (q/millis) 1000)
         dt (min 0.05 (max 0 (- now (or (:last-time state) now))))
         audio-open? (audio/settingsOpen)

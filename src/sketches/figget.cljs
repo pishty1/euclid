@@ -1,5 +1,6 @@
 (ns sketches.figget
   (:require [quil.core :as q] [menu :as menu] [registry :as registry]
+            [viewport :as viewport]
             [quil.middleware :as m] [sketches.ecosystem-builder :as builder] [sketches.cell-world :as cells]
             ["../rendering/ecosystem_gpu.js" :as gpu]))
 
@@ -7,7 +8,7 @@
 (defonce actions (atom []))
 
 (def control-css
-  "body[data-sketch='Figget-A-Balls'] #sketch canvas{display:block;max-width:100vw;max-height:100vh}#figget-controls{display:none;position:fixed;bottom:18px;right:18px;z-index:15;gap:6px}body[data-sketch='Figget-A-Balls'] #figget-controls{display:flex}#figget-controls button{background:#10242deb;border:1px solid #76cab14d;color:#bde8db;border-radius:8px;padding:9px 12px;cursor:pointer;font:12px system-ui;touch-action:manipulation}#figget-controls button:focus-visible{outline:2px solid #eec077}@media(max-width:600px){#figget-controls{bottom:92px;right:14px}}")
+  "body[data-sketch='Figget-A-Balls'] #sketch canvas{display:block;max-width:100vw;max-height:100lvh}#figget-controls{display:none;position:fixed;bottom:18px;right:18px;z-index:15;gap:6px}body[data-sketch='Figget-A-Balls'] #figget-controls{display:flex}#figget-controls button{background:#10242deb;border:1px solid #76cab14d;color:#bde8db;border-radius:8px;padding:9px 12px;cursor:pointer;font:12px system-ui;touch-action:manipulation}#figget-controls button:focus-visible{outline:2px solid #eec077}@media(max-width:600px){#figget-controls{bottom:92px;right:14px}}")
 
 (defn init-controls! []
   (when-not (.getElementById js/document "figget-controls")
@@ -32,7 +33,7 @@
 
 (defn setup []
   (init-controls!) (builder/init! #(swap! actions conj %)) (reset! actions [])
-  (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window))
+  (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height))
   (q/frame-rate 60) (q/pixel-density 1)
   (let [w (q/width) h (q/height)
         ctx (some-> (.querySelector js/document "#sketch canvas:not([data-ecosystem-gpu])") (.getContext "2d"))
@@ -104,7 +105,7 @@
 (defn update-state [state]
   (let [pending @actions _ (reset! actions [])
         state (if (:menu-visible? state) state (reduce apply-action state pending))
-        world (:world state) w (.-innerWidth js/window) h (.-innerHeight js/window)
+        world (:world state) w (.-innerWidth js/window) h (viewport/canvas-height)
         state (if (or (not= w (aget world "width")) (not= h (aget world "height")))
                 (do (q/resize-sketch w h) (cells/resize! world w h)
                     (assoc state :gradient (background-gradient (:ctx state) w h)
@@ -136,10 +137,10 @@
   (q/text-size 10) (q/fill 90 131 158)
   (q/text (str (Math/round (/ 1000 frame-ms)) " FPS / " tuning " / " (gpu/status gpu)) (- (q/width) 20) 94)
   (q/text-align :left :bottom) (q/text-size 11) (q/fill 151 186 202)
-  (q/text "FIGGET-A-BALLS / CELLULAR SEA" 20 (- (q/height) 62))
+  (q/text "FIGGET-A-BALLS / CELLULAR SEA" 20 (- (.-innerHeight js/window) 62))
   (q/text-size 10) (q/fill 90 131 158)
-  (q/text "Chains / Rings / Colonies" 20 (- (q/height) 43))
-  (q/text (if placing "Tap canvas to place / Esc finishes" "Builder creates ecosystems / R reseeds") 20 (- (q/height) 25))
+  (q/text "Chains / Rings / Colonies" 20 (- (.-innerHeight js/window) 43))
+  (q/text (if placing "Tap canvas to place / Esc finishes" "Builder creates ecosystems / R reseeds") 20 (- (.-innerHeight js/window) 25))
   (when paused?
     (q/text-align :center :center) (q/text-size 16) (q/fill 204 222 214)
     (q/text "PAUSED" (/ (q/width) 2) (/ (q/height) 2))))

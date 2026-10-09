@@ -82,7 +82,7 @@ function create(host,overlay) {
   dispose(active);
   const canvas=document.createElement('canvas');
   canvas.setAttribute('data-cross-gpu',''); canvas.setAttribute('aria-hidden','true');
-  canvas.style.cssText='position:absolute;inset:0;pointer-events:none;display:none;max-width:100vw;max-height:100vh';
+  canvas.style.cssText='position:absolute;inset:0;pointer-events:none;display:none;max-width:100vw;max-height:100lvh';
   host.insertBefore(canvas,overlay); overlay.style.position='relative';
   const r={canvas,ready:false,stopped:false,label:'Canvas'}; active=r;
   r.observer=new MutationObserver(()=>{if(!canvas.isConnected || !overlay.isConnected) dispose(r);});

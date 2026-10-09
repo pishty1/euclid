@@ -2,6 +2,7 @@
   (:require [quil.core :as q :include-macros true]
             [menu :as menu]
             [registry :as registry]
+            [viewport :as viewport]
             [quil.middleware :as m]))
 
 (def config
@@ -31,9 +32,9 @@
   (+ (* (- ax bx) (- ax bx)) (* (- ay by) (- ay by))))
 
 (defn inside-garden? [[x y]]
-  (let [margin (min (:margin config) (/ menu/w 6) (/ menu/h 6))]
-    (and (< margin x (- menu/w margin))
-         (< margin y (- menu/h margin)))))
+  (let [margin (min (:margin config) (/ (q/width) 6) (/ (q/height) 6))]
+    (and (< margin x (- (q/width) margin))
+         (< margin y (- (q/height) margin)))))
 
 (defn separated? [points p]
   (every? #(> (distance-squared (:pos %) p)
@@ -53,19 +54,19 @@
 (defn clipped-endpoints [{[x y] :origin [dx dy] :direction}]
   (let [hits (concat
               (when (> (Math/abs dx) 0.0001)
-                (for [edge [0 menu/w]
+                (for [edge [0 (q/width)]
                       :let [py (+ y (* (/ (- edge x) dx) dy))]
-                      :when (<= 0 py menu/h)] [edge py]))
+                      :when (<= 0 py (q/height))] [edge py]))
               (when (> (Math/abs dy) 0.0001)
-                (for [edge [0 menu/h]
+                (for [edge [0 (q/height)]
                       :let [px (+ x (* (/ (- edge y) dy) dx))]
-                      :when (<= 0 px menu/w)] [px edge])))]
+                      :when (<= 0 px (q/width))] [px edge])))]
     ;; A corner can occur twice; distinct keeps the visible segment nonzero.
     (vec (take 2 (distinct hits)))))
 
 (defn initial-garden []
-  (let [cx (/ menu/w 2) cy (/ menu/h 2)
-        radius (* 0.27 (min menu/w menu/h))
+  (let [cx (/ (q/width) 2) cy (/ (q/height) 2)
+        radius (* 0.27 (min (q/width) (q/height)))
         phase (q/random (* 2 Math/PI))
         golden-angle (* Math/PI (- 3 (Math/sqrt 5)))]
     {:points (mapv (fn [i]
@@ -99,7 +100,7 @@
   (when (some (set (:parent-ids line)) (:parent-ids other))
     (when-let [center (intersection line other)]
       (let [radius-squared (distance-squared center (first (:parents line)))
-            max-radius (* 0.32 (min menu/w menu/h))]
+            max-radius (* 0.32 (min (q/width) (q/height)))]
         (when (and (inside-garden? center)
                    (< radius-squared (* max-radius max-radius))
                    (empty-circle? points center radius-squared))
@@ -142,6 +143,9 @@
             (update :pairs conj pair))))))
 
 (defn sketch-update [state]
+  (when (or (not= (q/width) (.-innerWidth js/window))
+            (not= (q/height) (viewport/canvas-height)))
+    (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height)))
   (let [next-state (update state :tick inc)]
     (if (and (not (:menu-visible? state))
              (zero? (mod (:tick next-state) (:growth-interval config))))
@@ -186,10 +190,10 @@
   (q/no-stroke)
   (apply q/fill (conj (:point palette) 170))
   (q/text-size 12)
-  (q/text "PRIME GARDENS" 24 (- menu/h 56))
+  (q/text "PRIME GARDENS" 24 (- (.-innerHeight js/window) 56))
   (q/text-size 10)
-  (q/text "Prime gaps connect · Gold points are prime" 24 (- menu/h 37))
-  (q/text "Click to plant a point · R to regrow" 24 (- menu/h 20)))
+  (q/text "Prime gaps connect · Gold points are prime" 24 (- (.-innerHeight js/window) 37))
+  (q/text "Click to plant a point · R to regrow" 24 (- (.-innerHeight js/window) 20)))
 
 (defn mouse-clicked [state]
   (let [handled (menu/when-mouse-pressed state)

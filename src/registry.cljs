@@ -1,5 +1,6 @@
 (ns registry
-  (:require [quil.core :as q]))
+  (:require [quil.core :as q]
+            [viewport :as viewport]))
 
 ;; Change to a vector to allow auto-indexing (0, 1, 2...)
 (defonce sketches (atom []))
@@ -15,7 +16,10 @@
 
 ;; New Helper: Defines and Registers in one go
 (defn def-sketch [name color options]
-  (let [start-fn (fn [] (apply q/sketch (apply concat options)))
+  (let [start-fn (fn [] (let [options (if (= "sketch" (:host options))
+                                           (assoc options :size [(.-innerWidth js/window) (viewport/canvas-height)])
+                                           options)]
+                                (apply q/sketch (apply concat options))))
         new-sketch {:name name
                     :start start-fn
                     :color color}]
