@@ -32,6 +32,11 @@ The ship and answer sit to its right, and enemy labels stop above the console.
 Drag the COMMAND BASE ↕ header vertically to adjust thumb reach. Its height is
 saved locally when storage is available and clamped to fit after rotation.
 Keyboard users can focus the handle and use Up/Down, Home, or End.
+The Layout button cycles Left → Right → Split and saves the selection locally.
+Split mode stacks 0–4 and Delete against the left edge, with 5–9 and Fire against
+the right. Drag either header to move both halves vertically. Short screens use
+two columns per half. Single-pad layouts move the ship to the opposite side;
+split mode centres it, and enemy labels clear both halves.
 Short screens use fewer keypad rows. The sketch background extends through the large viewport behind browser chrome,
 while gameplay and controls stay within the visible viewport. The sketch
 respects display safe areas; the sketch menu becomes compact on phones and uses

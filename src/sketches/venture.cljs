@@ -56,16 +56,23 @@
    #venture-audio input{display:block;width:100%;margin-top:8px;accent-color:#96ead7}
    #venture-audio-status{color:#86b6bd;font-size:11px}
    @media(max-width:400px){#venture-controls .game-toolbar{gap:4px}#venture-controls .game-toolbar button{padding:0 8px}#venture-audio summary{padding:12px 8px}}
-   #venture-keypad{display:none;position:absolute;bottom:calc(max(2px,env(safe-area-inset-bottom)) + var(--keypad-lift,0px));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#071923f2;box-shadow:0 6px 25px #0007;grid-template-columns:repeat(3,1fr);gap:3px;pointer-events:auto}
-   #venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:18px;padding:0 2px 3px;color:#7aadaf;font:9px monospace;letter-spacing:.08em;touch-action:none;cursor:ns-resize;user-select:none}
-   #venture-keypad .command-display:focus-visible{outline:2px solid #edc778;border-radius:4px}
-   #venture-keypad *{box-sizing:border-box}#venture-keypad{max-width:calc(100vw - 20px)}
+   .venture-keypad{display:none;position:absolute;bottom:calc(max(2px,env(safe-area-inset-bottom)) + var(--keypad-lift,0px));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#071923f2;box-shadow:0 6px 25px #0007;grid-template-columns:repeat(3,1fr);gap:3px;pointer-events:auto}
+   .venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:18px;padding:0 2px 3px;color:#7aadaf;font:9px monospace;letter-spacing:.08em;touch-action:none;cursor:ns-resize;user-select:none}
+   .venture-keypad .command-display:focus-visible{outline:2px solid #edc778;border-radius:4px}
+   .venture-keypad *{box-sizing:border-box}.venture-keypad{max-width:calc(100vw - 20px)}
    #venture-answer{color:#bdfcf0;font-size:16px;letter-spacing:0}
-   #venture-keypad button{min-height:40px;font-size:17px}
-   #venture-keypad .fire{background:#96ead7;color:#07232a;font-size:12px;font-weight:700}
-   @media(pointer:coarse),(max-width:600px){#venture-keypad{display:grid}}
-   @media(max-height:450px){#venture-keypad{width:180px;grid-template-columns:repeat(4,1fr);padding:5px;gap:3px}#venture-keypad button{min-height:40px;font-size:17px}#venture-keypad .command-display{min-height:18px;padding-bottom:3px}}
-   @media(max-height:450px) and (min-width:600px){#venture-keypad{width:264px;grid-template-columns:repeat(6,1fr)}}
+   .venture-keypad button{min-height:40px;font-size:17px}
+   .venture-keypad .fire{background:#96ead7;color:#07232a;font-size:12px;font-weight:700}
+   @media(pointer:coarse),(max-width:600px){.venture-keypad{display:grid}}
+   @media(max-height:450px){.venture-keypad{width:180px;grid-template-columns:repeat(4,1fr);padding:5px;gap:3px}.venture-keypad button{min-height:40px;font-size:17px}.venture-keypad .command-display{min-height:18px;padding-bottom:3px}}
+   @media(max-height:450px) and (min-width:600px){.venture-keypad{width:264px;grid-template-columns:repeat(6,1fr)}}
+   .venture-keypad[data-side=right]{left:auto;right:max(4px,env(safe-area-inset-right))}
+   .venture-keypad[hidden]{display:none!important}
+   .venture-keypad .keypad-layout{grid-column:1/-1;min-height:28px;font-size:10px;display:flex;align-items:center;justify-content:center;margin:0}
+   .venture-keypad[data-layout=split]{width:56px;grid-template-columns:1fr;padding:4px}
+   .venture-keypad[data-layout=split] .command-display{justify-content:center;font-size:10px}
+   .venture-keypad[data-layout=split] #venture-answer{display:none}
+   @media(max-height:450px){.venture-keypad[data-layout=split]{width:98px;grid-template-columns:repeat(2,1fr)}}
    @media(max-width:600px){body[data-sketch='Add Venture'] #euclid-nav .current-name{display:none}}
    body[data-sketch='Add Venture'] #sketch canvas{display:block}")
 
@@ -80,6 +87,7 @@
       (.appendChild (.-head js/document) style)
       (set! (.-id controls) "venture-controls")
       (set! (.-id keypad) "venture-keypad")
+      (set! (.-className keypad) "venture-keypad")
       (set! (.-id pause) "venture-pause")
       (.setAttribute controls "aria-label" "Arithmetic game controls")
       (.setAttribute keypad "role" "group")
@@ -106,6 +114,7 @@
                           ["7" "7"] ["8" "8"] ["9" "9"] ["⌫" "Backspace"] ["0" "0"] ["FIRE" "Enter"]]]
         (let [button (menu/element "button" (if (= key "Enter") "fire" "") label)]
           (set! (.-type button) "button")
+          (.setAttribute button "data-key" key)
           (.setAttribute button "aria-label" (case key "Backspace" "Delete last digit" "Enter" "Fire answer" label))
           (.addEventListener button "click" (fn [_] (enqueue! key)))
           ;; Avoid stealing focus from the game when a pointer taps the keypad.
@@ -122,14 +131,24 @@
   (or (<= width 600) (.-matches (.matchMedia js/window "(pointer: coarse)"))))
 
 (defn command-layout [state]
-  {:width (min (- (:width state) 20) (if (<= (:height state) 450) (if (>= (:width state) 600) 264 180) 148))
-   :height (if (<= (:height state) 450) (if (>= (:width state) 600) 116 159) 205)
-   :bottom (+ (max 2 (:safe-bottom state 0)) (controls/lift)) :left (max 4 (:safe-left state 0))})
+  (let [layout (controls/layout) short? (<= (:height state) 450)]
+    {:layout layout
+     :width (min (- (:width state) 20)
+                 (if (= layout "split") (if short? 98 56)
+                   (if short? (if (>= (:width state) 600) 264 180) 148)))
+     :height (max (controls/padHeight)
+                  (if (= layout "split") (if short? 188 317)
+                    (if short? (if (>= (:width state) 600) 150 193) 236)))
+     :bottom (+ (max 2 (:safe-bottom state 0)) (controls/lift))
+     :left (max 4 (:safe-left state 0)) :right (max 4 (:safe-right state 0))}))
 
 (defn ship-x [state]
   (if (touch-controls? (:width state))
-    (let [{:keys [width left]} (command-layout state) right (:safe-right state 0)]
-      (min (- (:width state) right 48) (+ left width (/ (- (:width state) left width right) 2))))
+    (let [{:keys [width left right layout]} (command-layout state)]
+      (case layout
+        "split" (/ (+ left (- (:width state) right)) 2)
+        "right" (max (+ left 48) (+ left (/ (- (:width state) left width right) 2)))
+        (min (- (:width state) right 48) (+ left width (/ (- (:width state) left width right) 2)))))
     (/ (:width state) 2)))
 
 (defn ship-y [state]
@@ -144,11 +163,12 @@
 
 (defn enemy-y [state enemy]
   (let [top (+ 108 (:safe-top state 0))
-        {:keys [width height bottom left]} (command-layout state)
+        {:keys [width height bottom left right layout]} (command-layout state)
+        x (when (:lane enemy) (* (:width state) (/ (+ (:lane enemy) 0.5) (:lanes state))))
+        left-overlap? (or (nil? x) (<= (- x 70) (+ left width 8)))
+        right-overlap? (or (nil? x) (>= (+ x 70) (- (:width state) right width 8)))
         over-console? (and (touch-controls? (:width state))
-                           (or (nil? (:lane enemy))
-                               (<= (- (* (:width state) (/ (+ (:lane enemy) 0.5) (:lanes state))) 70)
-                                   (+ left width 8))))
+                           (case layout "right" right-overlap? "split" (or left-overlap? right-overlap?) left-overlap?))
         end (if over-console? (min (- (ship-y state) 37) (- (:height state) height bottom 78))
                 (- (ship-y state) 37))]
     (+ top (* (:progress enemy) (max 20 (- end top))))))
