@@ -18,7 +18,7 @@
 (defn enqueue! [key]
   (when (and (active?) (not @menu/menu-visible)
              (or (not (audio/settingsOpen)) (contains? #{"p" "P"} key)))
-    (when (contains? #{"Enter" "p" "P"} key) (audio/unlock))
+    (when (contains? #{"Enter" "p" "P" "continue" "restart"} key) (audio/unlock))
     (swap! actions conj key)))
 
 (defonce keyboard-handler
@@ -29,7 +29,7 @@
                                          (.closest (.-target event) "#venture-audio,#venture-mute,.command-display")))
                                (not (.-ctrlKey event)) (not (.-metaKey event))
                                (or (re-matches #"[0-9]" key)
-                                   (contains? #{"Enter" "Backspace" "p" "P"} key)))
+                                   (contains? #{"Enter" "Backspace" "p" "P" "r" "R"} key)))
                       ;; Leave native buttons' Enter activation intact.
                       (when-not (and (= key "Enter")
                                      (= "BUTTON" (.-tagName (.-target event))))
@@ -76,6 +76,12 @@
    .venture-keypad[data-layout=split] #venture-answer{display:none}
    @media(max-height:450px){.venture-keypad[data-layout=split]{width:98px;grid-template-columns:repeat(2,1fr)}}
    @media(max-width:600px){body[data-sketch='Add Venture'] #euclid-nav .current-name{display:none}}
+   #venture-controls[data-mode=over] .venture-keypad{display:none}
+   #venture-recovery{position:absolute;top:min(calc(50% + 55px),calc(100% - 126px - env(safe-area-inset-bottom)));left:50%;transform:translateX(-50%);width:min(280px,calc(100vw - 32px));display:grid;gap:8px;pointer-events:auto;text-align:center}
+   #venture-recovery[hidden]{display:none}
+   #venture-recovery button{min-height:44px;padding:10px 14px;font-size:14px}
+   #venture-recovery .power-on{background:#16443ded;border-color:#96ead7;color:#c4fff1}
+   #venture-recovery small{color:#86b6bd;font-size:10px}
    body[data-sketch='Add Venture'] #sketch canvas{display:block}")
 
 (defn init-controls! []
@@ -122,6 +128,21 @@
           ;; Avoid stealing focus from the game when a pointer taps the keypad.
           (.addEventListener button "mousedown" (fn [event] (.preventDefault event)))
           (.appendChild keypad button)))
+      (let [choices (menu/element "div" "" nil)
+            power (menu/element "button" "power-on" "Power on")
+            restart (menu/element "button" "" "Restart from scratch")
+            hint (menu/element "small" "" "New flight · 3 shields · score resets")]
+        (set! (.-id choices) "venture-recovery")
+        (set! (.-hidden choices) true)
+        (.setAttribute choices "role" "group")
+        (.setAttribute choices "aria-label" "Choose how to restart")
+        (set! (.-id power) "venture-power-on")
+        (doseq [[button action] [[power "continue"] [restart "restart"]]]
+          (set! (.-type button) "button")
+          (.addEventListener button "click" (fn [_] (enqueue! action)))
+          (.appendChild choices button))
+        (.appendChild choices hint)
+        (.appendChild controls choices))
       (.appendChild controls toolbar)
       (.appendChild controls keypad)
       (doseq [event-name ["click" "mousedown" "mouseup" "touchstart" "touchend" "touchmove"]]
@@ -203,8 +224,15 @@
                 :ship-angle 0 :aim-target nil :aim-until 0
                 :wave-timer 0 :clock 0 :flash 0 :last-time nil}))
 
+(defn recovery-wave [state] (max 1 (- (:wave state) 2)))
+
+(defn power-on [state]
+  (assoc (new-game state) :wave (recovery-wave state)))
+
 (defn setup []
   (init-controls!)
+  (.setAttribute (.getElementById js/document "venture-controls") "data-mode" "ready")
+  (set! (.-hidden (.getElementById js/document "venture-recovery")) true)
   (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height))
   (when-let [host (.getElementById js/document "sketch")]
     (set! (.-tabIndex host) 0)
@@ -307,6 +335,8 @@
 
 (defn handle-action [state key]
   (cond
+    (and (= :over (:mode state)) (contains? #{"continue" "Enter"} key)) (power-on state)
+    (and (= :over (:mode state)) (contains? #{"restart" "r" "R"} key)) (new-game state)
     (= key "p") (case (:mode state) :playing (assoc state :mode :paused)
                       :paused (assoc state :mode :playing :last-time nil)
                       :ready (new-game state) :over (new-game state) state)
@@ -394,8 +424,14 @@
                               (assoc :effects (:effects (advance-effects (:effects state) dt)))
                               (update :flash #(max 0 (- % dt))))
                     state))]
+      (when-let [controls (.getElementById js/document "venture-controls")]
+        (.setAttribute controls "data-mode" (name (:mode state))))
+      (when-let [choices (.getElementById js/document "venture-recovery")]
+        (set! (.-hidden choices) (or (not= :over (:mode state)) (:menu-visible? state) audio-open?)))
+      (when-let [power (.getElementById js/document "venture-power-on")]
+        (set! (.-textContent power) (str "Power on · Wave " (recovery-wave state))))
       (when-let [button (.getElementById js/document "venture-pause")]
-        (set! (.-textContent button) (case (:mode state) :paused "Resume" :ready "Start" :over "Replay" "Pause")))
+        (set! (.-textContent button) (case (:mode state) :paused "Resume" :ready "Start" :over "Restart" "Pause")))
       (when-let [display (.getElementById js/document "venture-answer")]
         (set! (.-textContent display) (if (seq (:input state)) (:input state) "_")))
       (audio/sync (name (:mode state)) (:wave state) (boolean (:menu-visible? state)) (pos? (:wave-timer state)))
@@ -649,7 +685,7 @@
       (q/text (case view
                 :ready "CLICK OR PRESS ENTER TO LAUNCH"
                 :paused "PRESS P OR RESUME TO CONTINUE"
-                :over "CLICK OR PRESS ENTER TO PLAY AGAIN"
+                :over ""
                 :audio-settings "CLOSE SETTINGS TO CONTINUE") cx (+ cy (if (= view :ready) 66 46)))))))
 
 (defn draw-state [state]
@@ -668,7 +704,7 @@
   (draw-overlay state))
 
 (defn mouse-clicked [state]
-  (if (and (not (:menu-visible? state)) (not (audio/settingsOpen)) (contains? #{:ready :over} (:mode state)))
+  (if (and (not (:menu-visible? state)) (not (audio/settingsOpen)) (= :ready (:mode state)))
     (do (audio/unlock) (new-game state)) state))
 
 (registry/def-sketch "Add Venture" '(99 230 209)

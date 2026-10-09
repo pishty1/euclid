@@ -21,6 +21,12 @@ unless that wave already granted a streak shield. Wave rewards are checked once.
 At the cap, shields are never banked. The HUD shows shield charge, and restoration
 has a message and rising audio cue. Replay resets reward progress.
 
+Flight ended offers Power on at `max(1, death wave - 2)` or Restart from scratch
+at wave 1. Both start a fresh flight with three shields, zero score, and cleared
+enemies, projectiles, and charge; best score and control preferences remain.
+Enter selects Power on, R selects Restart, and background taps do not restart.
+The touch pads are hidden while the recovery choices are displayed.
+
 Add Venture also synthesizes its soundtrack and effects with Web Audio. Audio is
 unlocked by a launch/resume gesture. The Settings menu offers mute and independent
 music/effects levels, saved locally when storage is available. A minor-key bass
