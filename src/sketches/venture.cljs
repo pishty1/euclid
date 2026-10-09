@@ -230,28 +230,42 @@
       :multiply {:equation (str factor-a " × " factor-b) :answer (* factor-a factor-b)}
       :divide {:equation (str (* factor-a factor-b) " ÷ " factor-a) :answer factor-b}) :operation op)))
 
+(defn stack-steps [enemy]
+  (or (:stack-steps enemy)
+      (when (:stack-operand enemy)
+        [{:operation (:operation enemy) :operand (:stack-operand enemy)}]) []))
+
 (defn stack-problem [problem wave]
   (let [result (:answer problem)
-        operation (nth [:add :subtract :multiply :divide] (random-int 0 3))
-        operand (case operation
+        op (nth [:add :subtract :multiply :divide] (random-int 0 3))
+        operand (case op
                   :subtract (random-int 1 (max 1 (min 9 result)))
                   :divide (let [divisors (filterv #(zero? (mod result %)) (range 2 10))]
                             (when (seq divisors) (nth divisors (random-int 0 (dec (count divisors))))))
                   :multiply (random-int 2 (min 5 (+ 2 wave)))
-                  (random-int 2 9))]
-    ;; No fractional or negative answers; division falls back to multiplication.
-    (if (or (nil? operand) (and (= operation :subtract) (zero? result)))
-      (assoc problem :base-operation (:operation problem) :operation :multiply
-                     :stack-operand 2 :answer (* result 2))
-      (assoc problem :base-operation (:operation problem) :operation operation
-                     :stack-operand operand
-                     :answer (case operation :add (+ result operand) :subtract (- result operand)
-                                   :multiply (* result operand) :divide (/ result operand))))))
+                  (random-int 2 9))
+        [op operand] (cond
+                       (or (nil? operand) (and (= op :subtract) (zero? result))) [:multiply 2]
+                       :else [op operand])
+        [op operand] (if (and (= op :multiply) (> (* result operand) 9999))
+                       [:subtract (random-int 1 9)] [op operand])
+        operand (if (= op :add) (min operand (- 9999 result)) operand)]
+    (assoc problem :base-operation (or (:base-operation problem) (:operation problem))
+                   :operation op :stack-operand operand
+                   :stack-steps (conj (vec (stack-steps problem)) {:operation op :operand operand})
+                   :answer (case op :add (+ result operand) :subtract (- result operand)
+                                 :multiply (* result operand) :divide (/ result operand)))))
 
-(defn make-enemy-problem [wave]
-  (let [problem (make-problem wave)]
-    (if (< (q/random 1) (min 0.3 (+ 0.12 (* wave 0.03))))
-      (stack-problem problem wave) problem)))
+(defn max-stack-size [wave]
+  (if (< wave 4) 1 (min 5 (+ 2 (quot (- wave 4) 4)))))
+
+(defn make-enemy-problem
+  ([wave] (make-enemy-problem wave 5))
+  ([wave screen-limit]
+   (let [problem (make-problem wave) depth (min screen-limit (max-stack-size wave))]
+     (if (and (> depth 1) (< (q/random 1) (min 0.4 (+ 0.2 (* (- wave 4) 0.015)))))
+       (reduce (fn [p _] (stack-problem p wave)) problem
+               (range (dec (random-int 2 depth)))) problem))))
 
 (def weapons
   {:add {:name "PULSE BURST" :duration 0.55 :id 0}
@@ -300,14 +314,16 @@
 (defn wave-size [wave] (min 22 (+ 4 (* 2 wave))))
 
 (defn spawn-enemy [state]
-  (let [problem (make-enemy-problem (:wave state))
-        progress (if (:stack-operand problem)
-                   (/ 68 (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))) 0)
+  (let [travel (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))
+        screen-limit (max 1 (min 5 (inc (int (/ (* travel 0.45) 68)))))
+        problem (make-enemy-problem (:wave state) screen-limit)
+        progress (if (seq (stack-steps problem))
+                   (/ (* 68 (count (stack-steps problem))) (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))) 0)
         start-y (enemy-y state {:progress progress})
         available (filterv (fn [lane]
                              (not-any? #(and (= lane (:lane %))
                                              (< (- (enemy-y state %) start-y)
-                                                (if (:stack-operand %) 160 92)))
+                                                (+ 92 (* 68 (count (stack-steps %))))))
                                        (:enemies state)))
                            (range (:lanes state)))]
     (if (empty? available)
@@ -357,10 +373,11 @@
           (assoc rewarded :wave-shield-earned? true) rewarded)))))
 
 (defn hit-effects [enemy effect]
-  (cond-> [effect]
-    (:stack-operand enemy)
-    (conj (assoc effect :target-id nil :points 0 :correct? false
-                        :silent? true :y-offset -68))))
+  (into [effect]
+        (map-indexed (fn [i step]
+                       (assoc effect :target-id nil :points 0 :correct? false :silent? true
+                                     :operation (:operation step) :y-offset (* -68 (inc i))))
+                     (stack-steps enemy))))
 
 (defn fire-answer [state]
   (if-let [enemy (target-enemy state true)]
@@ -685,26 +702,27 @@
       (when (seq label) (q/text label x (+ y 41))))))
 
 (defn draw-enemy [state enemy targeted?]
-  (if-not (:stack-operand enemy)
-    (draw-single-enemy state enemy targeted?)
-    (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
-          {:keys [color symbol]} (get enemy-styles (:operation enemy))]
-      ;; Read bottom first, then follow the connector to the upper operation.
-      (q/stroke 133 255 227 150) (q/stroke-weight 1)
-      (q/line x (- y 30) x (- y 38))
-      (q/line x (- y 38) (- x 3) (- y 34))
-      (q/line x (- y 38) (+ x 3) (- y 34))
-      (draw-single-enemy state (assoc enemy :operation (:base-operation enemy)) targeted?)
-      (q/push-matrix) (q/translate 0 -68)
-      (draw-single-enemy state (assoc enemy :equation "") targeted?)
-      (q/no-stroke) (q/fill 3 12 18 230)
-      (let [label (str symbol " " (:stack-operand enemy)) width (+ 12 (q/text-width label))
-            right? (< x (- (:width state) (+ 40 width)))
-            lx (+ x (if right? (+ 36 (/ width 2)) (- (+ 36 (/ width 2)))))]
-        (q/rect (- lx (/ width 2)) (- y 13) width 26 4)
-        (apply q/fill (if targeted? [133 255 227] color))
-        (q/text-size 16) (q/text-align :center :center) (q/text label lx y))
-      (q/pop-matrix))))
+  (let [steps (stack-steps enemy)
+        x (lane-x state (:lane enemy)) y (enemy-y state enemy)]
+    (draw-single-enemy state (cond-> enemy (seq steps) (assoc :operation (:base-operation enemy))) targeted?)
+    (doseq [[i step] (map-indexed vector steps)]
+      (let [{:keys [color symbol]} (get enemy-styles (:operation step))]
+        (q/push-matrix) (q/translate 0 (* -68 i))
+        ;; Arrows connect each adjacent pair, from bottom to top.
+        (q/stroke 133 255 227 150) (q/stroke-weight 1)
+        (q/line x (- y 30) x (- y 38))
+        (q/line x (- y 38) (- x 3) (- y 34))
+        (q/line x (- y 38) (+ x 3) (- y 34))
+        (q/translate 0 -68)
+        (draw-single-enemy state (assoc enemy :operation (:operation step) :equation "") targeted?)
+        (q/no-stroke) (q/fill 3 12 18 230) (q/text-size 16)
+        (let [label (str symbol " " (:operand step)) width (+ 12 (q/text-width label))
+              right? (< x (- (:width state) (+ 40 width)))
+              lx (+ x (if right? (+ 36 (/ width 2)) (- (+ 36 (/ width 2)))))]
+          (q/rect (- lx (/ width 2)) (- y 13) width 26 4)
+          (apply q/fill (if targeted? [133 255 227] color))
+          (q/text-align :center :center) (q/text label lx y))
+        (q/pop-matrix)))))
 
 (defn effect-points [state {:keys [lane progress kind y-offset]}]
   (let [enemy [(lane-x state lane) (+ (enemy-y state {:progress progress :lane lane}) (or y-offset 0))]
@@ -947,7 +965,7 @@
       (when (= :ready (:mode state))
         (q/text-size 10)
         (q/text "Solve to fire. Each enemy hit costs one shield." cx (+ cy 27))
-        (q/text "STACKS: SOLVE BOTTOM, THEN TOP" cx (+ cy 46))
+        (q/text "WAVE 4+: STACKS READ BOTTOM TO TOP" cx (+ cy 46))
         (q/text "SHIELD: 8 CORRECT / PERFECT WAVE · MAX 5" cx (+ cy 65)))
       (q/text-size 11)
       (q/fill 134 250 218)
