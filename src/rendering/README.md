@@ -27,6 +27,14 @@ Opening Audio automatically freezes gameplay and answer input while music keeps
 playing for volume preview. The effects slider previews a short player shot.
 Closing Audio resumes play, unless the game was manually paused.
 
+On touch screens, the number pad is a command console in the bottom-right corner.
+The ship and answer sit to its left, and enemy labels stop above the console.
+Short screens use fewer keypad rows. The sketch fills the dynamic viewport and
+respects display safe areas; the sketch menu becomes compact on phones and uses
+two columns in landscape. On iPhone, use Safari's Share → Add to Home Screen,
+then launch Euclid from its icon to hide Safari's address toolbar. A normal
+browser tab retains browser-controlled bars.
+
 La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
 the four live segment intersections from the crosses' endpoints. Instanced light
 sprites draw the intersection blooms, pulsing rings, flares, and fading trails.

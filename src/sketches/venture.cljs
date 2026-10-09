@@ -54,11 +54,15 @@
    #venture-audio input{display:block;width:100%;margin-top:8px;accent-color:#96ead7}
    #venture-audio-status{color:#86b6bd;font-size:11px}
    @media(max-width:400px){#venture-controls .game-toolbar{gap:4px}#venture-controls .game-toolbar button{padding:0 8px}#venture-audio summary{padding:12px 8px}}
-   #venture-keypad{display:none;position:absolute;bottom:max(12px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(380px,calc(100vw - 24px));grid-template-columns:repeat(6,1fr);gap:6px;pointer-events:auto}
-   #venture-keypad button{min-height:42px;font-size:18px}
+   #venture-keypad{display:none;position:absolute;bottom:max(10px,calc(env(safe-area-inset-bottom) + 8px));right:max(10px,env(safe-area-inset-right));width:176px;padding:8px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#071923f2;box-shadow:0 6px 25px #0007;grid-template-columns:repeat(3,1fr);gap:5px;pointer-events:auto}
+   #venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:24px;padding:2px 3px 6px;color:#7aadaf;font:9px monospace;letter-spacing:.08em}
+   #venture-keypad *{box-sizing:border-box}#venture-keypad{max-width:calc(100vw - 20px)}
+   #venture-answer{color:#bdfcf0;font-size:16px;letter-spacing:0}
+   #venture-keypad button{min-height:44px;font-size:19px}
    #venture-keypad .fire{background:#96ead7;color:#07232a;font-size:12px;font-weight:700}
    @media(pointer:coarse),(max-width:600px){#venture-keypad{display:grid}}
-   @media(max-height:450px){#venture-keypad button{min-height:32px}}
+   @media(max-height:450px){#venture-keypad{width:196px;grid-template-columns:repeat(4,1fr);padding:6px;gap:4px}#venture-keypad button{min-height:40px;font-size:17px}#venture-keypad .command-display{min-height:20px;padding-bottom:3px}}
+   @media(max-height:450px) and (min-width:600px){#venture-keypad{width:312px;grid-template-columns:repeat(6,1fr)}}
    @media(max-width:600px){body[data-sketch='Add Venture'] #euclid-nav .current-name{display:none}}
    body[data-sketch='Add Venture'] #sketch canvas{display:block}")
 
@@ -91,8 +95,12 @@
         (.addEventListener button "mousedown" (fn [event] (.preventDefault event))))
       (.appendChild toolbar full)
       (.appendChild toolbar pause)
-      (doseq [[label key] [["1" "1"] ["2" "2"] ["3" "3"] ["4" "4"] ["5" "5"] ["⌫" "Backspace"]
-                          ["6" "6"] ["7" "7"] ["8" "8"] ["9" "9"] ["0" "0"] ["FIRE" "Enter"]]]
+      (let [display (menu/element "div" "command-display" "COMMAND BASE")
+            answer (menu/element "span" "" "_")]
+        (set! (.-id answer) "venture-answer")
+        (.appendChild display answer) (.appendChild keypad display))
+      (doseq [[label key] [["1" "1"] ["2" "2"] ["3" "3"] ["4" "4"] ["5" "5"] ["6" "6"]
+                          ["7" "7"] ["8" "8"] ["9" "9"] ["⌫" "Backspace"] ["0" "0"] ["FIRE" "Enter"]]]
         (let [button (menu/element "button" (if (= key "Enter") "fire" "") label)]
           (set! (.-type button) "button")
           (.setAttribute button "aria-label" (case key "Backspace" "Delete last digit" "Enter" "Fire answer" label))
@@ -109,12 +117,37 @@
 (defn touch-controls? [width]
   (or (<= width 600) (.-matches (.matchMedia js/window "(pointer: coarse)"))))
 
+(defn command-layout [state]
+  {:width (min (- (:width state) 20) (if (<= (:height state) 450) (if (>= (:width state) 600) 312 196) 176))
+   :height (if (<= (:height state) 450) (if (>= (:width state) 600) 122 166) 238)
+   :bottom (max 10 (+ 8 (:safe-bottom state 0))) :right (max 10 (:safe-right state 0))})
+
+(defn ship-x [state]
+  (if (touch-controls? (:width state))
+    (let [{:keys [width right]} (command-layout state) left (:safe-left state 0)]
+      (max (+ left 48) (+ left (/ (- (:width state) left width right) 2))))
+    (/ (:width state) 2)))
+
 (defn ship-y [state]
-  (- (:height state) (if (touch-controls? (:width state))
-                       (if (< (:height state) 450) 164 190) 105)))
+  (- (:height state) (:safe-bottom state 0) (if (touch-controls? (:width state)) 110 105)))
+
+(defn viewport-insets []
+  (let [style (.getComputedStyle js/window (.-documentElement js/document))
+        value (fn [key] (let [n (js/parseFloat (.getPropertyValue style key))]
+                          (if (js/Number.isFinite n) n 0)))]
+    {:safe-top (value "--safe-top") :safe-bottom (value "--safe-bottom")
+     :safe-left (value "--safe-left") :safe-right (value "--safe-right")}))
 
 (defn enemy-y [state enemy]
-  (+ 108 (* (:progress enemy) (- (ship-y state) 145))))
+  (let [top (+ 108 (:safe-top state 0))
+        {:keys [width height bottom right]} (command-layout state)
+        over-console? (and (touch-controls? (:width state))
+                           (or (nil? (:lane enemy))
+                               (>= (+ 70 (* (:width state) (/ (+ (:lane enemy) 0.5) (:lanes state))))
+                                   (- (:width state) width right 8))))
+        end (if over-console? (min (- (ship-y state) 37) (- (:height state) height bottom 78))
+                (- (ship-y state) 37))]
+    (+ top (* (:progress enemy) (max 20 (- end top))))))
 
 (defn lane-x [state lane]
   (* (:width state) (/ (+ lane 0.5) (:lanes state))))
@@ -163,17 +196,21 @@
   (audio/init (.getElementById js/document "sketch") (.querySelector js/document "#venture-controls .game-toolbar"))
   (let [width (q/width) height (q/height)
         overlay (.querySelector js/document "#sketch canvas:not([data-venture-gpu])")]
-    (assoc (new-game {:width width :height height
+    (assoc (new-game (merge (viewport-insets) {:width width :height height
                      :gpu (when overlay (gpu/create (.getElementById js/document "sketch") overlay))
                      :lanes (max 2 (min 7 (int (/ width 160))))
                      :stars (mapv (fn [_] {:x (q/random 1) :y (q/random 1) :depth (q/random 0.2 1)})
-                                  (range 180))}) :mode :ready)))
+                                  (range 180))})) :mode :ready)))
 
 (defn wave-size [wave] (min 22 (+ 4 (* 2 wave))))
 
 (defn spawn-enemy [state]
   (let [available (filterv (fn [lane]
-                             (not-any? #(and (= lane (:lane %)) (< (:progress %) 0.18)) (:enemies state)))
+                             (not-any? #(and (= lane (:lane %))
+                                             (or (< (:progress %) 0.18)
+                                                 (and (touch-controls? (:width state))
+                                                      (< (- (enemy-y state %) 108 (:safe-top state 0)) 90))))
+                                       (:enemies state)))
                            (range (:lanes state)))]
     (if (empty? available)
       state
@@ -194,7 +231,7 @@
 
 (defn aim-angle [state enemy]
   (if enemy
-    (Math/atan2 (- (lane-x state (:lane enemy)) (/ (:width state) 2))
+    (Math/atan2 (- (lane-x state (:lane enemy)) (ship-x state))
                 (- (ship-y state) (enemy-y state enemy)))
     0))
 
@@ -289,6 +326,7 @@
         remap (fn [entity]
                 (update entity :lane #(min (dec lanes) (int (* lanes (/ (+ % 0.5) (:lanes state)))))))]
     (-> state
+        (merge (viewport-insets))
         (assoc :width width :height height :lanes lanes)
         (update :aim-target #(when % (remap %)))
         (update :enemies #(mapv remap %))
@@ -317,6 +355,8 @@
                     state))]
       (when-let [button (.getElementById js/document "venture-pause")]
         (set! (.-textContent button) (case (:mode state) :paused "Resume" :ready "Start" :over "Replay" "Pause")))
+      (when-let [display (.getElementById js/document "venture-answer")]
+        (set! (.-textContent display) (if (seq (:input state)) (:input state) "_")))
       (audio/sync (name (:mode state)) (:wave state) (boolean (:menu-visible? state)) (pos? (:wave-timer state)))
       (assoc state :last-time now))))
 
@@ -334,7 +374,7 @@
       (q/ellipse (* x (:width state)) py (* depth 2) (* depth 2)))))
 
 (defn draw-ship [state]
-  (let [x (/ (:width state) 2) y (ship-y state)]
+  (let [x (ship-x state) y (ship-y state)]
     (q/push-matrix) (q/translate x y) (q/rotate (:ship-angle state))
     (q/no-stroke)
     (q/fill 49 239 215 15)
@@ -446,8 +486,8 @@
       (q/text (:name (get weapons operation)) x (+ y 62)))))
 
 (defn effect-points [state {:keys [lane progress kind]}]
-  (let [enemy [(lane-x state lane) (enemy-y state {:progress progress})]
-        center [(/ (:width state) 2) (ship-y state)]
+  (let [enemy [(lane-x state lane) (enemy-y state {:progress progress :lane lane})]
+        center [(ship-x state) (ship-y state)]
         angle (aim-angle state {:lane lane :progress progress})
         muzzle [(+ (first center) (* 24 (Math/sin angle)))
                 (- (second center) (* 24 (Math/cos angle)))]]
@@ -509,25 +549,28 @@
   (q/text-size 12)
   (q/no-stroke)
   (q/fill 175 218 220)
-  (q/text (str "SCORE " (:score state) "  /  WAVE " (:wave state)) (- (:width state) 18) 65)
+  (q/text (str "SCORE " (:score state) "  /  WAVE " (:wave state)) (- (:width state) 18 (:safe-right state 0)) (+ 65 (:safe-top state 0)))
   (q/text-align :left :top)
-  (q/text (str "SHIELDS " (apply str (repeat (:shields state) "◆"))) 18 65)
+  (q/text (str "SHIELDS " (apply str (repeat (:shields state) "◆"))) (+ 18 (:safe-left state 0)) (+ 65 (:safe-top state 0)))
   (q/text-size 9) (q/fill 99 149 157)
-  (q/text (str "COMBAT / " (gpu/status (:gpu state))) 18 80)
+  (q/text (str "COMBAT / " (gpu/status (:gpu state))) (+ 18 (:safe-left state 0)) (+ 80 (:safe-top state 0)))
   (q/stroke 61 117 126 100)
-  (q/line 18 91 (- (:width state) 18) 91)
+  (q/line 18 (+ 91 (:safe-top state 0)) (- (:width state) 18) (+ 91 (:safe-top state 0)))
   (q/text-align :center :center)
   (q/no-stroke)
   (q/text-size 24)
   (q/fill 180 255 235)
-  (q/text (str (if (seq (:input state)) (:input state) "_")) (/ (:width state) 2) (+ (ship-y state) 49))
+  (q/text (str (if (seq (:input state)) (:input state) "_")) (ship-x state) (+ (ship-y state) 49))
   (q/text-size 10)
   (q/fill 99 149 157)
   (q/text (if (touch-controls? (:width state)) "ANSWER · TAP FIRE" "TYPE ANSWER · ENTER TO FIRE · P TO PAUSE")
-          (/ (:width state) 2) (+ (ship-y state) 72))
+          (ship-x state) (+ (ship-y state) 72))
   (when (pos? (:message-timer state))
     (q/fill 239 187 104)
-    (q/text (:message state) (/ (:width state) 2) (- (ship-y state) 48)))
+    (q/text (:message state) (/ (:width state) 2)
+            (if (touch-controls? (:width state))
+              (- (:height state) (:height (command-layout state)) (:bottom (command-layout state)) 22)
+              (- (ship-y state) 48))))
   (when (pos? (:wave-timer state))
     (q/text-size 18)
     (q/fill 168 247 222)
@@ -538,7 +581,7 @@
   (when (contains? #{:ready :paused :over :audio-settings} view)
     (q/no-stroke)
     (q/fill 3 10 17 220)
-    (q/rect 0 94 (:width state) (- (:height state) 94))
+    (q/rect 0 (+ 94 (:safe-top state 0)) (:width state) (- (:height state) 94 (:safe-top state 0)))
     (let [cx (/ (:width state) 2)
           cy (+ 112 (/ (- (ship-y state) 112) 2))
           small? (< (:width state) 500)]
