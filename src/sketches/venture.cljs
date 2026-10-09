@@ -224,6 +224,8 @@
                 :ship-angle 0 :aim-target nil :aim-until 0
                 :wave-timer 0 :clock 0 :flash 0 :last-time nil}))
 
+(defn recovery-choice? [state] (> (:wave state) 3))
+
 (defn recovery-wave [state] (max 1 (- (:wave state) 2)))
 
 (defn power-on [state]
@@ -427,7 +429,7 @@
       (when-let [controls (.getElementById js/document "venture-controls")]
         (.setAttribute controls "data-mode" (name (:mode state))))
       (when-let [choices (.getElementById js/document "venture-recovery")]
-        (set! (.-hidden choices) (or (not= :over (:mode state)) (:menu-visible? state) audio-open?)))
+        (set! (.-hidden choices) (or (not= :over (:mode state)) (not (recovery-choice? state)) (:menu-visible? state) audio-open?)))
       (when-let [power (.getElementById js/document "venture-power-on")]
         (set! (.-textContent power) (str "Power on · Wave " (recovery-wave state))))
       (when-let [button (.getElementById js/document "venture-pause")]
@@ -685,7 +687,7 @@
       (q/text (case view
                 :ready "CLICK OR PRESS ENTER TO LAUNCH"
                 :paused "PRESS P OR RESUME TO CONTINUE"
-                :over ""
+                :over (if (recovery-choice? state) "" "CLICK OR PRESS ENTER TO RESTART")
                 :audio-settings "CLOSE SETTINGS TO CONTINUE") cx (+ cy (if (= view :ready) 66 46)))))))
 
 (defn draw-state [state]
@@ -704,7 +706,8 @@
   (draw-overlay state))
 
 (defn mouse-clicked [state]
-  (if (and (not (:menu-visible? state)) (not (audio/settingsOpen)) (= :ready (:mode state)))
+  (if (and (not (:menu-visible? state)) (not (audio/settingsOpen)) (or (= :ready (:mode state))
+                                (and (= :over (:mode state)) (not (recovery-choice? state)))))
     (do (audio/unlock) (new-game state)) state))
 
 (registry/def-sketch "Add Venture" '(99 230 209)
