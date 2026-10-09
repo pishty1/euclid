@@ -238,7 +238,7 @@
 
 (defn new-game [state]
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
-                :shield-charge 0 :shield-bloom 0 :shield-reason "" :special-pulse 0 :special-name "" :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
+                :shield-charge 0 :shield-bloom 0 :shield-reason "" :special-pulse 0 :special-duration 0 :special-targets [] :special-name "" :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
                 :enemies [] :effects [] :spawned 0 :spawn-timer 0
                 :next-id 0 :input "" :message "" :message-timer 0
                 :ship-angle 0 :aim-target nil :aim-until 0
@@ -378,7 +378,9 @@
       (audio/play key "")
       (-> state
           (assoc :shields (- (:shields state) cost) :score score :input ""
-                 :wave-perfect? false :special-name name :special-pulse 1.1
+                 :wave-perfect? false :special-name name :special-pulse (if (= key "arc") 0.85 1.8)
+                 :special-duration (if (= key "arc") 0.85 1.8)
+                 :special-targets (mapv #(select-keys % [:lane :progress]) victims)
                  :message (str name " / -" cost " SHIELD" (if (> cost 1) "S" "")) :message-timer 1.5
                  :ship-angle (aim-angle state target) :aim-target (select-keys target [:lane :progress])
                  :aim-until (+ (:clock state) 0.5))
@@ -459,6 +461,7 @@
         (merge (viewport-insets))
         (assoc :width width :height height :lanes lanes)
         (update :aim-target #(when % (remap %)))
+        (update :special-targets #(mapv remap (or % [])))
         (update :enemies #(mapv remap %))
         (update :effects #(mapv remap %)))))
 
@@ -741,18 +744,73 @@
 (defn draw-special-launch [state]
   (when (and (pos? (:special-pulse state 0)) (= :playing (:mode state))
              (not (:menu-visible? state)) (not (:audio-open? state)))
-    (let [age (- 1.1 (:special-pulse state)) fade (/ (:special-pulse state) 1.1)
-          x (ship-x state) y (ship-y state) nova? (= "NOVA STRIKE" (:special-name state))
-          color (if nova? [225 150 255] [140 201 255])
-          r (+ 24 (* age (if nova? 170 110)))]
-      (q/no-fill) (apply q/stroke (conj color (* 190 fade))) (q/stroke-weight 2)
-      (q/ellipse x y (* 2 r) (* 2 r))
-      (doseq [i (range (if nova? 12 6))]
-        (let [a (+ (* i (/ (* 2 Math/PI) (if nova? 12 6))) (* age 2))]
-          (q/line (+ x (* r (Math/cos a))) (+ y (* r (Math/sin a)))
-                  (+ x (* (+ r 16) (Math/cos a))) (+ y (* (+ r 16) (Math/sin a))))))
-      (q/no-stroke) (apply q/fill (conj color (* 255 fade)))
-      (q/text-align :center :center) (q/text-size 12)
+    (let [duration (:special-duration state 1.1)
+          age (- duration (:special-pulse state)) fade (/ (:special-pulse state) duration)
+          x (ship-x state) y (ship-y state) nova? (= "NOVA STRIKE" (:special-name state))]
+      (if-not nova?
+        ;; Twin Arc: two sharp, forked electric discharges.
+        (doseq [target (:special-targets state)]
+          (let [tx (lane-x state (:lane target)) ty (enemy-y state target)
+                dx (- tx x) dy (- ty y) distance (max 1 (Math/hypot dx dy))
+                nx (/ (- dy) distance) ny (/ dx distance)
+                strength (* fade (+ 0.55 (* 0.45 (Math/pow (Math/sin (* age 32)) 2))))]
+            (doseq [j (range 10)]
+              (let [a (/ j 10) b (/ (inc j) 10)
+                    offset (fn [t] (* 12 (Math/sin (* t Math/PI))
+                                      (Math/sin (+ (* t 53) (* age 45)))))
+                    ax (+ x (* dx a) (* nx (offset a))) ay (+ y (* dy a) (* ny (offset a)))
+                    bx (+ x (* dx b) (* nx (offset b))) by (+ y (* dy b) (* ny (offset b)))]
+                (q/stroke 90 170 255 (* 55 strength)) (q/stroke-weight 8) (q/line ax ay bx by)
+                (q/stroke 180 240 255 (* 230 strength)) (q/stroke-weight 1.6) (q/line ax ay bx by)
+                (when (zero? (mod j 3))
+                  (q/stroke 105 205 255 (* 140 strength)) (q/stroke-weight 1)
+                  (q/line bx by (+ bx (* nx 18)) (+ by (* ny 18))))))
+            (q/no-fill) (q/stroke 150 225 255 (* 180 fade)) (q/stroke-weight 1)
+            (q/ellipse tx ty (+ 18 (* age 42)) (+ 18 (* age 42)))))
+        ;; Nova: a charged star, three curling comets and large stellar impacts.
+        (do
+          (q/no-stroke) (q/fill 225 140 255 (* 45 fade))
+          (q/ellipse x y 112 112)
+          (q/fill 255 230 255 (* 190 fade (Math/exp (* -5 age))))
+          (q/ellipse x y 38 38)
+          (q/no-fill)
+          (doseq [i (range 3)]
+            (let [r (+ 24 (* (max 0 (- age 0.18)) (+ 160 (* i 70))))]
+              (q/stroke 225 145 255 (* 100 fade (Math/exp (* -0.7 age)))) (q/stroke-weight (if (zero? i) 3 1))
+              (q/ellipse x y (* 2 r) (* 2 r))))
+          (doseq [target (:special-targets state)]
+            (let [tx (lane-x state (:lane target)) ty (enemy-y state target)
+                  dx (- tx x) dy (- ty y) distance (max 1 (Math/hypot dx dy))
+                  nx (/ (- dy) distance) ny (/ dx distance)
+                  flight (min 1 (/ age 0.38)) blast (max 0 (- age 0.38))]
+              (when (< age 0.38)
+                (doseq [i (range 10)]
+                  (let [t (max 0 (- flight (* i 0.035)))
+                        bend (* 38 (Math/sin (* t Math/PI)))
+                        px (+ x (* dx t) (* nx bend)) py (+ y (* dy t) (* ny bend))
+                        size (max 2 (- 16 (* i 1.3)))]
+                    (q/no-stroke) (q/fill 220 130 255 (* 170 (- 1 (/ i 10))))
+                    (q/ellipse px py size size)
+                    (when (zero? i) (q/fill 255 244 221 245) (q/ellipse px py 7 7)))))
+              (when (pos? blast)
+                (let [f (* fade (Math/exp (* -0.8 blast)))
+                      r (+ 12 (* 135 (- 1 (Math/exp (* -3 blast)))))]
+                  (q/no-stroke) (q/fill 210 120 255 (* 35 f)) (q/ellipse tx ty (* r 2.2) (* r 2.2))
+                  (q/fill 255 241 215 (* 255 (Math/exp (* -14 blast)))) (q/ellipse tx ty 68 68)
+                  (q/no-fill) (q/stroke 245 170 255 (* 210 f)) (q/stroke-weight 2)
+                  (q/ellipse tx ty (* 2 r) (* 2 r))
+                  (q/stroke 255 215 140 (* 130 f)) (q/stroke-weight 1)
+                  (q/ellipse tx ty (* 1.4 r) (* 1.4 r))
+                  (doseq [i (range 32)]
+                    (let [a (+ (* i 2.39996) (* blast 0.5))
+                          travel (* r (+ 0.5 (* 0.08 (mod i 7))))
+                          px (+ tx (* travel (Math/cos a))) py (+ ty (* travel (Math/sin a)))]
+                      (q/stroke (if (even? i) 255 205) (if (even? i) 210 140) (if (even? i) 140 255) (* 180 f))
+                      (q/line px py (+ px (* 12 (Math/cos a))) (+ py (* 12 (Math/sin a))))))))))
+          (q/no-fill) (q/stroke 225 145 255 (* 100 fade (Math/exp (* -4 (Math/abs (- age 0.38))))))
+          (q/stroke-weight 3) (q/rect 2 2 (- (:width state) 4) (- (:height state) 4))))
+      (q/no-stroke) (if nova? (q/fill 240 175 255 (* 255 fade)) (q/fill 150 220 255 (* 255 fade)))
+      (q/text-align :center :center) (q/text-size (if nova? 16 11))
       (q/text (:special-name state) x (- y 68))
       (q/stroke-weight 1))))
 

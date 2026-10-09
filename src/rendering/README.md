@@ -37,6 +37,10 @@ existing charge, and do not build charge or qualify the wave for a perfect bonus
 Incoming enemy projectiles remain active. Each launch has a coloured pulse,
 targeted combat effects, and a distinct sound. Weapons are blocked while paused
 or editing settings and unavailable outside active play.
+Arc's 0.85-second effect sends branching blue lightning to its two targets.
+Nova's 1.8-second sequence launches curling violet comets, three broad shockwaves,
+and large gold/violet starbursts at each target, with an edge pulse on impact.
+Captured target positions remap on resize and clear on a new flight.
 
 From wave 4, Flight ended offers Power on at `death wave - 2` or Restart from
 scratch at wave 1. Deaths on waves 1–3 show a simple click/Enter restart instead.
