@@ -20,6 +20,12 @@ waves. A wave completed without wrong answers or damage restores one shield
 unless that wave already granted a streak shield. Wave rewards are checked once.
 At the cap, shields are never banked. The HUD shows shield charge, and restoration
 has a message and rising audio cue. Replay resets reward progress.
+Shield restoration also triggers a 2.2-second constellation animation: inward
+sparks assemble a glowing six-sided shell around the ship, rings expand outward,
+and a +1 SHIELD callout identifies the reward. The overlay is drawn on the Quil
+canvas with either combat renderer. It freezes while gameplay is suspended,
+expires during play, and resets on a new flight; a full shield bank triggers no
+restoration animation.
 
 From wave 4, Flight ended offers Power on at `death wave - 2` or Restart from
 scratch at wave 1. Deaths on waves 1–3 show a simple click/Enter restart instead.

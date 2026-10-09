@@ -218,7 +218,7 @@
 
 (defn new-game [state]
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
-                :shield-charge 0 :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
+                :shield-charge 0 :shield-bloom 0 :shield-reason "" :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
                 :enemies [] :effects [] :spawned 0 :spawn-timer 0
                 :next-id 0 :input "" :message "" :message-timer 0
                 :ship-angle 0 :aim-target nil :aim-until 0
@@ -297,7 +297,8 @@
   (if (>= (:shields state) 5) state
     (do (audio/play "restore" "")
         (assoc state :shields (inc (:shields state))
-                     :message (str "+1 SHIELD / " reason) :message-timer 1.8))))
+                     :message (str "+1 SHIELD / " reason) :message-timer 1.8
+                     :shield-bloom 2.2 :shield-reason reason))))
 
 (defn charge-shield [state]
   (let [charge (inc (:shield-charge state 0))]
@@ -375,6 +376,7 @@
                      (update :spawn-timer - dt)
                      (update :clock + dt)
                      (update :flash #(max 0 (- % dt)))
+                     (update :shield-bloom #(max 0 (- (or % 0) dt)))
                      (update :message-timer #(max 0 (- % dt))))
         advanced (if (pos? (+ escaped impacts))
                    (do (audio/play "shield" "") (assoc advanced :combo 0 :flash 0.35 :wave-perfect? false)) advanced)]
@@ -623,6 +625,55 @@
                        (into-array (map #(gpu-effect state %) effects)))
       (draw-effects-canvas (assoc state :effects effects)))))
 
+(defn draw-shield-gain [state]
+  (when (and (pos? (:shield-bloom state 0)) (= :playing (:mode state))
+             (not (:menu-visible? state)) (not (:audio-open? state)))
+    (let [age (- 2.2 (:shield-bloom state))
+          fade (min 1 (/ (:shield-bloom state) 0.65))
+          gather (min 1 (/ age 0.65))
+          burst (max 0 (- age 0.5))
+          x (ship-x state) y (ship-y state)
+          pulse (+ 0.7 (* 0.3 (Math/sin (* age 11))))]
+      ;; A constellation collapses inward, assembling the protective shell.
+      (q/no-stroke)
+      (q/fill 110 255 222 (* 25 fade pulse)) (q/ellipse x y 122 122)
+      (doseq [i (range 24)]
+        (let [angle (+ (* i 2.39996) (* age 0.65))
+              radius (+ 40 (* 130 (Math/pow (- 1 gather) 2)))
+              px (+ x (* radius (Math/cos angle)))
+              py (+ y (* radius (Math/sin angle)))]
+          (q/stroke 140 255 229 (* 180 fade)) (q/stroke-weight 1)
+          (q/line px py (+ px (* 8 (- 1 gather) (Math/cos angle)))
+                           (+ py (* 8 (- 1 gather) (Math/sin angle))))
+          (q/no-stroke) (q/fill 221 255 242 (* 240 fade))
+          (q/ellipse px py 3 3)))
+      ;; Six luminous plates lock into a hexagonal shield.
+      (q/no-fill)
+      (doseq [i (range 6)]
+        (let [a (+ (- (/ Math/PI 2)) (* i (/ Math/PI 3)))
+              b (+ a (/ Math/PI 3))
+              r (+ 39 (* 18 (- 1 gather)))
+              ax (+ x (* r (Math/cos a))) ay (+ y (* r (Math/sin a)))
+              bx (+ x (* r (Math/cos b))) by (+ y (* r (Math/sin b)))]
+          (q/stroke 110 255 222 (* 45 fade)) (q/stroke-weight 8)
+          (q/line ax ay bx by)
+          (q/stroke 189 255 233 (* 230 fade pulse)) (q/stroke-weight 2)
+          (q/line ax ay (+ ax (* gather (- bx ax))) (+ ay (* gather (- by ay))))))
+      (when (pos? burst)
+        (doseq [i (range 2)]
+          (let [r (+ 42 (* burst (+ 42 (* i 20))))]
+            (q/stroke 118 255 226 (* 100 fade (Math/exp (* -2 burst))))
+            (q/stroke-weight 1) (q/ellipse x y (* 2 r) (* 2 r)))))
+      ;; Keep the gain announcement near the ship, clear of the touch pads.
+      (q/no-stroke) (q/text-align :center :center)
+      (q/text-size 22) (q/fill 198 255 228 (* 255 fade))
+      (q/text "+1 SHIELD" x (- y 90 (* 8 gather)))
+      (q/text-size 9) (q/fill 118 222 211 (* 230 fade))
+      (q/text (:shield-reason state) x (- y 70 (* 8 gather)))
+      (q/no-fill) (q/stroke 118 255 226 (* 75 fade (Math/exp (* -4 age))))
+      (q/stroke-weight 3) (q/rect 2 2 (- (:width state) 4) (- (:height state) 4))
+      (q/stroke-weight 1))))
+
 (defn draw-hud [state]
   (q/text-align :right :top)
   (q/text-size 12)
@@ -698,6 +749,7 @@
   (let [target (:id (target-enemy state false))]
     (doseq [enemy (:enemies state)] (draw-enemy state enemy (= target (:id enemy)))))
   (draw-effects state)
+  (draw-shield-gain state)
   (draw-hud state)
   (when (pos? (:flash state))
     (q/no-stroke)
