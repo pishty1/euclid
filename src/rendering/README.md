@@ -33,7 +33,18 @@ a formation costs one shield only after its topmost hull has fully left the
 canvas, rather than on reaching the player ship. Split keypad buttons have
 8-pixel gaps (single-panel layouts use 6 pixels), with drag bounds accounting
 for the taller panels. Answers
-remain within the four-digit input limit; stack frequency gradually rises to 40%.
+remain within the current wave’s normal answer range, including intermediate
+results; stack frequency gradually rises to 40%.
+
+Memory enemies appear from wave 5, at most one pair per wave. A blue diamond
+ship labelled REMEMBER M5 (for example) shows an ordinary equation. It cannot
+be targeted by answers or special weapons and leaves safely without damage or
+streak changes. Three game seconds after it fully exits, its purple RECALL M5
+shadow is queued to return, with the equation replaced by `?`. Enter the
+remembered answer to hit it; incorrect answers provoke its operation’s weapon,
+and letting the shadow fully leave costs one shield. The pair occupies one
+wave slot; wave completion waits for queued shadows. Pauses freeze the recall
+delay, and replay clears it. Matching markers and diamond hulls connect the pair.
 
 Flights begin with three shields and can hold five. Every eight correct answers
 restores one shield; wrong answers reset charge, while charge carries across
