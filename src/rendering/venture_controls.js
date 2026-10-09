@@ -29,7 +29,7 @@ function init(panel, handle) {
     const style = window.getComputedStyle(document.documentElement);
     const bottom = Math.max(2, parseFloat(style.getPropertyValue('--safe-bottom')) || 0);
     const top = Math.max(100, (parseFloat(style.getPropertyValue('--safe-top')) || 0) + 100);
-    return Math.max(0, window.innerHeight - bottom - (panel.offsetHeight || (mode === 'split' ? 289 : 205)) - top);
+    return Math.max(0, window.innerHeight - bottom - (panel.offsetHeight || (mode === 'split' ? 319 : 217)) - top);
   }
   function move(value, persist = false) {
     const maximum = limit();

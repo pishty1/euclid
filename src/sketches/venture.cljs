@@ -57,7 +57,7 @@
    #venture-audio select{display:block;width:100%;margin-top:8px;padding:8px;border:1px solid #70dace50;border-radius:7px;background:#102b32;color:#bdfcf0;font:inherit}
    #venture-audio-status{color:#86b6bd;font-size:11px}
    @media(max-width:400px){#venture-controls .game-toolbar{gap:4px}#venture-controls .game-toolbar button{padding:0 8px}#venture-audio summary{padding:12px 8px}}
-   .venture-keypad{display:none;position:absolute;bottom:calc(max(2px,env(safe-area-inset-bottom)) + var(--keypad-lift,0px));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#07192324;box-shadow:none;grid-template-columns:repeat(3,1fr);gap:3px;pointer-events:auto}
+   .venture-keypad{display:none;position:absolute;bottom:calc(max(2px,env(safe-area-inset-bottom)) + var(--keypad-lift,0px));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#07192324;box-shadow:none;grid-template-columns:repeat(3,1fr);gap:6px;pointer-events:auto}
    .venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:center;min-height:18px;padding:0 2px 3px;color:#7aadaf;font:9px monospace;letter-spacing:.08em;touch-action:none;cursor:ns-resize;user-select:none}
    .venture-keypad .command-display::before{content:\"\";width:18px;height:3px;border-radius:3px;background:#bdfcf070}
    .venture-keypad .command-display:focus-visible{outline:2px solid #edc778;border-radius:4px}
@@ -67,11 +67,11 @@
    .venture-keypad button:hover{background:#173b425c}
    .venture-keypad .fire{background:#96ead738;color:#c4fff1;font-size:12px;font-weight:700}
    @media(pointer:coarse),(max-width:600px){.venture-keypad{display:grid}}
-   @media(max-height:450px){.venture-keypad{width:180px;grid-template-columns:repeat(4,1fr);padding:5px;gap:3px}.venture-keypad button{min-height:40px;font-size:17px}.venture-keypad .command-display{min-height:18px;padding-bottom:3px}}
+   @media(max-height:450px){.venture-keypad{width:180px;grid-template-columns:repeat(4,1fr);padding:5px;gap:6px}.venture-keypad button{min-height:40px;font-size:17px}.venture-keypad .command-display{min-height:18px;padding-bottom:3px}}
    @media(max-height:450px) and (min-width:600px){.venture-keypad{width:264px;grid-template-columns:repeat(6,1fr)}}
    .venture-keypad[data-side=right]{left:auto;right:max(4px,env(safe-area-inset-right))}
    .venture-keypad[hidden]{display:none!important}
-   .venture-keypad[data-layout=split]{width:56px;grid-template-columns:1fr;padding:4px}
+   .venture-keypad[data-layout=split]{width:56px;grid-template-columns:1fr;padding:4px;gap:8px}
    .venture-keypad[data-layout=split] .command-display{justify-content:center;font-size:10px}
    .venture-keypad[data-layout=split] #venture-answer{display:none}
    @media(max-height:450px){.venture-keypad[data-layout=split]{width:98px;grid-template-columns:repeat(2,1fr)}}
@@ -180,8 +180,8 @@
                  (if (= layout "split") (if short? 98 56)
                    (if short? (if (>= (:width state) 600) 264 180) 148)))
      :height (max (controls/padHeight)
-                  (if (= layout "split") (if short? 160 289)
-                    (if short? (if (>= (:width state) 600) 122 165) 205)))
+                  (if (= layout "split") (if short? 175 319)
+                    (if short? (if (>= (:width state) 600) 128 174) 217)))
      :bottom (+ (max 2 (:safe-bottom state 0)) (controls/lift))
      :left (max 4 (:safe-left state 0)) :right (max 4 (:safe-right state 0))}))
 
@@ -206,7 +206,7 @@
 
 (defn enemy-y [state enemy]
   ;; Controls are overlays: enemy flight never depends on their layout/position.
-  (let [top (+ 108 (:safe-top state 0)) end (- (ship-y state) 37)]
+  (let [top (+ 108 (:safe-top state 0)) end (+ (:height state) 34)]
     (+ top (* (:progress enemy) (max 20 (- end top))))))
 
 (defn lane-x [state lane]
@@ -229,6 +229,8 @@
       :subtract {:equation (str (max a b) " − " (min a b)) :answer (Math/abs (- a b))}
       :multiply {:equation (str factor-a " × " factor-b) :answer (* factor-a factor-b)}
       :divide {:equation (str (* factor-a factor-b) " ÷ " factor-a) :answer factor-b}) :operation op)))
+
+(def stack-spacing 54)
 
 (defn stack-steps [enemy]
   (or (:stack-steps enemy)
@@ -315,15 +317,15 @@
 
 (defn spawn-enemy [state]
   (let [travel (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))
-        screen-limit (max 1 (min 5 (inc (int (/ (* travel 0.45) 68)))))
+        screen-limit (max 1 (min 5 (inc (int (/ (* travel 0.45) stack-spacing)))))
         problem (make-enemy-problem (:wave state) screen-limit)
         progress (if (seq (stack-steps problem))
-                   (/ (* 68 (count (stack-steps problem))) (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))) 0)
+                   (/ (* stack-spacing (count (stack-steps problem))) (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))) 0)
         start-y (enemy-y state {:progress progress})
         available (filterv (fn [lane]
                              (not-any? #(and (= lane (:lane %))
                                              (< (- (enemy-y state %) start-y)
-                                                (+ 92 (* 68 (count (stack-steps %))))))
+                                                (+ 92 (* stack-spacing (count (stack-steps %))))))
                                        (:enemies state)))
                            (range (:lanes state)))]
     (if (empty? available)
@@ -376,7 +378,7 @@
   (into [effect]
         (map-indexed (fn [i step]
                        (assoc effect :target-id nil :points 0 :correct? false :silent? true
-                                     :operation (:operation step) :y-offset (* -68 (inc i))))
+                                     :operation (:operation step) :y-offset (* (- stack-spacing) (inc i))))
                      (stack-steps enemy))))
 
 (defn fire-answer [state]
@@ -491,14 +493,19 @@
                   (charge-shield (assoc hit :message "DIRECT HIT" :message-timer 0.65)) hit))
               state)) state (:effects state)))
 
+(defn escaped-enemy? [state enemy]
+  ;; A formation is missed only after its highest hull has fully left the canvas.
+  (> (- (enemy-y state enemy) (* stack-spacing (count (stack-steps enemy))) 34)
+     (:height state)))
+
 (defn advance-game [state dt]
   (let [state (resolve-hits state dt)
         enemies (mapv #(if (:pending-hit? %) % (update % :progress + (* dt (:speed %)))) (:enemies state))
-        escaped (count (filter #(>= (:progress %) 1) enemies))
+        escaped (count (filter #(escaped-enemy? state %) enemies))
         {:keys [effects impacts]} (advance-effects (:effects state) dt)
         shields (max 0 (- (:shields state) escaped impacts))
         advanced (-> state
-                     (assoc :enemies (filterv #(< (:progress %) 1) enemies) :shields shields :effects effects)
+                     (assoc :enemies (filterv #(not (escaped-enemy? state %)) enemies) :shields shields :effects effects)
                      (update :spawn-timer - dt)
                      (update :clock + dt)
                      (update :flash #(max 0 (- % dt)))
@@ -707,13 +714,13 @@
     (draw-single-enemy state (cond-> enemy (seq steps) (assoc :operation (:base-operation enemy))) targeted?)
     (doseq [[i step] (map-indexed vector steps)]
       (let [{:keys [color symbol]} (get enemy-styles (:operation step))]
-        (q/push-matrix) (q/translate 0 (* -68 i))
+        (q/push-matrix) (q/translate 0 (* (- stack-spacing) i))
         ;; Arrows connect each adjacent pair, from bottom to top.
         (q/stroke 133 255 227 150) (q/stroke-weight 1)
-        (q/line x (- y 30) x (- y 38))
-        (q/line x (- y 38) (- x 3) (- y 34))
-        (q/line x (- y 38) (+ x 3) (- y 34))
-        (q/translate 0 -68)
+        (q/line x (- y 23) x (- y (- stack-spacing 23)))
+        (q/line x (- y (- stack-spacing 23)) (- x 3) (- y (- stack-spacing 27)))
+        (q/line x (- y (- stack-spacing 23)) (+ x 3) (- y (- stack-spacing 27)))
+        (q/translate 0 (- stack-spacing))
         (draw-single-enemy state (assoc enemy :operation (:operation step) :equation "") targeted?)
         (q/no-stroke) (q/fill 3 12 18 230) (q/text-size 16)
         (let [label (str symbol " " (:operand step)) width (+ 12 (q/text-width label))

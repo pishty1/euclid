@@ -27,7 +27,12 @@ use the upper operation for retaliation, and grant one kill/streak reward. All
 hulls disappear and produce impact effects together. Spawn spacing accounts
 for the taller formation, including on mobile. Waves 4–7 allow two steps,
 waves 8–11 up to three, waves 12–15 up to four, and wave 16 onward up to five.
-Short viewports cap the depth to keep the complete formation in view. Answers
+Short viewports cap the depth to keep the complete formation in view. Stacked
+hull centres are 54 pixels apart. Enemy flight continues to the bottom edge;
+a formation costs one shield only after its topmost hull has fully left the
+canvas, rather than on reaching the player ship. Split keypad buttons have
+8-pixel gaps (single-panel layouts use 6 pixels), with drag bounds accounting
+for the taller panels. Answers
 remain within the four-digit input limit; stack frequency gradually rises to 40%.
 
 Flights begin with three shields and can hold five. Every eight correct answers
