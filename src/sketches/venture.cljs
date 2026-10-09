@@ -54,15 +54,15 @@
    #venture-audio input{display:block;width:100%;margin-top:8px;accent-color:#96ead7}
    #venture-audio-status{color:#86b6bd;font-size:11px}
    @media(max-width:400px){#venture-controls .game-toolbar{gap:4px}#venture-controls .game-toolbar button{padding:0 8px}#venture-audio summary{padding:12px 8px}}
-   #venture-keypad{display:none;position:absolute;bottom:max(10px,calc(env(safe-area-inset-bottom) + 8px));right:max(10px,env(safe-area-inset-right));width:176px;padding:8px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#071923f2;box-shadow:0 6px 25px #0007;grid-template-columns:repeat(3,1fr);gap:5px;pointer-events:auto}
-   #venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:24px;padding:2px 3px 6px;color:#7aadaf;font:9px monospace;letter-spacing:.08em}
+   #venture-keypad{display:none;position:absolute;bottom:max(2px,env(safe-area-inset-bottom));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#071923f2;box-shadow:0 6px 25px #0007;grid-template-columns:repeat(3,1fr);gap:3px;pointer-events:auto}
+   #venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:18px;padding:0 2px 3px;color:#7aadaf;font:9px monospace;letter-spacing:.08em}
    #venture-keypad *{box-sizing:border-box}#venture-keypad{max-width:calc(100vw - 20px)}
    #venture-answer{color:#bdfcf0;font-size:16px;letter-spacing:0}
-   #venture-keypad button{min-height:44px;font-size:19px}
+   #venture-keypad button{min-height:40px;font-size:17px}
    #venture-keypad .fire{background:#96ead7;color:#07232a;font-size:12px;font-weight:700}
    @media(pointer:coarse),(max-width:600px){#venture-keypad{display:grid}}
-   @media(max-height:450px){#venture-keypad{width:196px;grid-template-columns:repeat(4,1fr);padding:6px;gap:4px}#venture-keypad button{min-height:40px;font-size:17px}#venture-keypad .command-display{min-height:20px;padding-bottom:3px}}
-   @media(max-height:450px) and (min-width:600px){#venture-keypad{width:312px;grid-template-columns:repeat(6,1fr)}}
+   @media(max-height:450px){#venture-keypad{width:180px;grid-template-columns:repeat(4,1fr);padding:5px;gap:3px}#venture-keypad button{min-height:40px;font-size:17px}#venture-keypad .command-display{min-height:18px;padding-bottom:3px}}
+   @media(max-height:450px) and (min-width:600px){#venture-keypad{width:264px;grid-template-columns:repeat(6,1fr)}}
    @media(max-width:600px){body[data-sketch='Add Venture'] #euclid-nav .current-name{display:none}}
    body[data-sketch='Add Venture'] #sketch canvas{display:block}")
 
@@ -118,14 +118,14 @@
   (or (<= width 600) (.-matches (.matchMedia js/window "(pointer: coarse)"))))
 
 (defn command-layout [state]
-  {:width (min (- (:width state) 20) (if (<= (:height state) 450) (if (>= (:width state) 600) 312 196) 176))
-   :height (if (<= (:height state) 450) (if (>= (:width state) 600) 122 166) 238)
-   :bottom (max 10 (+ 8 (:safe-bottom state 0))) :right (max 10 (:safe-right state 0))})
+  {:width (min (- (:width state) 20) (if (<= (:height state) 450) (if (>= (:width state) 600) 264 180) 148))
+   :height (if (<= (:height state) 450) (if (>= (:width state) 600) 116 159) 205)
+   :bottom (max 2 (:safe-bottom state 0)) :left (max 4 (:safe-left state 0))})
 
 (defn ship-x [state]
   (if (touch-controls? (:width state))
-    (let [{:keys [width right]} (command-layout state) left (:safe-left state 0)]
-      (max (+ left 48) (+ left (/ (- (:width state) left width right) 2))))
+    (let [{:keys [width left]} (command-layout state) right (:safe-right state 0)]
+      (min (- (:width state) right 48) (+ left width (/ (- (:width state) left width right) 2))))
     (/ (:width state) 2)))
 
 (defn ship-y [state]
@@ -140,11 +140,11 @@
 
 (defn enemy-y [state enemy]
   (let [top (+ 108 (:safe-top state 0))
-        {:keys [width height bottom right]} (command-layout state)
+        {:keys [width height bottom left]} (command-layout state)
         over-console? (and (touch-controls? (:width state))
                            (or (nil? (:lane enemy))
-                               (>= (+ 70 (* (:width state) (/ (+ (:lane enemy) 0.5) (:lanes state))))
-                                   (- (:width state) width right 8))))
+                               (<= (- (* (:width state) (/ (+ (:lane enemy) 0.5) (:lanes state))) 70)
+                                   (+ left width 8))))
         end (if over-console? (min (- (ship-y state) 37) (- (:height state) height bottom 78))
                 (- (ship-y state) 37))]
     (+ top (* (:progress enemy) (max 20 (- end top))))))
@@ -183,9 +183,13 @@
                 :ship-angle 0 :aim-target nil :aim-until 0
                 :wave-timer 0 :clock 0 :flash 0 :last-time nil}))
 
+(defn canvas-height []
+  (let [host (.getElementById js/document "sketch")]
+    (max (.-innerHeight js/window) (if host (.-clientHeight host) 0))))
+
 (defn setup []
   (init-controls!)
-  (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window))
+  (q/resize-sketch (.-innerWidth js/window) (canvas-height))
   (when-let [host (.getElementById js/document "sketch")]
     (set! (.-tabIndex host) 0)
     (.setAttribute host "aria-label" "Arithmetic defense: type answers and press Enter to fire")
@@ -194,7 +198,7 @@
   (q/frame-rate 60)
   (q/text-font "monospace")
   (audio/init (.getElementById js/document "sketch") (.querySelector js/document "#venture-controls .game-toolbar"))
-  (let [width (q/width) height (q/height)
+  (let [width (q/width) height (.-innerHeight js/window)
         overlay (.querySelector js/document "#sketch canvas:not([data-venture-gpu])")]
     (assoc (new-game (merge (viewport-insets) {:width width :height height
                      :gpu (when overlay (gpu/create (.getElementById js/document "sketch") overlay))
@@ -335,15 +339,15 @@
 (defn update-state [state]
   ;; Quil does not forward p5's windowResized callback; resize in the draw loop.
   (when (or (not= (q/width) (.-innerWidth js/window))
-            (not= (q/height) (.-innerHeight js/window)))
-    (q/resize-sketch (.-innerWidth js/window) (.-innerHeight js/window)))
+            (not= (q/height) (canvas-height)))
+    (q/resize-sketch (.-innerWidth js/window) (canvas-height)))
   (let [now (/ (q/millis) 1000)
         dt (min 0.05 (max 0 (- now (or (:last-time state) now))))
         audio-open? (audio/settingsOpen)
         pending (if audio-open? (filter #(contains? #{"p" "P"} %) @actions) @actions)]
     (reset! actions [])
-    (let [state (if (or (not= (:width state) (q/width)) (not= (:height state) (q/height)))
-                  (resize-state state (q/width) (q/height)) state)
+    (let [state (if (or (not= (:width state) (q/width)) (not= (:height state) (.-innerHeight js/window)))
+                  (resize-state state (q/width) (.-innerHeight js/window)) state)
           state (if (:menu-visible? state) state (reduce handle-action state pending))
           state (assoc state :audio-open? audio-open?)
           state (if (or (:menu-visible? state) audio-open?) state
@@ -365,12 +369,12 @@
   (q/stroke-weight 1)
   (q/stroke 19 47 53 95)
   (let [offset (mod (* (:clock state) 18) 44)]
-    (doseq [x (range 0 (:width state) 44)] (q/line x 0 x (:height state)))
-    (doseq [y (range -44 (:height state) 44)] (q/line 0 (+ y offset) (:width state) (+ y offset))))
+    (doseq [x (range 0 (:width state) 44)] (q/line x 0 x (q/height)))
+    (doseq [y (range -44 (q/height) 44)] (q/line 0 (+ y offset) (:width state) (+ y offset))))
   (q/no-stroke)
   (doseq [{:keys [x y depth]} (:stars state)]
     (q/fill 150 207 214 (+ 35 (* depth 110)))
-    (let [py (mod (+ (* y (:height state)) (* (:clock state) depth 22)) (:height state))]
+    (let [py (mod (+ (* y (q/height)) (* (:clock state) depth 22)) (q/height))]
       (q/ellipse (* x (:width state)) py (* depth 2) (* depth 2)))))
 
 (defn draw-ship [state]
