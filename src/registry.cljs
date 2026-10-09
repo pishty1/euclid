@@ -16,7 +16,8 @@
 
 ;; New Helper: Defines and Registers in one go
 (defn def-sketch [name color options]
-  (let [start-fn (fn [] (let [options (if (= "sketch" (:host options))
+  (let [start-fn (fn [] (viewport/match-background! name)
+                         (let [options (if (= "sketch" (:host options))
                                            (assoc options :size [(.-innerWidth js/window) (viewport/canvas-height)])
                                            options)]
                                 (apply q/sketch (apply concat options))))

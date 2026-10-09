@@ -29,6 +29,9 @@ Closing Audio resumes play, unless the game was manually paused.
 
 On touch screens, the number pad is a command console in the bottom-left corner.
 The ship and answer sit to its right, and enemy labels stop above the console.
+Drag the COMMAND BASE ↕ header vertically to adjust thumb reach. Its height is
+saved locally when storage is available and clamped to fit after rotation.
+Keyboard users can focus the handle and use Up/Down, Home, or End.
 Short screens use fewer keypad rows. The sketch background extends through the large viewport behind browser chrome,
 while gameplay and controls stay within the visible viewport. The sketch
 respects display safe areas; the sketch menu becomes compact on phones and uses
@@ -39,6 +42,10 @@ browser tab retains browser-controlled bars.
 All sketches launch and resize using the shared `viewport/canvas-height` helper,
 which covers the host's large viewport. Both Canvas and GPU layers extend behind
 translucent browser toolbars. Bottom captions use the visible viewport height.
+The host also covers the bottom safe-area inset, and the document background and
+Safari theme colour follow the active sketch to avoid a separate home-indicator
+strip. iPhone Safari does not allow websites to hide the URL bar automatically;
+Home Screen launch is required for the standalone view.
 
 La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
 the four live segment intersections from the crosses' endpoints. Instanced light

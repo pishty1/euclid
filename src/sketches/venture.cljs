@@ -6,7 +6,8 @@
             [viewport :as viewport]
             [menu :as menu]
             ["../rendering/venture_gpu.js" :as gpu]
-            ["../rendering/venture_audio.js" :as audio]))
+            ["../rendering/venture_audio.js" :as audio]
+            ["../rendering/venture_controls.js" :as controls]))
 
 (defonce actions (atom []))
 (defonce best-score (atom 0))
@@ -25,7 +26,7 @@
                   (let [key (.-key event)]
                     (when (and (active?) (not @menu/menu-visible)
                                (not (and (.-closest (.-target event))
-                                         (.closest (.-target event) "#venture-audio,#venture-mute")))
+                                         (.closest (.-target event) "#venture-audio,#venture-mute,.command-display")))
                                (not (.-ctrlKey event)) (not (.-metaKey event))
                                (or (re-matches #"[0-9]" key)
                                    (contains? #{"Enter" "Backspace" "p" "P"} key)))
@@ -55,8 +56,9 @@
    #venture-audio input{display:block;width:100%;margin-top:8px;accent-color:#96ead7}
    #venture-audio-status{color:#86b6bd;font-size:11px}
    @media(max-width:400px){#venture-controls .game-toolbar{gap:4px}#venture-controls .game-toolbar button{padding:0 8px}#venture-audio summary{padding:12px 8px}}
-   #venture-keypad{display:none;position:absolute;bottom:max(2px,env(safe-area-inset-bottom));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#071923f2;box-shadow:0 6px 25px #0007;grid-template-columns:repeat(3,1fr);gap:3px;pointer-events:auto}
-   #venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:18px;padding:0 2px 3px;color:#7aadaf;font:9px monospace;letter-spacing:.08em}
+   #venture-keypad{display:none;position:absolute;bottom:calc(max(2px,env(safe-area-inset-bottom)) + var(--keypad-lift,0px));left:max(4px,env(safe-area-inset-left));width:148px;padding:5px;box-sizing:border-box;border:1px solid #70dace40;border-radius:14px;background:#071923f2;box-shadow:0 6px 25px #0007;grid-template-columns:repeat(3,1fr);gap:3px;pointer-events:auto}
+   #venture-keypad .command-display{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:18px;padding:0 2px 3px;color:#7aadaf;font:9px monospace;letter-spacing:.08em;touch-action:none;cursor:ns-resize;user-select:none}
+   #venture-keypad .command-display:focus-visible{outline:2px solid #edc778;border-radius:4px}
    #venture-keypad *{box-sizing:border-box}#venture-keypad{max-width:calc(100vw - 20px)}
    #venture-answer{color:#bdfcf0;font-size:16px;letter-spacing:0}
    #venture-keypad button{min-height:40px;font-size:17px}
@@ -96,7 +98,7 @@
         (.addEventListener button "mousedown" (fn [event] (.preventDefault event))))
       (.appendChild toolbar full)
       (.appendChild toolbar pause)
-      (let [display (menu/element "div" "command-display" "COMMAND BASE")
+      (let [display (menu/element "div" "command-display" "COMMAND BASE ↕")
             answer (menu/element "span" "" "_")]
         (set! (.-id answer) "venture-answer")
         (.appendChild display answer) (.appendChild keypad display))
@@ -113,7 +115,8 @@
       (.appendChild controls keypad)
       (doseq [event-name ["click" "mousedown" "mouseup" "touchstart" "touchend" "touchmove"]]
         (.addEventListener controls event-name (fn [event] (.stopPropagation event))))
-      (.appendChild (.-body js/document) controls))))
+      (.appendChild (.-body js/document) controls)
+      (controls/init keypad (.querySelector keypad ".command-display")))))
 
 (defn touch-controls? [width]
   (or (<= width 600) (.-matches (.matchMedia js/window "(pointer: coarse)"))))
@@ -121,7 +124,7 @@
 (defn command-layout [state]
   {:width (min (- (:width state) 20) (if (<= (:height state) 450) (if (>= (:width state) 600) 264 180) 148))
    :height (if (<= (:height state) 450) (if (>= (:width state) 600) 116 159) 205)
-   :bottom (max 2 (:safe-bottom state 0)) :left (max 4 (:safe-left state 0))})
+   :bottom (+ (max 2 (:safe-bottom state 0)) (controls/lift)) :left (max 4 (:safe-left state 0))})
 
 (defn ship-x [state]
   (if (touch-controls? (:width state))
