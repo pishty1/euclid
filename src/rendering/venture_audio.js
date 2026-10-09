@@ -104,6 +104,8 @@ function unlock(){
 function play(kind,operation){
   if(!available()||preferences.effects===0)return;
   const time=context.currentTime+0.003;
+  if(kind==='arc'){tone(1350,180,0.3,0.16,'triangle','effects',time);tone(900,140,0.3,0.12,'sine','effects',time+0.04);}
+  if(kind==='nova'){noise(0.45,0.16,2200,'effects',time);tone(70,25,0.5,0.2,'sine','effects',time);tone(450,90,0.4,0.1,'sawtooth','effects',time);}
   if(kind==='restore')for(let i=0;i<3;i++)tone(440*Math.pow(2,i/3),440*Math.pow(2,i/3),0.16,0.09,'sine','effects',time+i*0.1);
   if(kind==='player')tone(1050,190,0.14,0.16,'triangle','effects',time);
   if(kind==='enemy'){

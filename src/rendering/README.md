@@ -27,6 +27,17 @@ canvas with either combat renderer. It freezes while gameplay is suspended,
 expires during play, and resets on a new flight; a full shield bank triggers no
 restoration animation.
 
+The perfect-wave bonus can occur before eight correct answers (wave 1 has six
+enemies); its callout explicitly says PERFECT WAVE / +1 SHIELD BONUS. The streak
+rule still requires eight correct answers and resets on a wrong answer.
+Twin Arc (Q or its touch button) costs one shield and destroys two distinct random
+enemies; Nova Strike (W) costs two and destroys three. A weapon requires enough
+targets and must leave one shield in reserve. Kills earn 50 points each, preserve
+existing charge, and do not build charge or qualify the wave for a perfect bonus.
+Incoming enemy projectiles remain active. Each launch has a coloured pulse,
+targeted combat effects, and a distinct sound. Weapons are blocked while paused
+or editing settings and unavailable outside active play.
+
 From wave 4, Flight ended offers Power on at `death wave - 2` or Restart from
 scratch at wave 1. Deaths on waves 1–3 show a simple click/Enter restart instead.
 Both start a fresh flight with three shields, zero score, and cleared

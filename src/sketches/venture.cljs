@@ -18,7 +18,7 @@
 (defn enqueue! [key]
   (when (and (active?) (not @menu/menu-visible)
              (or (not (audio/settingsOpen)) (contains? #{"p" "P"} key)))
-    (when (contains? #{"Enter" "p" "P" "continue" "restart"} key) (audio/unlock))
+    (when (contains? #{"Enter" "p" "P" "continue" "restart" "arc" "nova" "q" "Q" "w" "W"} key) (audio/unlock))
     (swap! actions conj key)))
 
 (defonce keyboard-handler
@@ -29,7 +29,7 @@
                                          (.closest (.-target event) "#venture-audio,#venture-mute,.command-display")))
                                (not (.-ctrlKey event)) (not (.-metaKey event))
                                (or (re-matches #"[0-9]" key)
-                                   (contains? #{"Enter" "Backspace" "p" "P" "r" "R"} key)))
+                                   (contains? #{"Enter" "Backspace" "p" "P" "r" "R" "q" "Q" "w" "W"} key)))
                       ;; Leave native buttons' Enter activation intact.
                       (when-not (and (= key "Enter")
                                      (= "BUTTON" (.-tagName (.-target event))))
@@ -77,6 +77,11 @@
    @media(max-height:450px){.venture-keypad[data-layout=split]{width:98px;grid-template-columns:repeat(2,1fr)}}
    @media(max-width:600px){body[data-sketch='Add Venture'] #euclid-nav .current-name{display:none}}
    #venture-controls[data-mode=over] .venture-keypad{display:none}
+   #venture-specials{position:absolute;bottom:max(2px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto;width:162px}
+   #venture-specials[hidden]{display:none}
+   #venture-specials button{flex:1;min-width:0;min-height:40px;padding:3px;font-size:10px;white-space:nowrap;background:#152b3dd9;border-color:#aac8ff80;color:#d4e5ff}
+   #venture-specials .nova{background:#35203cd9;border-color:#efa9ff80;color:#f8d6ff}
+   #venture-specials button:disabled{opacity:.35;cursor:default}
    #venture-recovery{position:absolute;top:min(calc(50% + 55px),calc(100% - 126px - env(safe-area-inset-bottom)));left:50%;transform:translateX(-50%);width:min(280px,calc(100vw - 32px));display:grid;gap:8px;pointer-events:auto;text-align:center}
    #venture-recovery[hidden]{display:none}
    #venture-recovery button{min-height:44px;padding:10px 14px;font-size:14px}
@@ -128,6 +133,21 @@
           ;; Avoid stealing focus from the game when a pointer taps the keypad.
           (.addEventListener button "mousedown" (fn [event] (.preventDefault event)))
           (.appendChild keypad button)))
+      (let [specials (menu/element "div" "" nil)]
+        (set! (.-id specials) "venture-specials")
+        (set! (.-hidden specials) true)
+        (.setAttribute specials "role" "group")
+        (.setAttribute specials "aria-label" "Shield-powered special weapons")
+        (doseq [[action label description] [["arc" "ARC 1◆" "Twin Arc: destroy two random enemies. Costs one shield; requires two shields."]
+                                            ["nova" "NOVA 2◆" "Nova Strike: destroy three random enemies. Costs two shields; requires three shields."]]]
+          (let [button (menu/element "button" action label)]
+            (set! (.-id button) (str "venture-" action))
+            (set! (.-type button) "button")
+            (.setAttribute button "aria-label" description)
+            (.setAttribute button "title" description)
+            (.addEventListener button "click" (fn [_] (enqueue! action)))
+            (.appendChild specials button)))
+        (.appendChild controls specials))
       (let [choices (menu/element "div" "" nil)
             power (menu/element "button" "power-on" "Power on")
             restart (menu/element "button" "" "Restart from scratch")
@@ -175,7 +195,7 @@
     (/ (:width state) 2)))
 
 (defn ship-y [state]
-  (- (:height state) (:safe-bottom state 0) (if (touch-controls? (:width state)) 110 105)))
+  (- (:height state) (:safe-bottom state 0) (if (touch-controls? (:width state)) 130 125)))
 
 (defn viewport-insets []
   (let [style (.getComputedStyle js/window (.-documentElement js/document))
@@ -218,7 +238,7 @@
 
 (defn new-game [state]
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
-                :shield-charge 0 :shield-bloom 0 :shield-reason "" :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
+                :shield-charge 0 :shield-bloom 0 :shield-reason "" :special-pulse 0 :special-name "" :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
                 :enemies [] :effects [] :spawned 0 :spawn-timer 0
                 :next-id 0 :input "" :message "" :message-timer 0
                 :ship-angle 0 :aim-target nil :aim-until 0
@@ -235,6 +255,7 @@
   (init-controls!)
   (.setAttribute (.getElementById js/document "venture-controls") "data-mode" "ready")
   (set! (.-hidden (.getElementById js/document "venture-recovery")) true)
+  (set! (.-hidden (.getElementById js/document "venture-specials")) true)
   (q/resize-sketch (.-innerWidth js/window) (viewport/canvas-height))
   (when-let [host (.getElementById js/document "sketch")]
     (set! (.-tabIndex host) 0)
@@ -336,6 +357,37 @@
                                       :age 0 :kind :incoming}))
           state)))))
 
+(def special-weapons
+  {"arc" {:cost 1 :targets 2 :name "TWIN ARC"}
+   "nova" {:cost 2 :targets 3 :name "NOVA STRIKE"}})
+
+(defn special-ready? [state key]
+  (let [{:keys [cost targets]} (get special-weapons key)]
+    (and cost (= :playing (:mode state)) (not (:menu-visible? state)) (not (:audio-open? state))
+         (> (:shields state) cost)
+         (>= (count (:enemies state)) targets))))
+
+(defn fire-special [state key]
+  (if-not (special-ready? state key) state
+    (let [{:keys [cost targets name]} (get special-weapons key)
+          victims (vec (take targets (shuffle (:enemies state))))
+          ids (set (map :id victims))
+          score (+ (:score state) (* 50 targets))
+          target (first victims)]
+      (swap! best-score max score)
+      (audio/play key "")
+      (-> state
+          (assoc :shields (- (:shields state) cost) :score score :input ""
+                 :wave-perfect? false :special-name name :special-pulse 1.1
+                 :message (str name " / -" cost " SHIELD" (if (> cost 1) "S" "")) :message-timer 1.5
+                 :ship-angle (aim-angle state target) :aim-target (select-keys target [:lane :progress])
+                 :aim-until (+ (:clock state) 0.5))
+          (update :enemies #(filterv (fn [enemy] (not (contains? ids (:id enemy)))) %))
+          (update :effects into (mapv (fn [enemy]
+                                       {:lane (:lane enemy) :progress (:progress enemy)
+                                        :operation (or (:operation enemy) :add)
+                                        :kind :hit :age 0 :duration (if (= key "arc") 0.24 0.38)}) victims))))))
+
 (defn handle-action [state key]
   (cond
     (and (= :over (:mode state)) (contains? #{"continue" "Enter"} key)) (power-on state)
@@ -346,6 +398,8 @@
     (= key "P") (handle-action state "p")
     (and (= key "Enter") (contains? #{:ready :over} (:mode state))) (new-game state)
     (not= :playing (:mode state)) state
+    (contains? #{"arc" "q" "Q"} key) (fire-special state "arc")
+    (contains? #{"nova" "w" "W"} key) (fire-special state "nova")
     (= key "Enter") (fire-answer state)
     (= key "Backspace") (update state :input #(subs % 0 (max 0 (dec (count %)))))
     (and (re-matches #"[0-9]" key) (< (count (:input state)) 4))
@@ -377,6 +431,7 @@
                      (update :clock + dt)
                      (update :flash #(max 0 (- % dt)))
                      (update :shield-bloom #(max 0 (- (or % 0) dt)))
+                     (update :special-pulse #(max 0 (- (or % 0) dt)))
                      (update :message-timer #(max 0 (- % dt))))
         advanced (if (pos? (+ escaped impacts))
                    (do (audio/play "shield" "") (assoc advanced :combo 0 :flash 0.35 :wave-perfect? false)) advanced)]
@@ -432,6 +487,15 @@
         (.setAttribute controls "data-mode" (name (:mode state))))
       (when-let [choices (.getElementById js/document "venture-recovery")]
         (set! (.-hidden choices) (or (not= :over (:mode state)) (not (recovery-choice? state)) (:menu-visible? state) audio-open?)))
+      (when-let [specials (.getElementById js/document "venture-specials")]
+        (set! (.-hidden specials) (or (not= :playing (:mode state)) (:menu-visible? state) audio-open?))
+        (set! (.. specials -style -left) (str (ship-x state) "px"))
+        (let [{:keys [width left right layout]} (command-layout state)
+              available (- (:width state) left right (* width (if (= layout "split") 2 1)))]
+          (set! (.. specials -style -width) (str (min 162 (max 100 (- available 8))) "px"))))
+      (doseq [key ["arc" "nova"]]
+        (when-let [button (.getElementById js/document (str "venture-" key))]
+          (set! (.-disabled button) (not (special-ready? state key)))))
       (when-let [power (.getElementById js/document "venture-power-on")]
         (set! (.-textContent power) (str "Power on · Wave " (recovery-wave state))))
       (when-let [button (.getElementById js/document "venture-pause")]
@@ -666,12 +730,30 @@
             (q/stroke-weight 1) (q/ellipse x y (* 2 r) (* 2 r)))))
       ;; Keep the gain announcement near the ship, clear of the touch pads.
       (q/no-stroke) (q/text-align :center :center)
-      (q/text-size 22) (q/fill 198 255 228 (* 255 fade))
-      (q/text "+1 SHIELD" x (- y 90 (* 8 gather)))
+      (q/text-size (if (= (:shield-reason state) "PERFECT WAVE") 18 22)) (q/fill 198 255 228 (* 255 fade))
+      (q/text (if (= (:shield-reason state) "PERFECT WAVE") "PERFECT WAVE" "+1 SHIELD") x (- y 90 (* 8 gather)))
       (q/text-size 9) (q/fill 118 222 211 (* 230 fade))
-      (q/text (:shield-reason state) x (- y 70 (* 8 gather)))
+      (q/text (if (= (:shield-reason state) "PERFECT WAVE") "+1 SHIELD / BONUS" (:shield-reason state)) x (- y 70 (* 8 gather)))
       (q/no-fill) (q/stroke 118 255 226 (* 75 fade (Math/exp (* -4 age))))
       (q/stroke-weight 3) (q/rect 2 2 (- (:width state) 4) (- (:height state) 4))
+      (q/stroke-weight 1))))
+
+(defn draw-special-launch [state]
+  (when (and (pos? (:special-pulse state 0)) (= :playing (:mode state))
+             (not (:menu-visible? state)) (not (:audio-open? state)))
+    (let [age (- 1.1 (:special-pulse state)) fade (/ (:special-pulse state) 1.1)
+          x (ship-x state) y (ship-y state) nova? (= "NOVA STRIKE" (:special-name state))
+          color (if nova? [225 150 255] [140 201 255])
+          r (+ 24 (* age (if nova? 170 110)))]
+      (q/no-fill) (apply q/stroke (conj color (* 190 fade))) (q/stroke-weight 2)
+      (q/ellipse x y (* 2 r) (* 2 r))
+      (doseq [i (range (if nova? 12 6))]
+        (let [a (+ (* i (/ (* 2 Math/PI) (if nova? 12 6))) (* age 2))]
+          (q/line (+ x (* r (Math/cos a))) (+ y (* r (Math/sin a)))
+                  (+ x (* (+ r 16) (Math/cos a))) (+ y (* (+ r 16) (Math/sin a))))))
+      (q/no-stroke) (apply q/fill (conj color (* 255 fade)))
+      (q/text-align :center :center) (q/text-size 12)
+      (q/text (:special-name state) x (- y 68))
       (q/stroke-weight 1))))
 
 (defn draw-hud [state]
@@ -750,6 +832,7 @@
     (doseq [enemy (:enemies state)] (draw-enemy state enemy (= target (:id enemy)))))
   (draw-effects state)
   (draw-shield-gain state)
+  (draw-special-launch state)
   (draw-hud state)
   (when (pos? (:flash state))
     (q/no-stroke)

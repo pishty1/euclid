@@ -98,5 +98,9 @@ function settings(content) {
   }
   choice.value = mode; choice.addEventListener('change', () => setLayout(choice.value));
   label.appendChild(choice); content.prepend(label);
+  const guide = document.createElement('p');
+  guide.textContent = 'Arc (Q): 2 random enemies for 1 shield. Nova (W): 3 for 2 shields. One shield stays in reserve. Special kills earn no shield charge or perfect-wave bonus.';
+  guide.style.cssText = 'font-size:11px;line-height:1.5;color:#86b6bd;margin:0 0 14px';
+  label.after(guide);
 }
 module.exports = { init, lift, layout, setLayout, padHeight, settings };
