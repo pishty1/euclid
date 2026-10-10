@@ -48,6 +48,12 @@ and letting the shadow fully leave costs one shield. The pair occupies one
 wave slot; wave completion waits for queued shadows. Pauses freeze the recall
 delay, and replay clears it. Matching markers and diamond hulls connect the pair.
 
+Add Venture has a single-row header: a burger-only sketch menu, compact score
+(★), wave (W), shields (◆) and shield-charge counters, plus fullscreen,
+start/pause/restart and Settings icons. Button titles and accessible names
+describe their actions. Flight data updates through the native controls; the
+old canvas HUD rows are removed, and enemies enter closer to the compact header.
+
 Flights begin with three shields and can hold five. Every eight correct answers
 restores one shield; wrong answers reset charge, while charge carries across
 waves. A wave completed without wrong answers or damage restores one shield
