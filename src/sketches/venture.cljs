@@ -1006,6 +1006,28 @@
       (q/text (:special-name state) x (- y 68))
       (q/stroke-weight 1))))
 
+(defn answer-readout [state]
+  (when (and (= :playing (:mode state)) (seq (:input state))
+             (not (:menu-visible? state)) (not (:audio-open? state)))
+    (let [matched (target-enemy state false)
+          enemy (or matched (first (sort-by :progress > (available-enemies state))))
+          header (+ (if (compact-header? (:width state)) 56 91) (:safe-top state 0))]
+      {:text (str (:input state) "_") :matched? (boolean matched)
+       :x (if enemy (lane-x state (:lane enemy)) (/ (:width state) 2))
+       :y (if enemy (max (+ header 32) (min (- (:height state) 56) (+ (enemy-y state enemy) 78)))
+              (+ header 40))})))
+
+(defn draw-answer-readout [state]
+  (when-let [{:keys [text x y matched?]} (answer-readout state)]
+    (q/text-size 26) (q/text-align :center :center)
+    (let [width (+ 20 (q/text-width text))
+          x (readable-label-x state x y width)
+          color (if matched? [153 255 227] [255 195 119])]
+      (q/stroke-weight 1.5) (apply q/stroke (conj color 190))
+      (q/fill 4 20 28 245)
+      (q/rect (- x (/ width 2)) (- y 19) width 38 8)
+      (q/no-stroke) (apply q/fill color) (q/text text x y))))
+
 (defn draw-hud [state]
   (if (compact-header? (:width state))
     (do (q/stroke 61 117 126 100)
@@ -1026,7 +1048,8 @@
   (q/no-stroke)
   (q/text-size 24)
   (q/fill 180 255 235)
-  (q/text (str (if (seq (:input state)) (:input state) "_")) (ship-x state) (+ (ship-y state) 49))
+  (when-not (answer-readout state)
+    (q/text (str (if (seq (:input state)) (:input state) "_")) (ship-x state) (+ (ship-y state) 49)))
   (q/text-size 10)
   (q/fill 99 149 157)
   (q/text (if (touch-controls? (:width state)) "ANSWER · TAP FIRE" "TYPE ANSWER · ENTER TO FIRE · P TO PAUSE")
@@ -1090,6 +1113,7 @@
   (draw-shield-gain state)
   (draw-special-launch state)
   (draw-hud state)
+  (draw-answer-readout state)
   (when (pos? (:flash state))
     (q/no-stroke)
     (q/fill 255 74 48 (* 80 (/ (:flash state) 0.35)))

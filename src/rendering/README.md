@@ -59,6 +59,14 @@ describe their actions. Flight data updates through the native controls; the
 old canvas HUD rows are removed on these devices. Desktop layouts retain the labelled menu, game controls,
 Settings button and separate canvas HUD. Resizing updates the presentation.
 
+While entering an answer, a large outlined readout appears below the matching
+enemy’s equation. It shows the current digits with a cursor, follows the target,
+and shifts clear of keypads. If no answer prefix matches, it turns amber beside
+the closest active enemy; without an active enemy it sits beneath the header.
+Typing and Delete update it immediately, firing clears it, and menus/settings
+or pausing hide it. The duplicate answer beneath the ship is suppressed while
+the prominent readout is visible.
+
 Flights begin with three shields and can hold five. Every eight correct answers
 restores one shield; wrong answers reset charge, while charge carries across
 waves. A wave completed without wrong answers or damage restores one shield
