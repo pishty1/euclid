@@ -393,8 +393,7 @@
     0))
 
 (defn update-aim [state dt]
-  (let [target (if (< (:clock state) (:aim-until state)) (:aim-target state)
-                  (target-enemy state false))
+  (let [target (when (< (:clock state) (:aim-until state)) (:aim-target state))
         desired (aim-angle state target) current (:ship-angle state)
         difference (Math/atan2 (Math/sin (- desired current)) (Math/cos (- desired current)))]
     (assoc state :ship-angle (+ current (* difference (- 1 (Math/exp (* -14 dt))))))))
@@ -1007,25 +1006,20 @@
       (q/stroke-weight 1))))
 
 (defn answer-readout [state]
-  (when (and (= :playing (:mode state)) (seq (:input state))
+  (when (and (= :playing (:mode state))
              (not (:menu-visible? state)) (not (:audio-open? state)))
-    (let [matched (target-enemy state false)
-          enemy (or matched (first (sort-by :progress > (available-enemies state))))
-          header (+ (if (compact-header? (:width state)) 56 91) (:safe-top state 0))]
-      {:text (str (:input state) "_") :matched? (boolean matched)
-       :x (if enemy (lane-x state (:lane enemy)) (/ (:width state) 2))
-       :y (if enemy (max (+ header 32) (min (- (:height state) 56) (+ (enemy-y state enemy) 78)))
-              (+ header 40))})))
+    {:text (str (:input state) "_")
+     :x (/ (:width state) 2)
+     :y (+ (if (compact-header? (:width state)) 86 121) (:safe-top state 0))}))
 
 (defn draw-answer-readout [state]
-  (when-let [{:keys [text x y matched?]} (answer-readout state)]
+  (when-let [{:keys [text x y]} (answer-readout state)]
     (q/text-size 26) (q/text-align :center :center)
-    (let [width (+ 20 (q/text-width text))
-          x (readable-label-x state x y width)
-          color (if matched? [153 255 227] [255 195 119])]
+    (let [width (min 160 (max 100 (- (:width state) 224)))
+          color [215 237 244]]
       (q/stroke-weight 1.5) (apply q/stroke (conj color 190))
       (q/fill 4 20 28 245)
-      (q/rect (- x (/ width 2)) (- y 19) width 38 8)
+      (q/rect (- x (/ width 2)) (- y 20) width 40 8)
       (q/no-stroke) (apply q/fill color) (q/text text x y))))
 
 (defn draw-hud [state]
@@ -1107,8 +1101,7 @@
   (q/ellipse-mode :center)
   (draw-background state)
   (draw-ship state)
-  (let [target (:id (target-enemy state false))]
-    (doseq [enemy (:enemies state)] (draw-enemy state enemy (= target (:id enemy)))))
+  (doseq [enemy (:enemies state)] (draw-enemy state enemy false))
   (draw-effects state)
   (draw-shield-gain state)
   (draw-special-launch state)
