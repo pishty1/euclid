@@ -140,7 +140,7 @@ function init(host,toolbar){
     mute.addEventListener('click',()=>{preferences.muted=!preferences.muted;save();if(!preferences.muted)unlock();reconcile();});
     const panel=document.createElement('details');panel.id='venture-audio';
     panel.addEventListener('toggle',ui);
-    const summary=document.createElement('summary');summary.textContent='⚙';summary.setAttribute('aria-label','Settings');summary.title='Settings';panel.appendChild(summary);
+    const summary=document.createElement('summary');summary.textContent=window.matchMedia('(max-width:1024px), (pointer:coarse)').matches?'⚙':'Settings';summary.setAttribute('aria-label','Settings');summary.title='Settings';panel.appendChild(summary);
     const content=document.createElement('div');content.className='audio-settings';content.appendChild(mute);
     for(const [key,label] of [['music','Music volume'],['effects','Effects volume']]){
       const row=document.createElement('label');row.textContent=label;

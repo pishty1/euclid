@@ -44,6 +44,8 @@
    body[data-sketch='Add Venture'] #venture-controls{display:block}
    #venture-controls button{pointer-events:auto;touch-action:manipulation;border:1px solid #70dace50;background:#081e25ed;color:#bdfcf0;border-radius:9px;cursor:pointer;font:500 13px system-ui,sans-serif}
    #venture-controls button:hover{background:#153a42}
+   #venture-controls .flight-status{display:none}
+   @media(max-width:1024px),(pointer:coarse){
    body[data-sketch='Add Venture'] #euclid-nav{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));width:40px;height:40px;padding:0;justify-content:center;gap:0;border-radius:10px}
    body[data-sketch='Add Venture'] #euclid-nav span:not(.menu-icon){display:none}
    #venture-controls .game-toolbar{top:max(8px,env(safe-area-inset-top))!important;right:max(8px,env(safe-area-inset-right))!important;gap:4px!important}
@@ -51,6 +53,7 @@
    #venture-controls .flight-status{position:absolute;top:max(8px,env(safe-area-inset-top));left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 124px);height:40px;display:flex;align-items:center;justify-content:center;gap:8px;font:12px monospace;color:#bdfcf0;white-space:nowrap;pointer-events:none}
    #venture-controls .flight-status .charge{font-size:9px;color:#86b6bd}
    @media(max-width:350px){#venture-controls .flight-status{font-size:10px;gap:5px}#venture-controls .flight-status .charge{font-size:8px}}
+   }
    #venture-controls button:focus-visible{outline:2px solid #f1ba68;outline-offset:3px}
    #venture-controls .game-toolbar{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));display:flex;gap:6px;pointer-events:auto}
    #venture-controls .game-toolbar button{height:40px;padding:0 12px}
@@ -96,12 +99,15 @@
    #venture-recovery small{color:#86b6bd;font-size:10px}
    body[data-sketch='Add Venture'] #sketch canvas{display:block}")
 
+(defn compact-header? [width]
+  (or (<= width 1024) (.-matches (.matchMedia js/window "(pointer:coarse)"))))
+
 (defn init-controls! []
   (when-not (.getElementById js/document "venture-controls")
     (let [style (menu/element "style" "" control-styles)
           controls (menu/element "div" "" nil)
           toolbar (menu/element "div" "game-toolbar" nil)
-          pause (menu/element "button" "" "▶")
+          pause (menu/element "button" "" (if (compact-header? (.-innerWidth js/window)) "▶" "Start"))
           full (menu/element "button" "" "⛶")
           keypad (menu/element "div" "" nil)]
       (.appendChild (.-head js/document) style)
@@ -222,7 +228,7 @@
 
 (defn enemy-y [state enemy]
   ;; Controls are overlays: enemy flight never depends on their layout/position.
-  (let [top (+ 92 (:safe-top state 0)) end (+ (:height state) 34)]
+  (let [top (+ (if (compact-header? (:width state)) 92 108) (:safe-top state 0)) end (+ (:height state) 34)]
     (+ top (* (:progress enemy) (max 20 (- end top))))))
 
 (defn lane-x [state lane]
@@ -623,8 +629,11 @@
         (set! (.-textContent power) (str "Power on · Wave " (recovery-wave state))))
       (when-let [button (.getElementById js/document "venture-pause")]
         (let [label (case (:mode state) :paused "Resume" :ready "Start" :over "Restart" "Pause")]
-          (set! (.-textContent button) (case (:mode state) :paused "▶" :ready "▶" :over "↻" "Ⅱ"))
+          (set! (.-textContent button) (if (compact-header? (:width state))
+                                        (case (:mode state) :paused "▶" :ready "▶" :over "↻" "Ⅱ") label))
           (.setAttribute button "aria-label" label) (.setAttribute button "title" label)))
+      (when-let [summary (.querySelector js/document "#venture-audio summary")]
+        (set! (.-textContent summary) (if (compact-header? (:width state)) "⚙" "Settings")))
       (doseq [[id value label] [["score" (str "★" (:score state)) (str "Score " (:score state))]
                                 ["wave" (str "W" (:wave state)) (str "Wave " (:wave state))]
                                 ["shields" (str "◆" (:shields state)) (str "Shields " (:shields state))]
@@ -998,9 +1007,21 @@
       (q/stroke-weight 1))))
 
 (defn draw-hud [state]
-  ;; The native single-row header keeps flight data aligned with the controls.
-  (q/stroke 61 117 126 100)
-  (q/line 8 (+ 56 (:safe-top state 0)) (- (:width state) 8) (+ 56 (:safe-top state 0)))
+  (if (compact-header? (:width state))
+    (do (q/stroke 61 117 126 100)
+        (q/line 8 (+ 56 (:safe-top state 0)) (- (:width state) 8) (+ 56 (:safe-top state 0))))
+    (do
+      (q/text-align :right :top) (q/text-size 12) (q/no-stroke) (q/fill 175 218 220)
+      (q/text (str "SCORE " (:score state) "  /  WAVE " (:wave state))
+              (- (:width state) 18 (:safe-right state 0)) (+ 65 (:safe-top state 0)))
+      (q/text-align :left :top)
+      (q/text (str "SHIELDS " (apply str (repeat (:shields state) "◆")))
+              (+ 18 (:safe-left state 0)) (+ 65 (:safe-top state 0)))
+      (q/text-size 9) (q/fill 99 149 157)
+      (q/text (str "SHIELD CHARGE " (:shield-charge state 0) "/8 · " (gpu/status (:gpu state)))
+              (+ 18 (:safe-left state 0)) (+ 80 (:safe-top state 0)))
+      (q/stroke 61 117 126 100)
+      (q/line 18 (+ 91 (:safe-top state 0)) (- (:width state) 18) (+ 91 (:safe-top state 0)))))
   (q/text-align :center :center)
   (q/no-stroke)
   (q/text-size 24)
@@ -1026,7 +1047,8 @@
   (when (contains? #{:ready :paused :over :audio-settings} view)
     (q/no-stroke)
     (q/fill 3 10 17 220)
-    (q/rect 0 (+ 58 (:safe-top state 0)) (:width state) (- (:height state) 58 (:safe-top state 0)))
+    (let [top (+ (if (compact-header? (:width state)) 58 94) (:safe-top state 0))]
+      (q/rect 0 top (:width state) (- (:height state) top)))
     (let [cx (/ (:width state) 2)
           cy (+ 112 (/ (- (ship-y state) 112) 2))
           small? (< (:width state) 500)]
