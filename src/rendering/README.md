@@ -59,8 +59,9 @@ describe their actions. Flight data updates through the native controls; the
 old canvas HUD rows are removed on these devices. Desktop layouts retain the labelled menu, game controls,
 Settings button and separate canvas HUD. Resizing updates the presentation.
 
-During play, the current digits and cursor appear in a fixed-width, neutral
-readout centred just beneath the header. Its position and colour do not depend
+During play, the current digits and cursor appear as large, faint text at the
+centre of the canvas, without a box or border. The readout draws behind ships
+and effects so it does not cover the action. Its position and colour do not depend
 on whether an answer matches. Typing no longer highlights enemies or aims the
 ship towards a matching answer; the ship aims when it actually fires. Delete
 updates the readout, firing clears its digits, and menus/settings or pausing

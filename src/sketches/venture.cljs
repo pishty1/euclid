@@ -1010,17 +1010,14 @@
              (not (:menu-visible? state)) (not (:audio-open? state)))
     {:text (str (:input state) "_")
      :x (/ (:width state) 2)
-     :y (+ (if (compact-header? (:width state)) 86 121) (:safe-top state 0))}))
+     :y (/ (:height state) 2)}))
 
 (defn draw-answer-readout [state]
   (when-let [{:keys [text x y]} (answer-readout state)]
-    (q/text-size 26) (q/text-align :center :center)
-    (let [width (min 160 (max 100 (- (:width state) 224)))
-          color [215 237 244]]
-      (q/stroke-weight 1.5) (apply q/stroke (conj color 190))
-      (q/fill 4 20 28 245)
-      (q/rect (- x (/ width 2)) (- y 20) width 40 8)
-      (q/no-stroke) (apply q/fill color) (q/text text x y))))
+    (q/text-size (min 64 (max 44 (* (:width state) 0.15))))
+    (q/text-align :center :center)
+    (q/no-stroke) (q/fill 215 237 244 85)
+    (q/text text x y)))
 
 (defn draw-hud [state]
   (if (compact-header? (:width state))
@@ -1100,13 +1097,13 @@
   (q/rect-mode :corner)
   (q/ellipse-mode :center)
   (draw-background state)
+  (draw-answer-readout state)
   (draw-ship state)
   (doseq [enemy (:enemies state)] (draw-enemy state enemy false))
   (draw-effects state)
   (draw-shield-gain state)
   (draw-special-launch state)
   (draw-hud state)
-  (draw-answer-readout state)
   (when (pos? (:flash state))
     (q/no-stroke)
     (q/fill 255 74 48 (* 80 (/ (:flash state) 0.35)))
