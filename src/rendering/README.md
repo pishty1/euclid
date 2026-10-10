@@ -28,7 +28,10 @@ hulls disappear and produce impact effects together. Spawn spacing accounts
 for the taller formation, including on mobile. Waves 4–7 allow two steps,
 waves 8–11 up to three, waves 12–15 up to four, and wave 16 onward up to five.
 Short viewports cap the depth to keep the complete formation in view. Stacked
-hull centres are 54 pixels apart. Enemy flight continues to the bottom edge;
+hull centres are 54 pixels apart. All enemy types now spawn fully above the
+canvas and move into view at their normal flight speed. Stacks enter bottom
+hull first, with their upper hulls following. Ships still wholly above the
+canvas cannot be targeted by answers or special weapons. Enemy flight continues to the bottom edge;
 a formation costs one shield only after its topmost hull has fully left the
 canvas, rather than on reaching the player ship. Split keypad buttons have
 8-pixel gaps (single-panel layouts use 6 pixels). Equations and stacked operands
@@ -53,8 +56,7 @@ iPads in landscape), Add Venture has a single-row header: a burger-only sketch m
 (★), wave (W), shields (◆) and shield-charge counters, plus fullscreen,
 start/pause/restart and Settings icons. Button titles and accessible names
 describe their actions. Flight data updates through the native controls; the
-old canvas HUD rows are removed on these devices, and enemies enter closer to
-the compact header. Desktop layouts retain the labelled menu, game controls,
+old canvas HUD rows are removed on these devices. Desktop layouts retain the labelled menu, game controls,
 Settings button and separate canvas HUD. Resizing updates the presentation.
 
 Flights begin with three shields and can hold five. Every eight correct answers

@@ -353,10 +353,9 @@
                   memory? (assoc (make-problem (:wave state)) :memory-stage :preview
                                  :memory-marker (str "M" (:wave state)))
                   :else (make-enemy-problem (:wave state) screen-limit))
-        progress (cond
-                   (:memory-stage problem) (/ 54 travel)
-                   (seq (stack-steps problem)) (/ (* stack-spacing (count (stack-steps problem))) travel)
-                   :else 0)
+        ;; Start the lowest hull and its equation completely above the canvas.
+        ;; Upper hulls in a stack follow behind it without teleporting into view.
+        progress (/ (- -64 (enemy-y state {:progress 0})) travel)
         start-y (enemy-y state {:progress progress})
         available (filterv (fn [lane]
                              (not-any? #(and (= lane (:lane %))
@@ -376,7 +375,8 @@
           memory? (assoc :memory-introduced? true :message "MEMORY SHIP: REMEMBER, DON'T FIRE" :message-timer 2))))))
 
 (defn available-enemies [state]
-  (remove #(or (:pending-hit? %) (= :preview (:memory-stage %))) (:enemies state)))
+  (remove #(or (:pending-hit? %) (= :preview (:memory-stage %))
+               (<= (+ (enemy-y state %) 34) 0)) (:enemies state)))
 
 (defn target-enemy [state exact?]
   (when (seq (:input state))
