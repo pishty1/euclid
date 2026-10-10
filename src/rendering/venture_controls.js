@@ -29,7 +29,7 @@ function init(panel, handle) {
     const style = window.getComputedStyle(document.documentElement);
     const bottom = Math.max(2, parseFloat(style.getPropertyValue('--safe-bottom')) || 0);
     const top = Math.max(100, (parseFloat(style.getPropertyValue('--safe-top')) || 0) + 100);
-    return Math.max(0, window.innerHeight - bottom - (panel.offsetHeight || (mode === 'split' ? 319 : 217)) - top);
+    return Math.max(0, window.innerHeight - bottom - (panel.offsetHeight || (mode === 'split' ? 175 : 217)) - top);
   }
   function move(value, persist = false) {
     const maximum = limit();
@@ -52,7 +52,7 @@ function init(panel, handle) {
     if (choice) choice.value = mode;
     panel.setAttribute('aria-label', mode === 'split' ? 'Left answer keypad: 1 to 5 and Delete' : 'Answer keypad');
     if (mode === 'split') {
-      for (const key of ['1','2','3','4','5','Backspace']) panel.appendChild(keys.get(key));
+      for (const key of ['1','2','3','4','Backspace','5']) panel.appendChild(keys.get(key));
       for (const key of ['6','7','8','9','0','Enter']) right.appendChild(keys.get(key));
     } else for (const button of buttons) panel.appendChild(button);
     move(heightOffset);

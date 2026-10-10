@@ -71,10 +71,10 @@
    @media(max-height:450px) and (min-width:600px){.venture-keypad{width:264px;grid-template-columns:repeat(6,1fr)}}
    .venture-keypad[data-side=right]{left:auto;right:max(4px,env(safe-area-inset-right))}
    .venture-keypad[hidden]{display:none!important}
-   .venture-keypad[data-layout=split]{width:56px;grid-template-columns:1fr;padding:4px;gap:8px}
+   .venture-keypad[data-layout=split]{width:104px;grid-template-columns:repeat(2,1fr);padding:4px;gap:8px;background:#0719230a}
    .venture-keypad[data-layout=split] .command-display{justify-content:center;font-size:10px}
    .venture-keypad[data-layout=split] #venture-answer{display:none}
-   @media(max-height:450px){.venture-keypad[data-layout=split]{width:98px;grid-template-columns:repeat(2,1fr)}}
+   @media(max-height:450px){.venture-keypad[data-layout=split]{width:104px;grid-template-columns:repeat(2,1fr)}}
    @media(max-width:600px){body[data-sketch='Add Venture'] #euclid-nav .current-name{display:none}}
    #venture-controls[data-mode=over] .venture-keypad{display:none}
    #venture-specials{position:absolute;bottom:max(2px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto;width:162px}
@@ -177,10 +177,10 @@
   (let [layout (controls/layout) short? (<= (:height state) 450)]
     {:layout layout
      :width (min (- (:width state) 20)
-                 (if (= layout "split") (if short? 98 56)
+                 (if (= layout "split") 104
                    (if short? (if (>= (:width state) 600) 264 180) 148)))
      :height (max (controls/padHeight)
-                  (if (= layout "split") (if short? 175 319)
+                  (if (= layout "split") 175
                     (if short? (if (>= (:width state) 600) 128 174) 217)))
      :bottom (+ (max 2 (:safe-bottom state 0)) (controls/lift))
      :left (max 4 (:safe-left state 0)) :right (max 4 (:safe-right state 0))}))
@@ -709,6 +709,19 @@
         (q/line -19 0 -10 0) (q/line 10 0 19 0))
       nil)))
 
+(defn readable-label-x [state x y width]
+  ;; Keypads sit above the canvas: move covered equations into the clear centre.
+  (reduce
+    (fn [lx panel]
+      (if (.-hidden panel) lx
+        (let [r (.getBoundingClientRect panel)]
+          (if (and (pos? (.-width r)) (< (- y 14) (.-bottom r)) (> (+ y 14) (.-top r))
+                   (< (- lx (/ width 2)) (.-right r)) (> (+ lx (/ width 2)) (.-left r)))
+            (if (= "right" (aget (.-dataset panel) "side"))
+              (- (.-left r) (/ width 2) 6)
+              (+ (.-right r) (/ width 2) 6)) lx))))
+    x (array-seq (.querySelectorAll js/document ".venture-keypad"))))
+
 (defn draw-single-enemy [state enemy targeted?]
   (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
         operation (case (:memory-stage enemy) :preview :memory :echo :memory-shadow (:operation enemy))
@@ -736,13 +749,14 @@
     (q/text symbol 0 0)
     (q/pop-matrix)
     (q/text-size 16)
-    (let [label (or (:equation enemy) "") width (+ 20 (q/text-width label))]
+    (let [label (or (:equation enemy) "") width (+ 20 (q/text-width label))
+          lx (readable-label-x state x (+ y 41) width)]
       (q/no-stroke)
       (q/fill 3 12 18 230)
-      (when (seq label) (q/rect (- x (/ width 2)) (+ y 28) width 27 4))
+      (when (seq label) (q/rect (- lx (/ width 2)) (+ y 28) width 27 4))
       (apply q/fill (if targeted? [133 255 227] color))
       (q/text-align :center :center)
-      (when (seq label) (q/text label x (+ y 41))))
+      (when (seq label) (q/text label lx (+ y 41))))
     (when (:memory-stage enemy)
       (q/text-size 9) (q/fill 166 216 255)
       (q/text (str (if (= :preview (:memory-stage enemy)) "REMEMBER " "RECALL ")
@@ -768,7 +782,9 @@
         (q/no-stroke) (q/fill 3 12 18 230) (q/text-size 16)
         (let [label (str symbol " " (:operand step)) width (+ 12 (q/text-width label))
               right? (< x (- (:width state) (+ 40 width)))
-              lx (+ x (if right? (+ 36 (/ width 2)) (- (+ 36 (/ width 2)))))]
+              lx (readable-label-x state
+                   (+ x (if right? (+ 36 (/ width 2)) (- (+ 36 (/ width 2)))))
+                   (- y (* stack-spacing (inc i))) width)]
           (q/rect (- lx (/ width 2)) (- y 13) width 26 4)
           (apply q/fill (if targeted? [133 255 227] color))
           (q/text-align :center :center) (q/text label lx y))

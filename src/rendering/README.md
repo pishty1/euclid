@@ -31,7 +31,9 @@ Short viewports cap the depth to keep the complete formation in view. Stacked
 hull centres are 54 pixels apart. Enemy flight continues to the bottom edge;
 a formation costs one shield only after its topmost hull has fully left the
 canvas, rather than on reaching the player ship. Split keypad buttons have
-8-pixel gaps (single-panel layouts use 6 pixels), with drag bounds accounting
+8-pixel gaps (single-panel layouts use 6 pixels). Equations and stacked operands
+that would sit behind a keypad shift into the clear area beside it. Split panel
+backgrounds are nearly transparent, with drag bounds accounting
 for the taller panels. Answers
 remain within the current wave’s normal answer range, including intermediate
 results; stack frequency gradually rises to 40%.
@@ -95,8 +97,8 @@ Opening Settings automatically freezes gameplay and answer input while music kee
 playing for volume preview. The effects slider previews a short player shot.
 Closing Settings resumes play, unless the game was manually paused.
 
-On touch screens, new users get split pads: 1–5 and Delete on the left, with
-6–9, 0 and Fire on the right. Settings offers Split, Left, and Right layouts beside
+On touch screens, new users get split pads: two columns and three rows on each side. Left rows are `1 2`, `3 4`,
+`Delete 5`; right rows are `6 7`, `8 9`, `0 Fire`. Settings offers Split, Left, and Right layouts beside
 the audio controls. Saved choices are preserved. The pads have translucent
 backgrounds and only keys plus small drag grips; enemy flight passes behind
 controls without reacting to their placement. Drag either grip vertically to
