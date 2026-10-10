@@ -41,6 +41,12 @@ for the taller panels. Answers
 remain within the current wave’s normal answer range, including intermediate
 results; stack frequency gradually rises to 40%.
 
+On mobile, separate enemy formations are vertically staggered across lanes.
+Spawn spacing includes the full height of the formation ahead, and movement
+maintains that gap so faster memory ships cannot catch up with other enemies.
+This also keeps equations apart where they shift beside the touch pads. Desktop
+flight spacing remains unchanged.
+
 Memory enemies appear from wave 5, at most one pair per wave. A blue diamond
 ship labelled REMEMBER M5 (for example) shows an ordinary equation. It cannot
 be targeted by answers or special weapons and leaves safely without damage or

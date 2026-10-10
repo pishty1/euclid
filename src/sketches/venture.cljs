@@ -358,9 +358,9 @@
         progress (/ (- -64 (enemy-y state {:progress 0})) travel)
         start-y (enemy-y state {:progress progress})
         available (filterv (fn [lane]
-                             (not-any? #(and (= lane (:lane %))
+                             (not-any? #(and (or (touch-controls? (:width state)) (= lane (:lane %)))
                                              (< (- (enemy-y state %) start-y)
-                                                (+ (if (:memory-stage %) 110 92) (* stack-spacing (count (stack-steps %))))))
+                                                (+ (if (or (touch-controls? (:width state)) (:memory-stage %)) 110 92) (* stack-spacing (count (stack-steps %))))))
                                        (:enemies state)))
                            (range (:lanes state)))]
     (if (empty? available)
@@ -540,9 +540,28 @@
   (> (- (enemy-y state enemy) (* stack-spacing (count (stack-steps enemy))) (if (:memory-stage enemy) 46 34))
      (:height state)))
 
+(defn move-enemies [state dt]
+  (if-not (touch-controls? (:width state))
+    (mapv #(if (:pending-hit? %) % (update % :progress + (* dt (:speed %)))) (:enemies state))
+    (let [travel (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))
+          ;; Stagger mobile formations across lanes as labels converge beside pads.
+          moved (reduce (fn [placed enemy]
+                          (let [ahead (peek placed)
+                                desired (if (:pending-hit? enemy) (:progress enemy)
+                                          (+ (:progress enemy) (* dt (:speed enemy))))
+                                ceiling (when ahead
+                                          (- (:progress ahead)
+                                             (/ (+ 110 (* stack-spacing (count (stack-steps ahead)))) travel)))]
+                            (conj placed (assoc enemy :progress
+                                                (if (or (:pending-hit? enemy) (nil? ceiling)) desired
+                                                    (max (:progress enemy) (min desired ceiling)))))))
+                        [] (sort-by :progress > (:enemies state)))
+          by-id (into {} (map (juxt :id identity) moved))]
+      (mapv #(get by-id (:id %)) (:enemies state)))))
+
 (defn advance-game [state dt]
   (let [state (resolve-hits state dt)
-        enemies (mapv #(if (:pending-hit? %) % (update % :progress + (* dt (:speed %)))) (:enemies state))
+        enemies (move-enemies state dt)
         departed (filter #(escaped-enemy? state %) enemies)
         previews (filter #(= :preview (:memory-stage %)) departed)
         escaped (count (remove #(= :preview (:memory-stage %)) departed))
