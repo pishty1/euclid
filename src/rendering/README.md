@@ -35,8 +35,9 @@ canvas cannot be targeted by answers or special weapons. Enemy flight continues 
 a formation costs one shield only after its topmost hull has fully left the
 canvas, rather than on reaching the player ship. Split keypad buttons have
 8-pixel gaps (single-panel layouts use 6 pixels). Equations and stacked operands
-are drawn in ship cockpits. Long equations use two lines at a readable font size
-instead of shrinking the digits. Split panel
+are drawn as single-line, hull-coloured cockpit readouts with a soft dark text
+outline, without a rectangular backing panel. Longer equations widen the hull
+slightly to retain readable digits. Division uses `/` throughout. Split panel
 backgrounds are nearly transparent, with drag bounds accounting
 for the taller panels. Answers
 remain within the current wave’s normal answer range, including intermediate

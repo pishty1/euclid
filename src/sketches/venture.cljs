@@ -256,7 +256,7 @@
       :add {:equation (str a " + " b) :answer (+ a b)}
       :subtract {:equation (str (max a b) " − " (min a b)) :answer (Math/abs (- a b))}
       :multiply {:equation (str factor-a " × " factor-b) :answer (* factor-a factor-b)}
-      :divide {:equation (str (* factor-a factor-b) " ÷ " factor-a) :answer factor-b}) :operation op)))
+      :divide {:equation (str (* factor-a factor-b) " / " factor-a) :answer factor-b}) :operation op)))
 
 (def stack-spacing 54)
 
@@ -709,7 +709,7 @@
    :add {:color [245 177 76] :symbol "+"}
    :subtract {:color [255 113 142] :symbol "−"}
    :multiply {:color [183 145 255] :symbol "×"}
-   :divide {:color [99 197 255] :symbol "÷"}})
+   :divide {:color [99 197 255] :symbol "/"}})
 
 (defn outline [points]
   (q/begin-shape)
@@ -787,7 +787,11 @@
 (defn draw-single-enemy [state enemy targeted?]
   (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
         operation (case (:memory-stage enemy) :preview :memory :echo :memory-shadow (:operation enemy))
-        {:keys [color symbol]} (get enemy-styles operation (:add enemy-styles))]
+        {:keys [color symbol]} (get enemy-styles operation (:add enemy-styles))
+        label (or (:equation enemy) symbol)
+        _ (q/text-size 14)
+        label-width (q/text-width label)
+        hull-scale (max 1 (min 1.65 (/ (+ label-width 12) 48)))]
     (q/push-matrix)
     (q/translate x y)
     (q/rotate (* 0.045 (Math/sin (+ (* (:clock state) 1.8) (:id enemy)))))
@@ -803,19 +807,16 @@
     (apply q/stroke (conj color 230))
     (q/stroke-weight 1.4)
     (q/fill 5 17 26 235)
+    (q/scale hull-scale 1)
     (draw-enemy-body operation (:clock state) (:id enemy))
     (q/pop-matrix)
-    (let [label (or (:equation enemy) symbol)]
-      (q/text-size 14)
-      (let [parts (str/split label #"\s+")
-            two-lines? (and (= 3 (count parts)) (> (q/text-width label) 46))]
-        (q/no-stroke) (q/fill 3 12 18 235)
-        (q/rect (- x 25) (- y (if two-lines? 18 11)) 50 (if two-lines? 36 22) 5)
-        (apply q/fill color) (q/text-align :center :center)
-        (if two-lines?
-          (do (q/text (first parts) x (- y 8))
-              (q/text (str (second parts) " " (nth parts 2)) x (+ y 8)))
-          (q/text label x y))))
+    ;; A softly outlined hull-coloured readout sits directly in the armour.
+    ;; Widen the hull for longer equations instead of wrapping or using a panel.
+    (q/text-size 14) (q/text-align :center :center) (q/no-stroke)
+    (q/fill 4 13 20 235)
+    (doseq [[dx dy] [[-1 0] [1 0] [0 -1] [0 1]]]
+      (q/text label (+ x dx) (+ y dy)))
+    (apply q/fill (conj color 245)) (q/text label x y)
     (when (:memory-stage enemy)
       (q/text-size 9) (q/fill 166 216 255)
       (q/text (str (if (= :preview (:memory-stage enemy)) "REMEMBER " "RECALL ")
@@ -828,7 +829,7 @@
   (when (seq (stack-steps enemy))
     (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
           top (- y (* stack-spacing (count (stack-steps enemy))) 36)
-          bottom (+ y 36) r 40
+          bottom (+ y 36) r 52
           corners [[(- x r -8) top] [(+ x r -8) top] [(+ x r) (+ top 8)]
                    [(+ x r) (- bottom 8)] [(+ x r -8) bottom] [(- x r -8) bottom]
                    [(- x r) (- bottom 8)] [(- x r) (+ top 8)]]]
