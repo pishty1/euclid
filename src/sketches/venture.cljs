@@ -380,10 +380,10 @@
         ;; Upper hulls in a stack follow behind it without teleporting into view.
         progress (/ (- -64 (enemy-y state {:progress 0})) travel)
         start-y (enemy-y state {:progress progress})
-        available (filterv (fn [lane]
-                             (not-any? #(and (or (touch-controls? (:width state)) (= lane (:lane %)))
-                                             (< (- (enemy-y state %) start-y)
-                                                (+ (if (or (touch-controls? (:width state)) (:memory-stage %)) 110 92) (* stack-spacing (count (stack-steps %))))))
+        ;; Stagger globally: an empty desktop lane must not bypass entry spacing.
+        available (filterv (fn [_lane]
+                             (not-any? #(< (- (enemy-y state %) start-y)
+                                                (+ 110 (* stack-spacing (count (stack-steps %)))))
                                        (:enemies state)))
                            (range (:lanes state)))]
     (if (empty? available)

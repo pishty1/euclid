@@ -93,7 +93,8 @@ hide it. The duplicate answer beneath the ship is suppressed during play.
 
 Flight speed is fixed at the opening-wave rate for every enemy, including
 memory previews. Enemies enter as soon as entry spacing allows, without a fixed
-spawn delay. Ordinary escorts keep arrivals moving while a memory recall is
+spawn delay. Entry spacing applies across all lanes on desktop as well as mobile,
+so enemies arrive individually rather than launching a whole row. Ordinary escorts keep arrivals moving while a memory recall is
 waiting, without consuming the two ordinary arrivals reserved after recall.
 Waves 1–10 use addition/subtraction operands 2–60 and multiplication factors
 2–12 × 2–20. Waves 11–30 (and later) use 2–100 and 2–12 × 2–100 respectively.
