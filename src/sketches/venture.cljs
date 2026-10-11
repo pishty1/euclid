@@ -247,8 +247,13 @@
   (cond (<= wave 5) (nth [5 6 8 10 12] (max 0 (dec wave)))
         (<= wave 15) 20 :else 100))
 (defn stack-chance [wave] (if (< wave 4) 0 (min 0.4 (+ 0.1 (* 0.02 (quot (- wave 4) 2))))))
-(defn memory-chance [wave] (if (< wave 5) 0 (min 0.2 (+ 0.05 (* 0.01 (quot (- wave 5) 2))))))
-(defn memory-budget [wave] (if (< wave 5) 0 (min 3 (inc (quot (- wave 5) 7)))))
+(def memory-start-wave 10)
+(defn memory-chance [wave]
+  (if (< wave memory-start-wave) 0
+      (min 0.2 (+ 0.05 (* 0.01 (quot (- wave memory-start-wave) 2))))))
+(defn memory-budget [wave]
+  (if (< wave memory-start-wave) 0
+      (min 3 (inc (quot (- wave memory-start-wave) 7)))))
 
 (defn operand-problem [op a b]
   (assoc (case op
@@ -366,7 +371,7 @@
   (let [echo (first (filter #(<= (:return-at %) (:clock state)) (:memory-queue state)))
         travel (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))
         screen-limit (max 1 (min 5 (inc (int (/ (* travel 0.45) stack-spacing)))))
-        memory? (and (not echo) (>= (:wave state) 5)
+        memory? (and (not echo) (>= (:wave state) memory-start-wave)
                      (< (:memory-pairs-spawned state 0) (memory-budget (:wave state)))
                      (empty? (:memory-queue state)) (not-any? :memory-stage (:enemies state))
                      (>= (:spawned state) 1)

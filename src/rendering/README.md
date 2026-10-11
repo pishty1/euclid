@@ -56,15 +56,15 @@ maintains that gap so faster memory ships cannot catch up with other enemies.
 This also keeps cockpit equations apart near the touch pads. Desktop
 flight spacing remains unchanged.
 
-Memory enemies appear from wave 5. Waves 5–11 allow one pair, waves 12–18
-allow up to two, and wave 19 onward up to three. Only one pair can be
+Memory enemies appear from wave 10. Waves 10–16 allow one pair, waves 17–23
+allow up to two, and wave 24 onward up to three. Only one pair can be
 outstanding at a time. Their chance starts at 5% and gradually reaches 20%;
 the first preview is always the second arrival. Further previews can only
 start while at least four ordinary slots remain. Two ordinary arrivals are
 reserved until the queued shadow returns, keeping the pair out of the finale. A gold oval beacon
-labelled REMEMBER M5 (for example) shows an ordinary equation. It cannot
+labelled REMEMBER M10 (for example) shows an ordinary equation. It cannot
 be targeted by answers or special weapons and leaves safely without damage or
-streak changes. Three game seconds after it fully exits, its magenta RECALL M5
+streak changes. Three game seconds after it fully exits, its magenta RECALL M10
 shadow is queued to return, with the equation replaced by `?`. Enter the
 remembered answer to hit it; incorrect answers provoke its operation’s weapon,
 and letting the shadow fully leave costs one shield. The pair occupies one
@@ -107,8 +107,7 @@ a wave, even after destruction; swapped addition/multiplication operands count
 as duplicates. Memory recalls deliberately reuse their remembered answer. Wave size
 grows by one every two waves, up to 16. Stack chance starts at 10% on wave 4
 and increases by two percentage points every two waves, up to 40%. Waves 4
-and 5 have the same stack chance, avoiding a combined speed/stack jump when
-memory ships are introduced. Stack answers remain within the normal wave range.
+and 5 have the same stack chance. Memory ships start separately at wave 10. Stack answers remain within the normal wave range.
 
 Flights begin with three shields and can hold five. Every eight correct answers
 restores one shield; wrong answers reset charge, while charge carries across
