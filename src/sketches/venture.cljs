@@ -789,9 +789,10 @@
         operation (case (:memory-stage enemy) :preview :memory :echo :memory-shadow (:operation enemy))
         {:keys [color symbol]} (get enemy-styles operation (:add enemy-styles))
         label (or (:equation enemy) symbol)
-        _ (q/text-size 14)
+        _ (q/text-size 18)
         label-width (q/text-width label)
-        hull-scale (max 1 (min 1.65 (/ (+ label-width 12) 48)))]
+        core-width (max 64 (+ label-width 28))
+        hull-scale (max 1.5 (min 2.5 (/ core-width 48)))]
     (q/push-matrix)
     (q/translate x y)
     (q/rotate (* 0.045 (Math/sin (+ (* (:clock state) 1.8) (:id enemy)))))
@@ -810,13 +811,20 @@
     (q/scale hull-scale 1)
     (draw-enemy-body operation (:clock state) (:id enemy))
     (q/pop-matrix)
-    ;; A softly outlined hull-coloured readout sits directly in the armour.
-    ;; Widen the hull for longer equations instead of wrapping or using a panel.
-    (q/text-size 14) (q/text-align :center :center) (q/no-stroke)
-    (q/fill 4 13 20 235)
-    (doseq [[dx dy] [[-1 0] [1 0] [0 -1] [0 1]]]
-      (q/text label (+ x dx) (+ y dy)))
-    (apply q/fill (conj color 245)) (q/text label x y)
+    ;; A broad armoured cockpit leaves an uninterrupted space for the equation.
+    ;; Weapon mounts remain outside it, rather than crossing the digits.
+    (q/push-matrix) (q/translate x y)
+    (let [r (/ core-width 2)]
+      (q/stroke-weight 1) (apply q/stroke (conj color 155)) (q/fill 6 19 29 255)
+      (outline [[(+ (- r) 8) -16] [(- r 8) -16] [r -8] [r 8]
+                [(- r 8) 16] [(+ (- r) 8) 16] [(- r) 8] [(- r) -8]])
+      ;; Short illuminated edge strips frame the cockpit without touching text.
+      (apply q/stroke (conj color 230)) (q/stroke-weight 2)
+      (q/line (+ (- r) 10) -16 (+ (- r) 22) -16)
+      (q/line (- r 22) 16 (- r 10) 16))
+    (q/no-stroke) (q/text-size 18) (q/text-align :center :center)
+    (q/fill 231 247 250) (q/text label 0 0)
+    (q/pop-matrix)
     (when (:memory-stage enemy)
       (q/text-size 9) (q/fill 166 216 255)
       (q/text (str (if (= :preview (:memory-stage enemy)) "REMEMBER " "RECALL ")
@@ -829,7 +837,7 @@
   (when (seq (stack-steps enemy))
     (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
           top (- y (* stack-spacing (count (stack-steps enemy))) 36)
-          bottom (+ y 36) r 52
+          bottom (+ y 36) r 68
           corners [[(- x r -8) top] [(+ x r -8) top] [(+ x r) (+ top 8)]
                    [(+ x r) (- bottom 8)] [(+ x r -8) bottom] [(- x r -8) bottom]
                    [(- x r) (- bottom 8)] [(- x r) (+ top 8)]]]
