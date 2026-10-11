@@ -59,18 +59,21 @@ flight spacing remains unchanged.
 Memory enemies appear from wave 5. Waves 5–11 allow one pair, waves 12–18
 allow up to two, and wave 19 onward up to three. Only one pair can be
 outstanding at a time. Their chance starts at 5% and gradually reaches 20%;
-the last wave slot guarantees one introduction if none has appeared. A cyan oval beacon
+the first preview is always the second arrival. Further previews can only
+start while at least four ordinary slots remain. Two ordinary arrivals are
+reserved until the queued shadow returns, keeping the pair out of the finale. A gold oval beacon
 labelled REMEMBER M5 (for example) shows an ordinary equation. It cannot
 be targeted by answers or special weapons and leaves safely without damage or
-streak changes. Three game seconds after it fully exits, its purple RECALL M5
+streak changes. Three game seconds after it fully exits, its magenta RECALL M5
 shadow is queued to return, with the equation replaced by `?`. Enter the
 remembered answer to hit it; incorrect answers provoke its operation’s weapon,
 and letting the shadow fully leave costs one shield. The pair occupies one
 wave slot; wave completion waits for queued shadows. Pauses freeze the recall
-delay, and replay clears it. Matching markers and oval beacon silhouettes connect the pair. The preview
+delay, and replay clears it. Matching markers connect the pair while the silhouettes deliberately differ. The preview
 has an orbiting light and LET PASS instruction; the return has a fragmented
-violet shell, trailing ghost rings, a large question mark and FIRE ANSWER
-instruction. Both designs are distinct from the armed arithmetic ships.
+magenta triangular shell, trailing triangular echoes, a large question mark and FIRE ANSWER
+instruction. The gold preview stays oval; the magenta return is triangular. Both designs
+are distinct from the armed arithmetic ships.
 
 On viewports up to 1024px and devices with a coarse primary pointer (including
 iPads in landscape), Add Venture has a single-row header: a burger-only sketch menu, compact score

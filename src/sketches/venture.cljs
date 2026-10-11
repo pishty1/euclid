@@ -355,9 +355,10 @@
         memory? (and (not echo) (>= (:wave state) 5)
                      (< (:memory-pairs-spawned state 0) (memory-budget (:wave state)))
                      (empty? (:memory-queue state)) (not-any? :memory-stage (:enemies state))
-                     (or (< (q/random 1) (memory-chance (:wave state)))
-                         (and (zero? (:memory-pairs-spawned state 0))
-                              (= (:spawned state) (dec (wave-size (:wave state)))))))
+                     (>= (:spawned state) 1)
+                     (< (:spawned state) (- (wave-size (:wave state)) 3))
+                     (or (and (zero? (:memory-pairs-spawned state 0)) (= (:spawned state) 1))
+                         (< (q/random 1) (memory-chance (:wave state)))))
         problem (cond
                   echo (-> echo (dissoc :return-at) (assoc :memory-stage :echo :equation "?"))
                   memory? (assoc (make-problem (:wave state)) :memory-stage :preview
@@ -570,6 +571,12 @@
           by-id (into {} (map (juxt :id identity) moved))]
       (mapv #(get by-id (:id %)) (:enemies state)))))
 
+(defn normal-spawn-limit [state]
+  ;; Keep two ordinary arrivals after the echo, so memory pairs never end the wave.
+  (- (wave-size (:wave state))
+     (if (or (seq (:memory-queue state))
+             (some #(= :preview (:memory-stage %)) (:enemies state))) 2 0)))
+
 (defn advance-game [state dt]
   (let [state (resolve-hits state dt)
         enemies (move-enemies state dt)
@@ -602,7 +609,7 @@
           (-> waiting (update :wave inc) (assoc :spawned 0 :spawn-timer 0 :wave-timer 0 :input ""
                                                :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false :memory-introduced? false :memory-pairs-spawned 0))
           waiting))
-      (and (or (< (:spawned advanced) (wave-size (:wave advanced)))
+      (and (or (< (:spawned advanced) (normal-spawn-limit advanced))
                (some #(<= (:return-at %) (:clock advanced)) (:memory-queue advanced)))
            (<= (:spawn-timer advanced) 0))
       (spawn-enemy advanced)
@@ -871,7 +878,7 @@
 (defn draw-memory-enemy [state enemy]
   (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
         recall? (= :echo (:memory-stage enemy))
-        color (if recall? [200 160 255] [100 245 220])
+        color (if recall? [255 105 220] [255 223 120])
         label (if recall? "?" (:equation enemy))
         _ (q/text-size 18)
         width (max 106 (+ 30 (q/text-width label)))
@@ -880,20 +887,24 @@
     (q/push-matrix) (q/translate x y) (q/no-stroke)
     (apply q/fill (conj color (* 14 pulse))) (q/ellipse 0 0 (+ width 16) 70)
     (q/fill (if recall? 17 5) (if recall? 13 25) (if recall? 34 29) 235)
-    (q/ellipse 0 0 width 46)
+    (if recall?
+      (outline [[0 -30] [(/ width 2) 22] [(- (/ width 2)) 22]])
+      (q/ellipse 0 0 width 46))
     (q/no-fill) (q/stroke-weight 1.4)
     (if recall?
       (do
-        ;; A fragmented shell and receding echoes make the returning phase ghost-like.
-        (doseq [trail [0 1 2]]
-          (apply q/stroke (conj color (- 65 (* trail 18))))
-          (q/ellipse 0 (- (* trail 8)) (+ width (* trail 4)) (+ 46 (* trail 3))))
-        (doseq [i (range 24) :when (even? i)]
-          (let [a (+ (* i (/ Math/PI 12)) (* (:clock state) 0.3))
-                b (+ a 0.16) rx (+ 4 (/ width 2))]
-            (apply q/stroke (conj color (* 210 pulse)))
-            (q/line (* rx (Math/cos a)) (* 28 (Math/sin a))
-                    (* rx (Math/cos b)) (* 28 (Math/sin b))))))
+        ;; Triangular spectral echoes contrast with the gold preview's oval rings.
+        (doseq [trail [1 2]]
+          (apply q/stroke (conj color (- 85 (* trail 25))))
+          (let [dy (* -7 trail) r (+ (/ width 2) (* trail 3))]
+            (outline [[0 (+ -30 dy)] [r (+ 22 dy)] [(- r) (+ 22 dy)]])))
+        (let [corners [[0 -30] [(/ width 2) 22] [(- (/ width 2)) 22]]]
+          (doseq [[[ax ay] [bx by]] (partition 2 1 (conj corners (first corners)))
+                  i (range 8) :when (even? i)]
+            (let [a (/ i 8) b (/ (+ i 0.7) 8)]
+              (apply q/stroke (conj color (* 235 pulse)))
+              (q/line (+ ax (* a (- bx ax))) (+ ay (* a (- by ay)))
+                      (+ ax (* b (- bx ax))) (+ ay (* b (- by ay))))))))
       (do
         (apply q/stroke (conj color 200)) (q/ellipse 0 0 width 46)
         (apply q/stroke (conj color 65)) (q/ellipse 0 0 (+ width 10) 58)
@@ -903,7 +914,7 @@
     (q/no-stroke) (q/text-align :center :center)
     (q/text-size (if recall? 28 18)) (q/fill 234 250 250) (q/text label 0 0)
     (q/text-size 10) (apply q/fill color)
-    (q/text (str (if recall? "RECALL " "REMEMBER ") (:memory-marker enemy)) 0 -36)
+    (q/text (str (if recall? "RECALL " "REMEMBER ") (:memory-marker enemy)) 0 -44)
     (q/text-size 9) (apply q/fill (conj color 200))
     (q/text (if recall? "FIRE ANSWER" "LET PASS") 0 35)
     (q/pop-matrix) (q/no-stroke)))
