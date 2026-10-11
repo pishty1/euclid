@@ -92,8 +92,15 @@ updates the readout, firing clears its digits, and menus/settings or pausing
 hide it. The duplicate answer beneath the ship is suppressed during play.
 
 Flight speed is fixed at the opening-wave rate for every enemy, including
-memory previews; spawning stays at a 2.4-second interval. Number limits grow
-one step every two waves, multiplication factors every three waves. Wave size
+memory previews. Enemies enter as soon as entry spacing allows, without a fixed
+spawn delay. Ordinary escorts keep arrivals moving while a memory recall is
+waiting, without consuming the two ordinary arrivals reserved after recall.
+Waves 1–10 use addition/subtraction operands 2–60 and multiplication factors
+2–12 × 2–20. Waves 11–30 (and later) use 2–100 and 2–12 × 2–100 respectively.
+Division reverses those multiplication pairs. All answers, including intermediate
+stack results, are integers of at least 2. Base equations cannot repeat within
+a wave, even after destruction; swapped addition/multiplication operands count
+as duplicates. Memory recalls deliberately reuse their remembered answer. Wave size
 grows by one every two waves, up to 16. Stack chance starts at 10% on wave 4
 and increases by two percentage points every two waves, up to 40%. Waves 4
 and 5 have the same stack chance, avoiding a combined speed/stack jump when

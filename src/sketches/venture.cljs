@@ -237,26 +237,41 @@
 (defn random-int [low high]
   (+ low (int (q/random (inc (- high low))))))
 
-(defn number-limit [wave] (min 40 (+ 12 (quot (dec wave) 2))))
-(defn factor-limit [wave] (min 12 (+ 5 (quot (dec wave) 3))))
+(defn number-limit [wave] (if (<= wave 10) 60 100))
+(defn factor-limit [wave] (if (<= wave 10) 20 100))
 (defn stack-chance [wave] (if (< wave 4) 0 (min 0.4 (+ 0.1 (* 0.02 (quot (- wave 4) 2))))))
 (defn memory-chance [wave] (if (< wave 5) 0 (min 0.2 (+ 0.05 (* 0.01 (quot (- wave 5) 2))))))
 (defn memory-budget [wave] (if (< wave 5) 0 (min 3 (inc (quot (- wave 5) 7)))))
 
+(defn operand-problem [op a b]
+  (assoc (case op
+           :add {:equation (str a " + " b) :answer (+ a b)}
+           :subtract {:equation (str b " − " a) :answer (- b a)}
+           :multiply {:equation (str a " × " b) :answer (* a b)}
+           :divide {:equation (str (* a b) " / " a) :answer b})
+         :operation op
+         ;; Swapped commutative operands are the same challenge.
+         :equation-key (if (#{:add :multiply} op)
+                         [op (min a b) (max a b)] [op a b])))
+
 (defn make-problem [wave]
-  (let [limit (number-limit wave)
-        a (random-int 2 limit) b (random-int 2 limit)
-        ;; Mixed operations from launch, with a gentler bias in the first wave.
-        operations (if (= wave 1) [:add :subtract :add :subtract :multiply :divide]
-                       [:add :subtract :multiply :divide])
-        op (nth operations (random-int 0 (dec (count operations))))
-        factor-a (random-int 2 (factor-limit wave))
-        factor-b (random-int 2 (factor-limit wave))]
-    (assoc (case op
-      :add {:equation (str a " + " b) :answer (+ a b)}
-      :subtract {:equation (str (max a b) " − " (min a b)) :answer (Math/abs (- a b))}
-      :multiply {:equation (str factor-a " × " factor-b) :answer (* factor-a factor-b)}
-      :divide {:equation (str (* factor-a factor-b) " / " factor-a) :answer factor-b}) :operation op)))
+  (let [op (nth [:add :subtract :multiply :divide] (random-int 0 3))
+        a (random-int 2 (if (#{:multiply :divide} op) 12
+                           (if (= op :subtract) (- (number-limit wave) 2) (number-limit wave))))
+        b (random-int (if (= op :subtract) (+ a 2) 2)
+                      (if (#{:multiply :divide} op) (factor-limit wave) (number-limit wave)))]
+    (operand-problem op a b)))
+
+(defn fresh-problem [wave used]
+  (or (first (remove #(contains? used (:equation-key %))
+                     (repeatedly 24 #(make-problem wave))))
+      ;; Bounded fallback also works when randomness repeatedly picks a used equation.
+      (first (for [op [:add :subtract :multiply :divide]
+                   a (range 2 (inc (if (#{:multiply :divide} op) 12 (number-limit wave))))
+                   b (range (if (= op :subtract) (+ a 2) 2)
+                            (inc (if (#{:multiply :divide} op) (factor-limit wave) (number-limit wave))))
+                   :let [problem (operand-problem op a b)]
+                   :when (not (contains? used (:equation-key problem)))] problem))))
 
 (def stack-spacing 54)
 
@@ -266,38 +281,30 @@
         [{:operation (:operation enemy) :operand (:stack-operand enemy)}]) []))
 
 (defn answer-limit [wave]
-  (max (* 2 (number-limit wave))
-       (Math/pow (factor-limit wave) 2)))
+  (max (* 2 (number-limit wave)) (* 12 (factor-limit wave))))
 
 (defn stack-problem [problem wave]
   (let [result (:answer problem)
-        op (nth [:add :subtract :multiply :divide] (random-int 0 3))
-        operand (case op
-                  :subtract (random-int 1 (max 1 (min 9 result)))
-                  :divide (let [divisors (filterv #(zero? (mod result %)) (range 2 10))]
-                            (when (seq divisors) (nth divisors (random-int 0 (dec (count divisors))))))
-                  :multiply (random-int 2 (min 5 (+ 2 wave)))
-                  (random-int 2 9))
-        [op operand] (cond
-                       (or (nil? operand) (and (= op :subtract) (zero? result))) [:multiply 2]
-                       :else [op operand])
-        [op operand] (if (or (and (= op :multiply) (> (* result operand) (answer-limit wave)))
-                            (and (= op :add) (>= result (answer-limit wave))))
-                       [:subtract (random-int 1 9)] [op operand])
-        operand (if (= op :add) (min operand (- (answer-limit wave) result)) operand)]
+        candidates (vec (for [op [:add :subtract :multiply :divide]
+                              operand (range 2 (if (= op :multiply) 6 10))
+                              :let [answer (case op :add (+ result operand) :subtract (- result operand)
+                                                 :multiply (* result operand) :divide (/ result operand))]
+                              :when (and (<= 2 answer (answer-limit wave)) (= answer (Math/floor answer)))]
+                          {:operation op :operand operand :answer answer}))
+        {:keys [operation operand answer]} (nth candidates (random-int 0 (dec (count candidates))))]
     (assoc problem :base-operation (or (:base-operation problem) (:operation problem))
-                   :operation op :stack-operand operand
-                   :stack-steps (conj (vec (stack-steps problem)) {:operation op :operand operand})
-                   :answer (case op :add (+ result operand) :subtract (- result operand)
-                                 :multiply (* result operand) :divide (/ result operand)))))
+                   :operation operation :stack-operand operand
+                   :stack-steps (conj (vec (stack-steps problem)) {:operation operation :operand operand})
+                   :answer answer)))
 
 (defn max-stack-size [wave]
   (if (< wave 4) 1 (min 5 (+ 2 (quot (- wave 4) 8)))))
 
 (defn make-enemy-problem
   ([wave] (make-enemy-problem wave 5))
-  ([wave screen-limit]
-   (let [problem (make-problem wave) depth (min screen-limit (max-stack-size wave))]
+  ([wave screen-limit] (make-enemy-problem wave screen-limit (make-problem wave)))
+  ([wave screen-limit problem]
+   (let [depth (min screen-limit (max-stack-size wave))]
      (if (and (> depth 1) (< (q/random 1) (stack-chance wave)))
        (reduce (fn [p _] (stack-problem p wave)) problem
                (range (dec (random-int 2 depth)))) problem))))
@@ -311,7 +318,7 @@
 (defn new-game [state]
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
                 :shield-charge 0 :shield-bloom 0 :shield-reason "" :special-pulse 0 :special-duration 0 :special-targets [] :special-name "" :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
-                :enemies [] :effects [] :memory-queue [] :memory-introduced? false :memory-pairs-spawned 0 :spawned 0 :spawn-timer 0
+                :enemies [] :effects [] :memory-queue [] :memory-introduced? false :memory-pairs-spawned 0 :spawned 0 :used-equations #{} :spawn-timer 0
                 :next-id 0 :input "" :message "" :message-timer 0
                 :ship-angle 0 :aim-target nil :aim-until 0
                 :wave-timer 0 :clock 0 :flash 0 :last-time nil}))
@@ -359,11 +366,16 @@
                      (< (:spawned state) (- (wave-size (:wave state)) 3))
                      (or (and (zero? (:memory-pairs-spawned state 0)) (= (:spawned state) 1))
                          (< (q/random 1) (memory-chance (:wave state)))))
+        base (when-not echo (fresh-problem (:wave state) (:used-equations state #{})))
+        escort? (and (not echo)
+                     (>= (:spawned state) (- (wave-size (:wave state)) 2))
+                     (or (seq (:memory-queue state))
+                         (some #(= :preview (:memory-stage %)) (:enemies state))))
         problem (cond
                   echo (-> echo (dissoc :return-at) (assoc :memory-stage :echo :equation "?"))
-                  memory? (assoc (make-problem (:wave state)) :memory-stage :preview
+                  memory? (assoc base :memory-stage :preview
                                  :memory-marker (str "M" (:wave state)))
-                  :else (make-enemy-problem (:wave state) screen-limit))
+                  :else (make-enemy-problem (:wave state) screen-limit base))
         ;; Start the lowest hull and its equation completely above the canvas.
         ;; Upper hulls in a stack follow behind it without teleporting into view.
         progress (/ (- -64 (enemy-y state {:progress 0})) travel)
@@ -380,9 +392,10 @@
             enemy (merge problem {:id (:next-id state) :lane lane :progress progress
                                   :speed (/ 1 17.3)})]
         (cond-> (-> state (update :enemies conj enemy) (update :next-id inc)
-                    (assoc :spawn-timer 2.4))
+                    (assoc :spawn-timer 0))
           echo (update :memory-queue #(filterv (fn [queued] (not= (:memory-marker queued) (:memory-marker echo))) %))
-          (not echo) (update :spawned inc)
+          (and (not echo) (not escort?)) (update :spawned inc)
+          (not echo) (update :used-equations (fnil conj #{}) (:equation-key problem))
           memory? (update :memory-pairs-spawned (fnil inc 0))
           memory? (assoc :memory-introduced? true :message "MEMORY SHIP: REMEMBER, DON'T FIRE" :message-timer 2))))))
 
@@ -606,12 +619,13 @@
                         (award-shield "PERFECT WAVE")))
             waiting (update settled :wave-timer + dt)]
         (if (> (:wave-timer waiting) 2)
-          (-> waiting (update :wave inc) (assoc :spawned 0 :spawn-timer 0 :wave-timer 0 :input ""
+          (-> waiting (update :wave inc) (assoc :spawned 0 :used-equations #{} :spawn-timer 0 :wave-timer 0 :input ""
                                                :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false :memory-introduced? false :memory-pairs-spawned 0))
           waiting))
-      (and (or (< (:spawned advanced) (normal-spawn-limit advanced))
-               (some #(<= (:return-at %) (:clock advanced)) (:memory-queue advanced)))
-           (<= (:spawn-timer advanced) 0))
+      ;; Fill available entry space, including while a memory ship is returning.
+      (or (< (:spawned advanced) (normal-spawn-limit advanced))
+          (seq (:memory-queue advanced))
+          (some #(= :preview (:memory-stage %)) (:enemies advanced)))
       (spawn-enemy advanced)
       :else advanced)))
 
