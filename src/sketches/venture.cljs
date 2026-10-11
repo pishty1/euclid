@@ -237,15 +237,21 @@
 (defn random-int [low high]
   (+ low (int (q/random (inc (- high low))))))
 
+(defn number-limit [wave] (min 40 (+ 12 (quot (dec wave) 2))))
+(defn factor-limit [wave] (min 12 (+ 5 (quot (dec wave) 3))))
+(defn stack-chance [wave] (if (< wave 4) 0 (min 0.4 (+ 0.1 (* 0.02 (quot (- wave 4) 2))))))
+(defn memory-chance [wave] (if (< wave 5) 0 (min 0.2 (+ 0.05 (* 0.01 (quot (- wave 5) 2))))))
+(defn memory-budget [wave] (if (< wave 5) 0 (min 3 (inc (quot (- wave 5) 7)))))
+
 (defn make-problem [wave]
-  (let [limit (min 30 (+ 12 (* wave 2)))
+  (let [limit (number-limit wave)
         a (random-int 2 limit) b (random-int 2 limit)
         ;; Mixed operations from launch, with a gentler bias in the first wave.
         operations (if (= wave 1) [:add :subtract :add :subtract :multiply :divide]
                        [:add :subtract :multiply :divide])
         op (nth operations (random-int 0 (dec (count operations))))
-        factor-a (random-int 2 (min 12 (+ wave 4)))
-        factor-b (random-int 2 (min 12 (+ wave 4)))]
+        factor-a (random-int 2 (factor-limit wave))
+        factor-b (random-int 2 (factor-limit wave))]
     (assoc (case op
       :add {:equation (str a " + " b) :answer (+ a b)}
       :subtract {:equation (str (max a b) " − " (min a b)) :answer (Math/abs (- a b))}
@@ -260,8 +266,8 @@
         [{:operation (:operation enemy) :operand (:stack-operand enemy)}]) []))
 
 (defn answer-limit [wave]
-  (max (* 2 (min 30 (+ 12 (* wave 2))))
-       (Math/pow (min 12 (+ wave 4)) 2)))
+  (max (* 2 (number-limit wave))
+       (Math/pow (factor-limit wave) 2)))
 
 (defn stack-problem [problem wave]
   (let [result (:answer problem)
@@ -286,13 +292,13 @@
                                  :multiply (* result operand) :divide (/ result operand)))))
 
 (defn max-stack-size [wave]
-  (if (< wave 4) 1 (min 5 (+ 2 (quot (- wave 4) 4)))))
+  (if (< wave 4) 1 (min 5 (+ 2 (quot (- wave 4) 8)))))
 
 (defn make-enemy-problem
   ([wave] (make-enemy-problem wave 5))
   ([wave screen-limit]
    (let [problem (make-problem wave) depth (min screen-limit (max-stack-size wave))]
-     (if (and (> depth 1) (< (q/random 1) (min 0.4 (+ 0.2 (* (- wave 4) 0.015)))))
+     (if (and (> depth 1) (< (q/random 1) (stack-chance wave)))
        (reduce (fn [p _] (stack-problem p wave)) problem
                (range (dec (random-int 2 depth)))) problem))))
 
@@ -305,7 +311,7 @@
 (defn new-game [state]
   (merge state {:mode :playing :wave 1 :score 0 :combo 0 :shields 3
                 :shield-charge 0 :shield-bloom 0 :shield-reason "" :special-pulse 0 :special-duration 0 :special-targets [] :special-name "" :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false
-                :enemies [] :effects [] :memory-queue [] :memory-introduced? false :spawned 0 :spawn-timer 0
+                :enemies [] :effects [] :memory-queue [] :memory-introduced? false :memory-pairs-spawned 0 :spawned 0 :spawn-timer 0
                 :next-id 0 :input "" :message "" :message-timer 0
                 :ship-angle 0 :aim-target nil :aim-until 0
                 :wave-timer 0 :clock 0 :flash 0 :last-time nil}))
@@ -340,14 +346,18 @@
                      :stars (mapv (fn [_] {:x (q/random 1) :y (q/random 1) :depth (q/random 0.2 1)})
                                   (range 180))})) :mode :ready)))
 
-(defn wave-size [wave] (min 22 (+ 4 (* 2 wave))))
+(defn wave-size [wave] (min 16 (+ 6 (quot (dec wave) 2))))
 
 (defn spawn-enemy [state]
   (let [echo (first (filter #(<= (:return-at %) (:clock state)) (:memory-queue state)))
         travel (max 20 (- (enemy-y state {:progress 1}) (enemy-y state {:progress 0})))
         screen-limit (max 1 (min 5 (inc (int (/ (* travel 0.45) stack-spacing)))))
-        memory? (and (not echo) (>= (:wave state) 5) (not (:memory-introduced? state))
-                     (< (q/random 1) 0.18))
+        memory? (and (not echo) (>= (:wave state) 5)
+                     (< (:memory-pairs-spawned state 0) (memory-budget (:wave state)))
+                     (empty? (:memory-queue state)) (not-any? :memory-stage (:enemies state))
+                     (or (< (q/random 1) (memory-chance (:wave state)))
+                         (and (zero? (:memory-pairs-spawned state 0))
+                              (= (:spawned state) (dec (wave-size (:wave state)))))))
         problem (cond
                   echo (-> echo (dissoc :return-at) (assoc :memory-stage :echo :equation "?"))
                   memory? (assoc (make-problem (:wave state)) :memory-stage :preview
@@ -367,11 +377,12 @@
       state
       (let [lane (nth available (random-int 0 (dec (count available))))
             enemy (merge problem {:id (:next-id state) :lane lane :progress progress
-                                  :speed (/ (if memory? 1.25 1) (max 7 (- 18 (* (:wave state) 0.7))))})]
+                                  :speed (/ 1 17.3)})]
         (cond-> (-> state (update :enemies conj enemy) (update :next-id inc)
-                    (assoc :spawn-timer (max 0.7 (- 2.4 (* (:wave state) 0.12)))))
+                    (assoc :spawn-timer 2.4))
           echo (update :memory-queue #(filterv (fn [queued] (not= (:memory-marker queued) (:memory-marker echo))) %))
           (not echo) (update :spawned inc)
+          memory? (update :memory-pairs-spawned (fnil inc 0))
           memory? (assoc :memory-introduced? true :message "MEMORY SHIP: REMEMBER, DON'T FIRE" :message-timer 2))))))
 
 (defn available-enemies [state]
@@ -589,7 +600,7 @@
             waiting (update settled :wave-timer + dt)]
         (if (> (:wave-timer waiting) 2)
           (-> waiting (update :wave inc) (assoc :spawned 0 :spawn-timer 0 :wave-timer 0 :input ""
-                                               :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false :memory-introduced? false))
+                                               :wave-perfect? true :wave-shield-earned? false :wave-reward-checked? false :memory-introduced? false :memory-pairs-spawned 0))
           waiting))
       (and (or (< (:spawned advanced) (wave-size (:wave advanced)))
                (some #(<= (:return-at %) (:clock advanced)) (:memory-queue advanced)))
@@ -793,21 +804,18 @@
     (q/stroke-weight 1.4)
     (q/fill 5 17 26 235)
     (draw-enemy-body operation (:clock state) (:id enemy))
-    (q/no-stroke)
-    (apply q/fill color)
-    (q/text-size 13)
-    (q/text-align :center :center)
-    (q/text symbol 0 0)
     (q/pop-matrix)
-    (q/text-size 16)
-    (let [label (or (:equation enemy) "") width (+ 20 (q/text-width label))
-          lx (readable-label-x state x (+ y 41) width)]
-      (q/no-stroke)
-      (q/fill 3 12 18 230)
-      (when (seq label) (q/rect (- lx (/ width 2)) (+ y 28) width 27 4))
-      (apply q/fill (if targeted? [133 255 227] color))
-      (q/text-align :center :center)
-      (when (seq label) (q/text label lx (+ y 41))))
+    (let [label (or (:equation enemy) symbol)]
+      (q/text-size 14)
+      (let [parts (str/split label #"\s+")
+            two-lines? (and (= 3 (count parts)) (> (q/text-width label) 46))]
+        (q/no-stroke) (q/fill 3 12 18 235)
+        (q/rect (- x 25) (- y (if two-lines? 18 11)) 50 (if two-lines? 36 22) 5)
+        (apply q/fill color) (q/text-align :center :center)
+        (if two-lines?
+          (do (q/text (first parts) x (- y 8))
+              (q/text (str (second parts) " " (nth parts 2)) x (+ y 8)))
+          (q/text label x y))))
     (when (:memory-stage enemy)
       (q/text-size 9) (q/fill 166 216 255)
       (q/text (str (if (= :preview (:memory-stage enemy)) "REMEMBER " "RECALL ")
@@ -820,7 +828,7 @@
   (when (seq (stack-steps enemy))
     (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
           top (- y (* stack-spacing (count (stack-steps enemy))) 36)
-          bottom (+ y 58) r 40
+          bottom (+ y 36) r 40
           corners [[(- x r -8) top] [(+ x r -8) top] [(+ x r) (+ top 8)]
                    [(+ x r) (- bottom 8)] [(+ x r -8) bottom] [(- x r -8) bottom]
                    [(- x r) (- bottom 8)] [(- x r) (+ top 8)]]]
@@ -857,24 +865,13 @@
         x (lane-x state (:lane enemy)) y (enemy-y state enemy)]
     (draw-single-enemy state (cond-> enemy (seq steps) (assoc :operation (:base-operation enemy))) targeted?)
     (doseq [[i step] (map-indexed vector steps)]
-      (let [{:keys [color symbol]} (get enemy-styles (:operation step))]
+      (let [symbol (:symbol (get enemy-styles (:operation step)))]
         (q/push-matrix) (q/translate 0 (* (- stack-spacing) i))
-        ;; Arrows connect each adjacent pair, from bottom to top.
         (q/stroke 133 255 227 150) (q/stroke-weight 1)
         (q/line x (- y 23) x (- y (- stack-spacing 23)))
-        (q/line x (- y (- stack-spacing 23)) (- x 3) (- y (- stack-spacing 27)))
-        (q/line x (- y (- stack-spacing 23)) (+ x 3) (- y (- stack-spacing 27)))
         (q/translate 0 (- stack-spacing))
-        (draw-single-enemy state (assoc enemy :operation (:operation step) :equation "") targeted?)
-        (q/no-stroke) (q/fill 3 12 18 230) (q/text-size 16)
-        (let [label (str symbol " " (:operand step)) width (+ 12 (q/text-width label))
-              right? (< x (- (:width state) (+ 40 width)))
-              lx (readable-label-x state
-                   (+ x (if right? (+ 36 (/ width 2)) (- (+ 36 (/ width 2)))))
-                   (- y (* stack-spacing (inc i))) width)]
-          (q/rect (- lx (/ width 2)) (- y 13) width 26 4)
-          (apply q/fill (if targeted? [133 255 227] color))
-          (q/text-align :center :center) (q/text label lx y))
+        (draw-single-enemy state (assoc enemy :operation (:operation step)
+                                           :equation (str symbol " " (:operand step))) targeted?)
         (q/pop-matrix)))))
 
 (defn effect-points [state {:keys [lane progress kind y-offset]}]

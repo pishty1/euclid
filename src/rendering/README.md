@@ -25,8 +25,8 @@ ships’ operations and adjacent operands, in bottom-to-top order. A lower `4 + 
 does not override it. Stacks only produce nonnegative whole-number answers,
 use the upper operation for retaliation, and grant one kill/streak reward. All
 hulls disappear and produce impact effects together. Spawn spacing accounts
-for the taller formation, including on mobile. Waves 4–7 allow two steps,
-waves 8–11 up to three, waves 12–15 up to four, and wave 16 onward up to five.
+for the taller formation, including on mobile. Waves 4–11 allow two steps,
+waves 12–19 up to three, waves 20–27 up to four, and wave 28 onward up to five.
 Short viewports cap the depth to keep the complete formation in view. Stacked
 hull centres are 54 pixels apart. All enemy types now spawn fully above the
 canvas and move into view at their normal flight speed. Stacks enter bottom
@@ -35,7 +35,8 @@ canvas cannot be targeted by answers or special weapons. Enemy flight continues 
 a formation costs one shield only after its topmost hull has fully left the
 canvas, rather than on reaching the player ship. Split keypad buttons have
 8-pixel gaps (single-panel layouts use 6 pixels). Equations and stacked operands
-that would sit behind a keypad shift into the clear area beside it. Split panel
+are drawn in ship cockpits. Long equations use two lines at a readable font size
+instead of shrinking the digits. Split panel
 backgrounds are nearly transparent, with drag bounds accounting
 for the taller panels. Answers
 remain within the current wave’s normal answer range, including intermediate
@@ -50,10 +51,13 @@ it. Single ships have no perimeter; its appearance never depends on typed input.
 On mobile, separate enemy formations are vertically staggered across lanes.
 Spawn spacing includes the full height of the formation ahead, and movement
 maintains that gap so faster memory ships cannot catch up with other enemies.
-This also keeps equations apart where they shift beside the touch pads. Desktop
+This also keeps cockpit equations apart near the touch pads. Desktop
 flight spacing remains unchanged.
 
-Memory enemies appear from wave 5, at most one pair per wave. A blue diamond
+Memory enemies appear from wave 5. Waves 5–11 allow one pair, waves 12–18
+allow up to two, and wave 19 onward up to three. Only one pair can be
+outstanding at a time. Their chance starts at 5% and gradually reaches 20%;
+the last wave slot guarantees one introduction if none has appeared. A blue diamond
 ship labelled REMEMBER M5 (for example) shows an ordinary equation. It cannot
 be targeted by answers or special weapons and leaves safely without damage or
 streak changes. Three game seconds after it fully exits, its purple RECALL M5
@@ -78,6 +82,14 @@ on whether an answer matches. Typing no longer highlights enemies or aims the
 ship towards a matching answer; the ship aims when it actually fires. Delete
 updates the readout, firing clears its digits, and menus/settings or pausing
 hide it. The duplicate answer beneath the ship is suppressed during play.
+
+Flight speed is fixed at the opening-wave rate for every enemy, including
+memory previews; spawning stays at a 2.4-second interval. Number limits grow
+one step every two waves, multiplication factors every three waves. Wave size
+grows by one every two waves, up to 16. Stack chance starts at 10% on wave 4
+and increases by two percentage points every two waves, up to 40%. Waves 4
+and 5 have the same stack chance, avoiding a combined speed/stack jump when
+memory ships are introduced. Stack answers remain within the normal wave range.
 
 Flights begin with three shields and can hold five. Every eight correct answers
 restores one shield; wrong answers reset charge, while charge carries across
