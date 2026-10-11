@@ -99,8 +99,11 @@ waiting, without consuming the two ordinary arrivals reserved after recall.
 Waves 1–5 warm up with addition/subtraction upper operand limits of
 10, 15, 20, 30 and 40. Multiplication factor upper limits are respectively
 4×5, 5×6, 6×8, 8×10 and 10×12 (all lower bounds remain 2).
-Waves 6–15 use addition/subtraction operands 2–60 and multiplication factors
-2–12 × 2–20. Waves 16–25 (and later) use 2–100 and 2–12 × 2–100 respectively.
+Waves 6–15 gradually expand the warm-up limits: addition/subtraction upper
+operands grow from 42 to 60, and multiplication upper factors from 10×13 to
+12×20. Waves 16–25 expand addition/subtraction from 64 to 100 and multiplication
+from 12×28 to 12×100. These limits rise every wave rather than unlocking the
+whole tier at once. Later waves retain the full second-tier limits.
 Division reverses those multiplication pairs. All answers, including intermediate
 stack results, are integers of at least 2. Base equations cannot repeat within
 a wave, even after destruction; swapped addition/multiplication operands count

@@ -237,15 +237,23 @@
 (defn random-int [low high]
   (+ low (int (q/random (inc (- high low))))))
 
-;; Five small steps prepare players for the two larger operand tiers.
+(defn ramp-limit [wave start-wave end-wave low high]
+  (Math/round (+ low (* (- high low)
+                        (max 0 (min 1 (/ (- wave start-wave) (- end-wave start-wave))))))))
+
+;; Continue from the warm-up, reaching each tier's full limits at its final wave.
 (defn number-limit [wave]
   (cond (<= wave 5) (nth [10 15 20 30 40] (max 0 (dec wave)))
-        (<= wave 15) 60 :else 100))
+        (<= wave 15) (ramp-limit wave 5 15 40 60)
+        :else (ramp-limit wave 15 25 60 100)))
 (defn first-factor-limit [wave]
-  (if (<= wave 5) (nth [4 5 6 8 10] (max 0 (dec wave))) 12))
+  (cond (<= wave 5) (nth [4 5 6 8 10] (max 0 (dec wave)))
+        (<= wave 15) (ramp-limit wave 5 15 10 12)
+        :else 12))
 (defn factor-limit [wave]
   (cond (<= wave 5) (nth [5 6 8 10 12] (max 0 (dec wave)))
-        (<= wave 15) 20 :else 100))
+        (<= wave 15) (ramp-limit wave 5 15 12 20)
+        :else (ramp-limit wave 15 25 20 100)))
 (defn stack-chance [wave] (if (< wave 4) 0 (min 0.4 (+ 0.1 (* 0.02 (quot (- wave 4) 2))))))
 (def memory-start-wave 10)
 (defn memory-chance [wave]
