@@ -237,8 +237,15 @@
 (defn random-int [low high]
   (+ low (int (q/random (inc (- high low))))))
 
-(defn number-limit [wave] (if (<= wave 10) 60 100))
-(defn factor-limit [wave] (if (<= wave 10) 20 100))
+;; Five small steps prepare players for the two larger operand tiers.
+(defn number-limit [wave]
+  (cond (<= wave 5) (nth [10 15 20 30 40] (max 0 (dec wave)))
+        (<= wave 15) 60 :else 100))
+(defn first-factor-limit [wave]
+  (if (<= wave 5) (nth [4 5 6 8 10] (max 0 (dec wave))) 12))
+(defn factor-limit [wave]
+  (cond (<= wave 5) (nth [5 6 8 10 12] (max 0 (dec wave)))
+        (<= wave 15) 20 :else 100))
 (defn stack-chance [wave] (if (< wave 4) 0 (min 0.4 (+ 0.1 (* 0.02 (quot (- wave 4) 2))))))
 (defn memory-chance [wave] (if (< wave 5) 0 (min 0.2 (+ 0.05 (* 0.01 (quot (- wave 5) 2))))))
 (defn memory-budget [wave] (if (< wave 5) 0 (min 3 (inc (quot (- wave 5) 7)))))
@@ -256,7 +263,7 @@
 
 (defn make-problem [wave]
   (let [op (nth [:add :subtract :multiply :divide] (random-int 0 3))
-        a (random-int 2 (if (#{:multiply :divide} op) 12
+        a (random-int 2 (if (#{:multiply :divide} op) (first-factor-limit wave)
                            (if (= op :subtract) (- (number-limit wave) 2) (number-limit wave))))
         b (random-int (if (= op :subtract) (+ a 2) 2)
                       (if (#{:multiply :divide} op) (factor-limit wave) (number-limit wave)))]
@@ -267,7 +274,7 @@
                      (repeatedly 24 #(make-problem wave))))
       ;; Bounded fallback also works when randomness repeatedly picks a used equation.
       (first (for [op [:add :subtract :multiply :divide]
-                   a (range 2 (inc (if (#{:multiply :divide} op) 12 (number-limit wave))))
+                   a (range 2 (inc (if (#{:multiply :divide} op) (first-factor-limit wave) (number-limit wave))))
                    b (range (if (= op :subtract) (+ a 2) 2)
                             (inc (if (#{:multiply :divide} op) (factor-limit wave) (number-limit wave))))
                    :let [problem (operand-problem op a b)]
@@ -281,7 +288,7 @@
         [{:operation (:operation enemy) :operand (:stack-operand enemy)}]) []))
 
 (defn answer-limit [wave]
-  (max (* 2 (number-limit wave)) (* 12 (factor-limit wave))))
+  (max (* 2 (number-limit wave)) (* (first-factor-limit wave) (factor-limit wave))))
 
 (defn stack-problem [problem wave]
   (let [result (:answer problem)
