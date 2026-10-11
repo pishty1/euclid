@@ -103,7 +103,7 @@ function settings(content) {
   guide.style.cssText = 'font-size:11px;line-height:1.5;color:#86b6bd;margin:0 0 14px';
   label.after(guide);
   const memoryGuide = document.createElement('p');
-  memoryGuide.textContent = 'Wave 5+: blue REMEMBER ships pass safely. Remember their answer; fire it at the purple RECALL ship with the same marker when it returns.';
+  memoryGuide.textContent = 'Wave 5+: cyan REMEMBER beacons pass safely. Remember their answer; fire it at the purple RECALL ship with the same marker when it returns.';
   memoryGuide.style.cssText = guide.style.cssText;
   guide.after(memoryGuide);
 }

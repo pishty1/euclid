@@ -548,7 +548,7 @@
 
 (defn escaped-enemy? [state enemy]
   ;; A formation is missed only after its highest hull has fully left the canvas.
-  (> (- (enemy-y state enemy) (* stack-spacing (count (stack-steps enemy))) (if (:memory-stage enemy) 46 34))
+  (> (- (enemy-y state enemy) (* stack-spacing (count (stack-steps enemy))) (if (:memory-stage enemy) 52 34))
      (:height state)))
 
 (defn move-enemies [state dt]
@@ -868,11 +868,53 @@
         (q/fill 225 245 255 225) (q/ellipse x y 3 3))
       (q/stroke-weight 1) (q/no-stroke))))
 
+(defn draw-memory-enemy [state enemy]
+  (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
+        recall? (= :echo (:memory-stage enemy))
+        color (if recall? [200 160 255] [100 245 220])
+        label (if recall? "?" (:equation enemy))
+        _ (q/text-size 18)
+        width (max 106 (+ 30 (q/text-width label)))
+        pulse (+ 0.6 (* 0.4 (Math/pow (Math/sin (* (:clock state) 2)) 2)))]
+    ;; Memory vessels are luminous beacons, with no armour or weapon silhouettes.
+    (q/push-matrix) (q/translate x y) (q/no-stroke)
+    (apply q/fill (conj color (* 14 pulse))) (q/ellipse 0 0 (+ width 16) 70)
+    (q/fill (if recall? 17 5) (if recall? 13 25) (if recall? 34 29) 235)
+    (q/ellipse 0 0 width 46)
+    (q/no-fill) (q/stroke-weight 1.4)
+    (if recall?
+      (do
+        ;; A fragmented shell and receding echoes make the returning phase ghost-like.
+        (doseq [trail [0 1 2]]
+          (apply q/stroke (conj color (- 65 (* trail 18))))
+          (q/ellipse 0 (- (* trail 8)) (+ width (* trail 4)) (+ 46 (* trail 3))))
+        (doseq [i (range 24) :when (even? i)]
+          (let [a (+ (* i (/ Math/PI 12)) (* (:clock state) 0.3))
+                b (+ a 0.16) rx (+ 4 (/ width 2))]
+            (apply q/stroke (conj color (* 210 pulse)))
+            (q/line (* rx (Math/cos a)) (* 28 (Math/sin a))
+                    (* rx (Math/cos b)) (* 28 (Math/sin b))))))
+      (do
+        (apply q/stroke (conj color 200)) (q/ellipse 0 0 width 46)
+        (apply q/stroke (conj color 65)) (q/ellipse 0 0 (+ width 10) 58)
+        (let [a (* (:clock state) 1.4) sx (* (/ (+ width 10) 2) (Math/cos a))
+              sy (* 29 (Math/sin a))]
+          (q/no-stroke) (apply q/fill (conj color 235)) (q/ellipse sx sy 4 4))))
+    (q/no-stroke) (q/text-align :center :center)
+    (q/text-size (if recall? 28 18)) (q/fill 234 250 250) (q/text label 0 0)
+    (q/text-size 10) (apply q/fill color)
+    (q/text (str (if recall? "RECALL " "REMEMBER ") (:memory-marker enemy)) 0 -36)
+    (q/text-size 9) (apply q/fill (conj color 200))
+    (q/text (if recall? "FIRE ANSWER" "LET PASS") 0 35)
+    (q/pop-matrix) (q/no-stroke)))
+
 (defn draw-enemy [state enemy targeted?]
   (draw-stack-boundary state enemy)
   (let [steps (stack-steps enemy)
         x (lane-x state (:lane enemy)) y (enemy-y state enemy)]
-    (draw-single-enemy state (cond-> enemy (seq steps) (assoc :operation (:base-operation enemy))) targeted?)
+    (if (:memory-stage enemy)
+      (draw-memory-enemy state enemy)
+      (draw-single-enemy state (cond-> enemy (seq steps) (assoc :operation (:base-operation enemy))) targeted?))
     (doseq [[i step] (map-indexed vector steps)]
       (let [symbol (:symbol (get enemy-styles (:operation step)))]
         (q/push-matrix) (q/translate 0 (* (- stack-spacing) i))
