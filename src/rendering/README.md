@@ -41,6 +41,12 @@ for the taller panels. Answers
 remain within the current wave’s normal answer range, including intermediate
 results; stack frequency gradually rises to 40%.
 
+Stacked formations have a pulsing blue-violet electric perimeter with a moving
+spark and thin flickering circuit lines. It encloses all hulls and reaches below
+the base equation, so its lower edge is visible as the first ship enters. The
+outline has no fill, follows the formation, and uses game time so pausing freezes
+it. Single ships have no perimeter; its appearance never depends on typed input.
+
 On mobile, separate enemy formations are vertically staggered across lanes.
 Spawn spacing includes the full height of the formation ahead, and movement
 maintains that gap so faster memory ships cannot catch up with other enemies.

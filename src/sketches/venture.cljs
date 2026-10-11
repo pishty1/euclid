@@ -816,7 +816,43 @@
         (q/no-fill) (q/stroke 140 185 255 80) (q/stroke-weight 1)
         (q/ellipse x y 76 76)))))
 
+(defn stack-boundary-points [state enemy]
+  (when (seq (stack-steps enemy))
+    (let [x (lane-x state (:lane enemy)) y (enemy-y state enemy)
+          top (- y (* stack-spacing (count (stack-steps enemy))) 36)
+          bottom (+ y 58) r 40
+          corners [[(- x r -8) top] [(+ x r -8) top] [(+ x r) (+ top 8)]
+                   [(+ x r) (- bottom 8)] [(+ x r -8) bottom] [(- x r -8) bottom]
+                   [(- x r) (- bottom 8)] [(- x r) (+ top 8)]]]
+      (vec (mapcat (fn [[[ax ay] [bx by]]]
+                     (let [n (max 1 (int (/ (Math/hypot (- bx ax) (- by ay)) 12)))]
+                       (for [i (range n)]
+                         (let [t (/ i n) jitter (* 1.6 (Math/sin (* Math/PI t))
+                                                      (Math/sin (+ (* (:clock state) 13) (* i 2.4) (:id enemy))))]
+                           [(+ ax (* t (- bx ax)) jitter) (+ ay (* t (- by ay)) jitter)]))))
+                   (partition 2 1 (conj corners (first corners))))))))
+
+(defn draw-stack-boundary [state enemy]
+  (when-let [points (stack-boundary-points state enemy)]
+    (let [pulse (+ 0.65 (* 0.35 (Math/pow (Math/sin (+ (* (:clock state) 4) (:id enemy))) 2)))
+          pairs (partition 2 1 (conj points (first points)))
+          head (mod (int (+ (* (:clock state) 24) (* (:id enemy) 7))) (count points))]
+      ;; A continuous circuit makes the whole stack recognisable before its top enters.
+      (doseq [[weight alpha] [[5 18] [1.1 (* 155 pulse)]]]
+        (q/stroke 149 173 255 alpha) (q/stroke-weight weight)
+        (doseq [[[ax ay] [bx by]] pairs] (q/line ax ay bx by)))
+      (doseq [i (range 7)]
+        (let [[ax ay] (nth points (mod (- head i) (count points)))
+              [bx by] (nth points (mod (- head i 1) (count points)))]
+          (q/stroke 206 229 255 (* 220 (- 1 (/ i 7)))) (q/stroke-weight 1.8)
+          (q/line ax ay bx by)))
+      (let [[x y] (nth points head)]
+        (q/no-stroke) (q/fill 190 220 255 35) (q/ellipse x y 12 12)
+        (q/fill 225 245 255 225) (q/ellipse x y 3 3))
+      (q/stroke-weight 1) (q/no-stroke))))
+
 (defn draw-enemy [state enemy targeted?]
+  (draw-stack-boundary state enemy)
   (let [steps (stack-steps enemy)
         x (lane-x state (:lane enemy)) y (enemy-y state enemy)]
     (draw-single-enemy state (cond-> enemy (seq steps) (assoc :operation (:base-operation enemy))) targeted?)
