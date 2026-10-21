@@ -192,13 +192,46 @@ cap. The document background and Safari theme colour follow the active sketch.
 iPhone Safari does not allow websites to hide the URL bar automatically;
 Home Screen launch is required for the standalone view.
 
-La Cross also attempts WebGPU rendering on startup. Its vertex shader calculates
-the four live segment intersections from the crosses' endpoints. Instanced light
-sprites draw the intersection blooms, pulsing rings, flares, and fading trails.
-The CPU retains the trail history and pointer controls. Pausing freezes the
-effects as well as the geometry. The default view contains only intersections
-and trails; taps cycle through the other views. Canvas provides similar glow
-effects when WebGPU is unavailable. The view readout identifies the renderer.
+Emergence Garden replaces La Cross in the same registry slot. Its continuous
+Gray–Scott cell field uses nutrient and activity channels with local eight-neighbour
+diffusion, cooperative nutrient consumption and decay. The outer edges wrap;
+painted walls reflect diffusion. Shapes, spreading fronts and steady patterns arise
+from the update rule, rather than scripted organisms. This is neither Lenia nor
+a trained NCA, and rule mutation is user-directed experimentation, not inherited
+biological evolution.
+
+Rules opens live controls for nutrient renewal, activity decay, activity spreading,
+available nutrients and cooperative growth. Reef, Threads, Pearls and Waves are
+starting rule sets; selecting one changes the rules without resetting the field.
+Mutate rules makes small changes to the current feed/decay/spreading values. New
+seeds keeps the rules; Clear field leaves a blank world. Extinction is allowed:
+there is no hidden reseeding. Seed, Feed, Erase and Wall brushes work by pointer
+capture with interpolated strokes, including while paused. Views show the living
+field, actual per-step activity, or nutrients. Space pauses; 1–4 select brushes;
+R replants. The rules panel scrolls within the visible mobile viewport.
+
+Save discovery stores an optional user name, the complete Float32 field,
+dimensions, rules and step count in local storage. Restore selected discovery brings them back together.
+The last three worlds stay on the current device; missing/full storage is reported
+without stopping the simulation. Rule and snapshot keys remain stable across
+advanced compilation. Restoring an invalid snapshot is rejected.
+
+WebGPU compute uses ping-pong storage buffers for the same local update as the
+CPU. A separate compute pass applies batched brush stamps. A fragment shader
+interpolates the field for display. Only one submitted frame is kept in flight;
+GPU checkpoints every 1.5 seconds allow CPU recovery following device loss.
+Startup and unavailable adapters use Canvas/CPU. A failed GPU backend is not
+repeatedly reinitialized. Grid resolution is bounded (longest side 256 desktop,
+192 touch), and CPU updates cap at six per frame. Time flow adjusts updates per
+frame, so elapsed simulation steps rather than wall time are the reproducible
+measure. Resizing changes the display without clearing the field. Leaving the
+sketch releases the device and listeners.
+
+Run model and input checks with `node --test test/rendering/*.test.cjs`.
+GPU numerical parity can be checked by evolving the same seeded Float32 field
+on CPU and GPU and reading back the latter; small floating-point differences
+are expected. A real GPU presentation surface is still needed to verify device
+rendering and performance, separately from compute correctness.
 
 Figget-A-Balls attempts WebGPU rendering on startup. Its FPS readout shows
 `Starting WebGPU`, `WebGPU`, or `Canvas`. The simulation, population tuning,
