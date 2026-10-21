@@ -82,10 +82,12 @@
    @media(max-height:450px) and (min-width:600px){.venture-keypad{width:264px;grid-template-columns:repeat(6,1fr)}}
    .venture-keypad[data-side=right]{left:auto;right:max(4px,env(safe-area-inset-right))}
    .venture-keypad[hidden]{display:none!important}
-   .venture-keypad[data-layout=split]{width:104px;grid-template-columns:repeat(2,1fr);padding:4px;gap:8px;background:#0719230a}
+   .venture-keypad[data-layout=split]{width:113.4px;grid-template-columns:repeat(2,1fr);padding:4px;gap:8.8px;background:#0719230a}
+   #venture-controls .venture-keypad[data-layout=split] button{min-width:0;min-height:44px;padding:0;font-size:18.7px}
+   #venture-controls .venture-keypad[data-layout=split] .fire{font-size:13.2px}
    .venture-keypad[data-layout=split] .command-display{justify-content:center;font-size:10px}
    .venture-keypad[data-layout=split] #venture-answer{display:none}
-   @media(max-height:450px){.venture-keypad[data-layout=split]{width:104px;grid-template-columns:repeat(2,1fr)}}
+   @media(max-height:450px){.venture-keypad[data-layout=split]{width:113.4px;grid-template-columns:repeat(2,1fr)}}
    @media(max-width:600px){body[data-sketch='Add Venture'] #euclid-nav .current-name{display:none}}
    #venture-controls[data-mode=over] .venture-keypad{display:none}
    #venture-specials{position:absolute;bottom:max(2px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto;width:162px}
@@ -200,10 +202,10 @@
   (let [layout (controls/layout) short? (<= (:height state) 450)]
     {:layout layout
      :width (min (- (:width state) 20)
-                 (if (= layout "split") 104
+                 (if (= layout "split") 113.4
                    (if short? (if (>= (:width state) 600) 264 180) 148)))
      :height (max (controls/padHeight)
-                  (if (= layout "split") 175
+                  (if (= layout "split") 190
                     (if short? (if (>= (:width state) 600) 128 174) 217)))
      :bottom (+ (max 2 (:safe-bottom state 0)) (controls/lift))
      :left (max 4 (:safe-left state 0)) :right (max 4 (:safe-right state 0))}))
