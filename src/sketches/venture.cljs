@@ -43,7 +43,7 @@
   "#venture-controls{display:none;position:fixed;inset:0;pointer-events:none;z-index:15;font-family:system-ui,sans-serif}
    body[data-sketch='Add Venture'] #venture-controls{display:block}
    #venture-controls button{pointer-events:auto;touch-action:manipulation;border:1px solid #70dace50;background:#081e25ed;color:#bdfcf0;border-radius:9px;cursor:pointer;font:500 13px system-ui,sans-serif}
-   #venture-controls button:hover{background:#153a42}
+   @media(hover:hover) and (pointer:fine){#venture-controls button:hover{background:#153a42}}
    #venture-controls .flight-status{display:none}
    @media(max-width:1024px),(pointer:coarse){
    body[data-sketch='Add Venture'] #euclid-nav{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));width:40px;height:40px;padding:0;justify-content:center;gap:0;border-radius:10px}
@@ -73,9 +73,10 @@
    .venture-keypad .command-display:focus-visible{outline:2px solid #edc778;border-radius:4px}
    .venture-keypad *{box-sizing:border-box}.venture-keypad{max-width:calc(100vw - 20px)}
    #venture-answer{display:none;color:#bdfcf0;font-size:16px;letter-spacing:0}
-   .venture-keypad button{min-height:40px;font-size:17px;background:#07192345;color:#bdfcf0;text-shadow:0 1px 3px #000,0 0 5px #000}
-   .venture-keypad button:hover{background:#173b425c}
-   .venture-keypad .fire{background:#96ead738;color:#c4fff1;font-size:12px;font-weight:700}
+   #venture-controls .venture-keypad button{min-height:40px;font-size:17px;background:#07192345;color:#bdfcf0;text-shadow:0 1px 3px #000,0 0 5px #000;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+   @media(hover:hover) and (pointer:fine){.venture-keypad button:hover{background:#173b425c}}
+   #venture-controls .venture-keypad button.is-pressed{background:#316e7199;border-color:#bdfcf0}
+   #venture-controls .venture-keypad .fire{background:#96ead738;color:#c4fff1;font-size:12px;font-weight:700}
    @media(pointer:coarse),(max-width:600px){.venture-keypad{display:grid}}
    @media(max-height:450px){.venture-keypad{width:180px;grid-template-columns:repeat(4,1fr);padding:5px;gap:6px}.venture-keypad button{min-height:40px;font-size:17px}.venture-keypad .command-display{min-height:18px;padding-bottom:3px}}
    @media(max-height:450px) and (min-width:600px){.venture-keypad{width:264px;grid-template-columns:repeat(6,1fr)}}
@@ -151,7 +152,7 @@
           (set! (.-type button) "button")
           (.setAttribute button "data-key" key)
           (.setAttribute button "aria-label" (case key "Backspace" "Delete last digit" "Enter" "Fire answer" label))
-          (.addEventListener button "click" (fn [_] (enqueue! key)))
+          (controls/bindKey button (fn [] (boolean (enqueue! key))))
           ;; Avoid stealing focus from the game when a pointer taps the keypad.
           (.addEventListener button "mousedown" (fn [event] (.preventDefault event)))
           (.appendChild keypad button)))

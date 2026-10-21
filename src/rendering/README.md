@@ -170,6 +170,11 @@ adjust thumb reach. Height is saved locally when storage is available and
 clamped after rotation. Keyboard users can focus a grip and use Up/Down, Home,
 or End. Short screens use two columns per split half. Single-pad layouts move
 the ship to the opposite side; split mode centres it.
+Keys register on pointer contact, so thumb drift cannot cancel an already entered
+digit. Compatibility clicks are ignored to avoid double entry, while keyboard
+and assistive-technology clicks remain supported. A brief press flash follows
+accepted input; touch hover styling, text selection and keypad panning are disabled.
+Run keypad input regressions with `node --test test/rendering/venture_controls.test.cjs`.
 Short screens use fewer keypad rows. The sketch background extends through the large viewport behind browser chrome,
 while gameplay and controls stay within the visible viewport. The sketch
 respects display safe areas; the sketch menu becomes compact on phones and uses

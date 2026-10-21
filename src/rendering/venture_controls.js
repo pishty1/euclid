@@ -2,6 +2,27 @@
 let heightOffset = 0, mode = 'split', applyLayout = null, owner = null;
 const storageKey = 'euclid-addventure-keypad-lift', layoutKey = 'euclid-addventure-keypad-layout';
 const modes = ['left', 'right', 'split'];
+function bindKey(button, activate) {
+  let feedbackTimer;
+  const press = () => {
+    if (button.disabled || activate() === false) return;
+    button.classList.add('is-pressed');
+    window.clearTimeout(feedbackTimer);
+    feedbackTimer = window.setTimeout(() => button.classList.remove('is-pressed'), 110);
+  };
+  // Register on contact: touch browsers may cancel a later click after thumb drift.
+  if (window.PointerEvent) button.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    event.preventDefault(); event.stopPropagation();
+    press();
+  });
+  button.addEventListener('click', event => {
+    event.preventDefault(); event.stopPropagation();
+    // Pointer clicks already registered on contact. Keep native keyboard/AT clicks.
+    if (!window.PointerEvent || event.detail === 0) press();
+  });
+  button.addEventListener('contextmenu', event => event.preventDefault());
+}
 function lift() { return heightOffset; }
 function layout() { return mode; }
 function padHeight() { return owner?.offsetHeight || 0; }
@@ -107,4 +128,4 @@ function settings(content) {
   memoryGuide.style.cssText = guide.style.cssText;
   guide.after(memoryGuide);
 }
-module.exports = { init, lift, layout, setLayout, padHeight, settings };
+module.exports = { init, bindKey, lift, layout, setLayout, padHeight, settings };
