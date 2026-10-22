@@ -32,7 +32,7 @@ function create(seed=42,values={},control='evolving'){
  // Draw the same initial random sequence for every control condition.
  for(let n=0;n<260;n++)world.microbes.push(microbe(world));
  if(control==='no-microbes')world.microbes=[];
- record(world);return world;
+ world.initialTraits=[...record(world)['traits']];return world;
 }
 function mutate(world,source,neural=false){
  const out=new Float32Array(source),rate=world.config['mutation'];
@@ -126,9 +126,9 @@ function step(world,replayEvents=null){
  }
  world.cells=world.cells.filter(c=>!dead.has(c.id)).concat(births);
  const microBirths=[];
- for(const m of world.microbes){if(!m.alive)continue;const i=index(m.x,m.y),dx=sample(world.food,m.x+14,m.y)-sample(world.food,m.x-14,m.y),dy=sample(world.food,m.x,m.y+14)-sample(world.food,m.x,m.y-14);
+ for(const m of world.microbes){if(!m.alive)continue;const dx=sample(world.food,m.x+14,m.y)-sample(world.food,m.x-14,m.y),dy=sample(world.food,m.x,m.y+14)-sample(world.food,m.x,m.y-14);
   m.angle+=(random(world)-0.5)*0.5;m.x=wrap(m.x+(Math.cos(m.angle)*9+dx*25)*dt,WIDTH);m.y=wrap(m.y+(Math.sin(m.angle)*9+dy*25)*dt,HEIGHT);
-  const meal=Math.min(world.food[i],world.food[i]*0.13*dt);world.food[i]=Math.max(0,world.food[i]-meal*1.5);m.energy+=meal-0.015*dt;m.age+=dt;
+  const i=index(m.x,m.y),meal=Math.min(world.food[i],world.food[i]*0.13*dt);world.food[i]=Math.max(0,world.food[i]-meal*1.5);m.energy+=meal-0.015*dt;m.age+=dt;
   if(m.energy>0.55 && world.microbes.length+microBirths.length<MICROBE_CAP){m.energy*=0.45;const child=microbe(world,wrap(m.x+4,WIDTH),wrap(m.y+4,HEIGHT));child.energy=m.energy;microBirths.push(child);world.microbeBirths++;}
   if(m.energy<=0||m.age>95)m.alive=false;
  }
@@ -142,7 +142,7 @@ function record(world){
  const mean=new Array(6).fill(0);let generation=0,energy=0;
  for(const c of world.cells){c.genes.forEach((g,i)=>mean[i]+=g);generation=Math.max(generation,c.generation);energy+=c.energy;}
  for(let i=0;i<6;i++)mean[i]/=Math.max(1,world.cells.length);
- const metrics={'time':world.time,'cells':world.cells.length,'microbes':world.microbes.length,'traits':mean,'generation':generation,'births':world.births,'deaths':world.deaths,'engulfed':world.engulfed,'energy':energy/Math.max(1,world.cells.length)};
+ const metrics={'time':world.time,'cells':world.cells.length,'microbes':world.microbes.length,'traits':world.cells.length?mean:null,'generation':generation,'births':world.births,'deaths':world.deaths,'engulfed':world.engulfed,'energy':world.cells.length?energy/world.cells.length:null};
  world.history.push(metrics);if(world.history.length>600)world.history.shift();return metrics;
 }
 function clusters(world){
@@ -153,5 +153,10 @@ function clusters(world){
  }
  return groups;
 }
-function exportData(world){return {'version':1,'model':'Cellular Origins v1','seed':world.seed,'control':world.control,'initialRules':world.initial,'currentRules':world.config,'steps':world.step,'events':world.events.map(e=>({...e})),'history':world.history.map(h=>({...h,'traits':[...h['traits']]})),'lineages':world.lineages.map(l=>({'id':l.id,'births':l.births,'deaths':l.deaths,'survivors':world.cells.filter(c=>c.lineage===l.id).length}))};}
-module.exports={WIDTH,HEIGHT,COLS,ROWS,DT,CELL_CAP,MICROBE_CAP,traits,bounds,defaults,settings,create,random,step,applyEvents,change,intervene,cost,reproduce,mutate,clusters,exportData,delta};
+function historyWindow(history,comparison=[]){
+ const start=history[0]?.['time']??0,end=Math.max(start+1,history.at(-1)?.['time']??start);
+ const visible=data=>data.filter(point=>point['time']>=start&&point['time']<=end);
+ return {start,end,current:visible(history),previous:visible(comparison)};
+}
+function exportData(world){return {'version':1,'model':'Cellular Origins v2','seed':world.seed,'control':world.control,'initialRules':world.initial,'currentRules':world.config,'initialTraits':[...world.initialTraits],'steps':world.step,'events':world.events.map(e=>({...e})),'history':world.history.map(h=>({...h,'traits':h['traits']?[...h['traits']]:null})),'lineages':world.lineages.map(l=>({'id':l.id,'births':l.births,'deaths':l.deaths,'survivors':world.cells.filter(c=>c.lineage===l.id).length}))};}
+module.exports={WIDTH,HEIGHT,COLS,ROWS,DT,CELL_CAP,MICROBE_CAP,traits,bounds,defaults,settings,create,random,step,applyEvents,change,intervene,cost,reproduce,mutate,clusters,historyWindow,exportData,delta};

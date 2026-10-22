@@ -55,3 +55,29 @@ test('replay records only interventions already delivered, not future plans',()=
  advance(world,10,data.events);assert.equal(world.events.length,0);
  advance(world,15,data.events);assert.equal(world.events.length,1);assert.equal(world.events[0].step,20);
 });
+
+test('long-run history spans the full chart window and clips comparisons to matching times',()=>{
+ const history=Array.from({length:600},(_,i)=>({time:444+i,cells:28,microbes:650}));
+ const previous=[{time:0},{time:443},{time:444},{time:800},{time:1043},{time:1100}];
+ const range=model.historyWindow(history,previous);
+ assert.equal(range.start,444);assert.equal(range.end,1043);assert.equal(range.current.length,600);
+ assert.deepEqual(range.previous.map(p=>p.time),[444,800,1043]);
+ assert.equal((range.current[0].time-range.start)/(range.end-range.start),0);
+ assert.equal((range.current.at(-1).time-range.start)/(range.end-range.start),1);
+ const fresh=model.historyWindow([{time:0},{time:1}],[{time:1000}]);
+ assert.equal(fresh.end,1);assert.deepEqual(fresh.previous,[]);
+});
+test('extinction records unavailable trait averages without losing the original baseline',()=>{
+ const world=model.create(42),initial=[...world.initialTraits];world.cells=[];advance(world,20);
+ assert.deepEqual(world.initialTraits,initial);assert.equal(world.history.at(-1).traits,null);assert.equal(world.history.at(-1).energy,null);
+ const exported=model.exportData(world);assert.deepEqual(exported.initialTraits,initial);assert.equal(exported.history.at(-1).traits,null);
+});
+test('microbes consume food at their new location when crossing a field boundary',()=>{
+ const world=model.create(8);world.cells=[];world.microbes=[world.microbes[0]];world.capacity.fill(0);world.food.fill(.9);
+ const m=world.microbes[0];m.x=15.6;m.y=200;m.angle=0;m.energy=.3;
+ const old=Math.floor(m.y/model.HEIGHT*model.ROWS)*model.COLS+Math.floor(m.x/model.WIDTH*model.COLS);world.food[old]=1;
+ const baseline=model.create(8);baseline.cells=[];baseline.microbes=[];baseline.capacity.fill(0);baseline.food.set(world.food);
+ model.step(baseline);model.step(world);
+ const moved=Math.floor(m.y/model.HEIGHT*model.ROWS)*model.COLS+Math.floor(m.x/model.WIDTH*model.COLS);
+ assert.notEqual(moved,old);assert.equal(world.food[old],baseline.food[old]);assert(world.food[moved]<baseline.food[moved]);
+});

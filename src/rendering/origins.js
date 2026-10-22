@@ -20,10 +20,11 @@ function dispose(app){if(!app||app.stopped)return;app.stopped=true;app.abort.abo
 function sync(app){
  for(const [key,{input,output}]of Object.entries(app.sliders)){input.value=app.world.config[key];output.textContent=app.world.config[key].toFixed(2);input.disabled=(app.world.control==='fixed'&&key==='mutation')||(app.world.control==='no-cost'&&key==='defenceCost')||(app.world.control==='no-microbes'&&key==='pressure');}
  app.tools['microbes'].disabled=app.world.control==='no-microbes';
+ if(app.tool==='microbes'&&app.tools['microbes'].disabled)selectTool(app,'inspect');
 }
-function selectTool(app,tool){app.tool=tool;for(const [key,e]of Object.entries(app.tools))e.setAttribute('aria-pressed',String(key===tool));}
+function selectTool(app,tool){if(!app.tools[tool]||app.tools[tool].disabled)return;app.tool=tool;for(const [key,e]of Object.entries(app.tools))e.setAttribute('aria-pressed',String(key===tool));}
 function run(app,replay=false){
- const old=app.world,seed=Number(app.seedInput.value)>>>0;
+ const old=app.world,seed=Math.max(0,Math.min(4294967295,Math.floor(Number(app.seedInput.value)||0)));app.seedInput.value=String(seed);
  if(replay){const data=model.exportData(old);app.world=model.create(data['seed'],data['initialRules'],data['control']);app.replay=data['events'];app.replayEnd=data['steps'];say(app,'Replaying the same seed and recorded interventions.');}
  else{app.comparison=old.history.map(h=>({...h}));app.world=model.create(seed,app.baseline,app.controlInput.value);app.replay=null;say(app,'Matched starting world. The previous run stays on the history chart.');}
  app.selected=null;app.inspect.hidden=true;app.accumulator=0;app.last=0;app.paused=false;app.pause.textContent='Pause';app.pause.setAttribute('aria-pressed','false');sync(app);
@@ -46,7 +47,7 @@ function panel(app){
  const seedLabel=el('label','','Random seed',app.panel);app.seedInput=el('input','',null,seedLabel);app.seedInput.type='number';app.seedInput.min=0;app.seedInput.max=4294967295;app.seedInput.step=1;app.seedInput.value=42;app.seedInput.setAttribute('aria-label','Random seed');el('small','','Start matched run uses this seed and the original starting rules. A single run is an observation, not evidence of a general result.',seedLabel);
  const actions=el('div','co-actions',null,app.panel);button('Start matched run',actions,()=>run(app));button('Replay current run',actions,()=>run(app,true));button('Restart with live rules',actions,()=>{app.baseline={...app.world.config};run(app);});button('Export experiment',actions,()=>download(app));
  el('label','','Population history',app.panel);app.chart=el('canvas','co-chart',null,app.panel);app.chart.width=560;app.chart.height=190;app.chart.setAttribute('role','img');app.chart.setAttribute('aria-label','Population history: cells, microbes and previous-run cells');el('p','co-chart-legend','Mint: cells · coral: microbes · grey: previous run',app.panel);
- app.trend=el('p','',null,app.panel);
+ app.historyRange=el('p','co-chart-legend',null,app.panel);app.trend=el('p','',null,app.panel);
  const details=el('details','',null,app.panel);el('summary','','What is actually evolving?',details);
  el('p','','Six inherited traits affect movement, sensing, engulfment, sharing, defence and adhesion. A heritable 8-input, 4-output controller steers movement, engulfment and signalling. There is no lifetime learning or reward for being an immune cell.',details);
  el('p','','Birth requires energy. Offspring inherit the parent’s lineage, traits and controller with small mutations. Costs, feeding, microbial contact and ageing determine survival. Related neighbours can adhere and share resources; displayed kin clusters are connected groups of at least three relatives.',details);
@@ -55,8 +56,8 @@ function panel(app){
  el('p','','This is an artificial evolutionary model, not a biological reconstruction. Protective specialisation is a possible outcome to investigate, not a promised stage.',details);
  sync(app);
 }
-function inspector(app){app.inspect=el('section','co-inspect',null,app.root);app.inspect.hidden=true;app.inspect.setAttribute('aria-label','Selected cell');const close=button('×',app.inspect,()=>{app.selected=null;app.inspect.hidden=true;});close.className='co-close';close.setAttribute('aria-label','Close cell inspector');app.inspectTitle=el('h2','',null,app.inspect);app.inspectDetails=el('p','co-cell-detail',null,app.inspect);const bar=el('div','co-energy',null,app.inspect);app.energy=el('i','',null,bar);app.traitRows=[];for(const trait of model.traits){const row=el('div','co-trait',trait,app.inspect),track=el('i','',null,row),fill=el('b','',null,track),output=el('output','',null,row);app.traitRows.push({fill,output});}el('p','','Colour identifies a founding lineage. Higher defence is an investment, not a preassigned cell type.',app.inspect);}
-function inspect(app){if(app.selected===null)return;const c=app.world.cells.find(c=>c.id===app.selected);if(!c){app.inspectTitle.textContent='Cell no longer alive';app.inspectDetails.textContent='Its lineage may continue through surviving relatives. Tap another cell to inspect.';return;}app.inspectTitle.textContent=`Lineage ${c.lineage+1} · Cell ${c.id}`;app.inspectDetails.textContent=`Generation ${c.generation} · Parent ${c.parent??'founder'}\nEnergy ${c.energy.toFixed(2)} · Age ${c.age.toFixed(1)}s\nOffspring ${c.births} · Engulfed ${c.engulfed}\nShared energy ${c.shared.toFixed(2)}`;app.inspectDetails.style.whiteSpace='pre-line';app.energy.style.width=`${Math.min(100,c.energy/1.8*100)}%`;c.genes.forEach((g,i)=>{app.traitRows[i].fill.style.width=`${g*100}%`;app.traitRows[i].output.textContent=g.toFixed(2);});}
+function inspector(app){app.inspect=el('section','co-inspect',null,app.root);app.inspect.hidden=true;app.inspect.setAttribute('aria-label','Selected cell');const close=button('×',app.inspect,()=>{app.selected=null;app.inspect.hidden=true;});close.className='co-close';close.setAttribute('aria-label','Close cell inspector');app.inspectTitle=el('h2','',null,app.inspect);app.inspectDetails=el('p','co-cell-detail',null,app.inspect);const bar=el('div','co-energy',null,app.inspect);app.energy=el('i','',null,bar);app.energyTrack=bar;app.traitRows=[];for(const trait of model.traits){const row=el('div','co-trait',trait,app.inspect),track=el('i','',null,row),fill=el('b','',null,track),output=el('output','',null,row);app.traitRows.push({row,fill,output});}el('p','','Colour identifies a founding lineage. Higher defence is an investment, not a preassigned cell type.',app.inspect);}
+function inspect(app){if(app.selected===null)return;const c=app.world.cells.find(c=>c.id===app.selected);if(!c){app.inspectTitle.textContent='Cell no longer alive';app.inspectDetails.textContent='Its lineage may continue through surviving relatives. Tap another cell to inspect.';app.energyTrack.hidden=true;for(const {row} of app.traitRows)row.hidden=true;return;}app.energyTrack.hidden=false;for(const {row} of app.traitRows)row.hidden=false;app.inspectTitle.textContent=`Lineage ${c.lineage+1} · Cell ${c.id}`;app.inspectDetails.textContent=`Generation ${c.generation} · Parent ${c.parent??'founder'}\nEnergy ${c.energy.toFixed(2)} · Age ${c.age.toFixed(1)}s\nOffspring ${c.births} · Engulfed ${c.engulfed}\nShared energy ${c.shared.toFixed(2)}`;app.inspectDetails.style.whiteSpace='pre-line';app.energy.style.width=`${Math.min(100,c.energy/1.8*100)}%`;c.genes.forEach((g,i)=>{app.traitRows[i].fill.style.width=`${g*100}%`;app.traitRows[i].output.textContent=g.toFixed(2);});}
 function interaction(app,event){
  const r=app.canvas.getBoundingClientRect(),x=(event.clientX-r.left)/r.width*model.WIDTH,y=(event.clientY-r.top)/r.height*model.HEIGHT;
  if(app.tool==='inspect'){
@@ -108,16 +109,19 @@ function draw(app,width,height){
 }
 function chart(app){
  const ctx=app.chart.getContext('2d'),width=app.chart.width,height=app.chart.height;ctx.clearRect(0,0,width,height);
- const current=app.world.history,previous=app.comparison||[],maxTime=Math.max(1,current.at(-1)?.['time']||1,previous.at(-1)?.['time']||1),maxPop=650;
- for(const [data,key,color]of [[previous,'cells','#818ca280'],[current,'microbes','#e99a93'],[current,'cells','#8ed7c7']]){ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;data.forEach((point,i)=>{const x=8+point['time']/maxTime*(width-16),y=height-8-point[key]/maxPop*(height-16);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();}
- app.chart.setAttribute('aria-label',`Population at ${app.world.time.toFixed(1)} seconds: ${app.world.cells.length} cells and ${app.world.microbes.length} microbes.`);
- const first=current[0],last=current.at(-1);if(first&&last)app.trend.textContent=`Mean defence ${first['traits'][4].toFixed(2)} → ${last['traits'][4].toFixed(2)} · sharing ${first['traits'][3].toFixed(2)} → ${last['traits'][3].toFixed(2)}. Compare several seeds before drawing a conclusion.`;
+ const window=model.historyWindow(app.world.history,app.comparison||[]),maxPop=model.MICROBE_CAP;
+ for(const [data,key,color]of [[window.previous,'cells','#818ca280'],[window.current,'microbes','#e99a93'],[window.current,'cells','#8ed7c7']]){ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;data.forEach((point,i)=>{const x=8+(point['time']-window.start)/(window.end-window.start)*(width-16),y=height-8-point[key]/maxPop*(height-16);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();}
+ app.chart.setAttribute('aria-label',`Population history from ${window.start.toFixed(0)} to ${window.end.toFixed(0)} seconds. Now: ${app.world.cells.length} cells and ${app.world.microbes.length} microbes.`);
+ app.historyRange.textContent=`${window.start.toFixed(0)}–${window.end.toFixed(0)}s · 0–${maxPop} per population${app.comparison&&!window.previous.length?' · previous run has no samples in this window':''}`;
+ const initial=app.world.initialTraits,last=window.current.at(-1);
+ if(last)app.trend.textContent=last['traits']?`Mean defence, start → now: ${initial[4].toFixed(2)} → ${last['traits'][4].toFixed(2)} · sharing ${initial[3].toFixed(2)} → ${last['traits'][3].toFixed(2)}. Compare several seeds before drawing a conclusion.`:'No surviving cells. Trait averages are unavailable after extinction.';
+
 }
 function frame(app,width,height,menu){
  if(!app||app.stopped)return;if(!app.root.isConnected){dispose(app);return;}
  const now=performance.now(),elapsed=app.last?Math.min(.15,(now-app.last)/1000):0;app.last=now;app.menu=menu;
  if(app.canvas.width!==width||app.canvas.height!==height){app.canvas.width=width;app.canvas.height=height;}
- if(!app.paused&&!menu&&!document.hidden){app.accumulator+=elapsed*app.speed;let n=0;while(app.accumulator>=model.DT&&n++<12){
+ if(!app.paused&&!menu&&!document.hidden){app.accumulator=Math.min(model.DT*12,app.accumulator+elapsed*app.speed);let n=0;while(app.accumulator>=model.DT&&n++<12){
   if(app.replay&&app.world.step>=app.replayEnd){model.applyEvents(app.world,app.replay,true);app.replay=null;app.paused=true;app.pause.textContent='Resume';app.pause.setAttribute('aria-pressed','true');say(app,'Replay complete at the original simulation step.');break;}
   model.step(app.world,app.replay);app.accumulator-=model.DT;
  }}else app.accumulator=0;

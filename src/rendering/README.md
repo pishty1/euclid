@@ -310,3 +310,16 @@ biological claim or a cloud save. Leaving the sketch releases its DOM listeners.
 `node --test test/rendering/origins_model.test.cjs` covers exact replay,
 matched starting conditions, inheritance, bounded mutation, defence costs,
 conservative sharing, explicit inoculation/extinction and five-minute runs.
+
+Cellular Origins audit fixes (model v2): microbes consume nutrients from their
+post-movement tile. This changes trajectories, so exports identify the model
+version; v1 and v2 seeds need not produce identical runs. Trait baselines are
+retained from the initial population even after old history samples expire.
+Extinct populations export null trait and energy averages instead of artificial
+zeroes. The chart fills the current retained time window, clips previous-run
+samples to the same timestamps and labels both axes' ranges. Comparisons without
+matching samples are indicated. Dead-cell inspectors hide stale trait/energy bars.
+Disabled experimental tools cannot be reselected by keyboard, and starting a run
+normalizes its seed to the displayed unsigned 32-bit range. Per-frame accumulated
+time is bounded to twelve fixed steps: overloaded devices slow simulated time
+instead of building an unbounded catch-up backlog.
