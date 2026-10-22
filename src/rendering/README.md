@@ -253,3 +253,60 @@ resizing, and switching away and back. Inspect the console for validation errors
 Compare FPS with the same manual population and Canvas rendering before claiming
 a speedup. Physics remains CPU-bound, and GPU rendering is not necessarily faster
 for small populations.
+
+Cellular Origins replaces Prime Gardens in the first registry slot. It is a
+seeded, bounded agent ecosystem rendered in Canvas 2D. Initial conditions contain
+120 cells from 12 founding lineages and 260 microbes. Limits of 320 cells and
+650 microbes bound CPU work; reproduction stops at capacity rather than deleting
+arbitrary individuals. Extinction is allowed, without hidden respawning.
+
+Each cell inherits six continuous traits (speed, sensing, engulfment, sharing,
+defence and adhesion) and 32 controller weights. The controller maps eight inputs
+(food gradients, microbial/signal directions, kin directions, energy and a bias)
+to four tanh outputs governing movement, engulfment and signalling. There is no
+reinforcement learning, caste assignment or reward for immunity. A 64×44 nutrient
+and chemical-signal grid supports local foraging and signalling. A periodic spatial
+hash limits neighbour queries. Nearby relatives can adhere and conservatively
+share energy. A kin cluster means at least three connected relatives; it is not
+a separate simulated multicellular organism.
+
+Movement, sensing, defence, adhesion, signalling and reproduction consume energy.
+Food uptake and engulfment provide energy; microbial contact and ageing can kill
+cells. Defence reduces contact damage and incurs an ongoing configurable cost.
+Parents split their available energy with offspring and pay a division cost.
+Offspring retain lineage and parent IDs and independently mutate traits and
+controller weights. Lineage colours, deformation, birth/engulfment rings and
+brief damage flashes show actual state/events, with no rendering randomness
+feeding back into the simulation.
+
+The Experiment panel changes food renewal, microbial harm, defence cost, sharing
+and mutation probability live. Tap a cell to inspect energy, age, ancestry,
+generation, offspring, feeding and sharing totals and its six traits. Inspect,
+Feed and Inoculate work with mouse, pen or touch; Space pauses and 1–3 select
+tools. The panel scrolls on mobile, including when gestures begin on sliders.
+The living field, defence-investment and chemical-signal views describe different
+aspects of the same state. Resizing changes the display without resetting biology;
+cell glyphs remain round and legible in portrait layouts.
+
+Start matched run resets to the chosen seed and baseline starting rules, with
+Evolving, Mutation disabled, No harmful microbes, or No defence cost conditions.
+Controls share initial cells and the initial RNG sequence. The previous run stays
+on the population chart. Restart with live rules explicitly adopts edited rules
+as the new baseline. Comparisons are illustrative single-seed runs; protective
+specialisation is a hypothesis to test, not a guaranteed outcome or a biological
+reconstruction. The model is separate from the field-based Emergence Garden.
+
+Physics advances in fixed 0.05-second steps. A seeded generator controls all
+initialisation, motion and mutations. Rule edits and manual interventions record
+the simulation step. Replay current run reconstructs the initial world, applies
+the recorded interventions and pauses at the original step, including any paused
+end-step edits. Intervening during replay resumes a live experiment and discards
+future replay events. Export experiment downloads versioned JSON with the seed,
+baseline/current rules, steps, interventions, lineage totals and up to 600 recent
+one-second population/trait-history samples. JSON/config keys are stable under
+advanced compilation. Export is data for analysis and reproduction, not a full
+biological claim or a cloud save. Leaving the sketch releases its DOM listeners.
+
+`node --test test/rendering/origins_model.test.cjs` covers exact replay,
+matched starting conditions, inheritance, bounded mutation, defence costs,
+conservative sharing, explicit inoculation/extinction and five-minute runs.

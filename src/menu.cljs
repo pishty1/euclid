@@ -10,7 +10,7 @@
 (defonce h (.-clientHeight body))
 
 (def descriptions
-  {"Prime Gardens" "Prime gaps guide a growing geometric garden."
+  {"Cellular Origins" "Follow evolving cells, kin colonies and microbial pressure."
    "Emergence Garden" "Change local cell rules and discover living patterns."
    "Add Venture" "Solve arithmetic to blast incoming enemy ships."
    "Figget-A-Balls" "Build your own ecosystem of cell chains, rings, and colonies."

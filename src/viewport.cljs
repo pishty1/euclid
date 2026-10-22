@@ -23,7 +23,7 @@
                        (if host (.-clientHeight host) 0)))))
 
 (def backgrounds
-  {"Prime Gardens" "#101719" "Emergence Garden" "#060e10"
+  {"Cellular Origins" "#0b111c" "Emergence Garden" "#060e10"
    "Add Venture" "#040d14" "Figget-A-Balls" "#062442" "Euclid" "#080f17"})
 
 (defn match-background! [name]
