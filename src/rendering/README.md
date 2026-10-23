@@ -233,7 +233,15 @@ on CPU and GPU and reading back the latter; small floating-point differences
 are expected. A real GPU presentation surface is still needed to verify device
 rendering and performance, separately from compute correctness.
 
-Figget-A-Balls attempts WebGPU rendering on startup. Its FPS readout shows
+### Archived cellular-sea renderer
+
+Figget-A-Balls now runs the Canvas 2D exploration prototype described in
+[`../sketches/FIGGET.md`](../sketches/FIGGET.md). The ecosystem renderer and
+builder modules remain available but are no longer mounted by that app.
+The following notes describe the previous cellular-sea implementation, not
+its current UI.
+
+The previous Figget-A-Balls attempted WebGPU rendering on startup. Its FPS readout showed
 `Starting WebGPU`, `WebGPU`, or `Canvas`. The simulation, population tuning,
 builder, and controls remain on the CPU; this change accelerates drawing only.
 
