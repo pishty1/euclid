@@ -11,6 +11,7 @@
   {})
 
 (defn update-state [state]
+  (game/update (boolean (:menu-visible? state)))
   (let [w (.-innerWidth js/window) h (viewport/canvas-height)]
     (when (or (not= w (q/width)) (not= h (q/height)))
       (q/resize-sketch w h)))

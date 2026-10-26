@@ -3,17 +3,18 @@ const assert=require('node:assert/strict');
 const g=require('../../src/sketches/figget_frontier.js');
 const base=require('../../src/sketches/figget_world.js');
 const post=(x,y,owner=2)=>({x,y,owner,kind:'outpost'});
+function elapse(s,ms){for(let n=0;n<ms;n+=g.STEP_MS)s=g.step(s);return s;}
 function away(){const s=g.fresh();return {...s,x:275,y:275,frontier:{...s.frontier,bot:{x:300,y:300},botHome:{x:300,y:300}}};}
 test('migrates old saves without losing expedition progress',()=>{
  const old={...base.fresh(),ore:5,scanner:true};const s=g.upgrade(old);
  assert.equal(s.ore,5);assert.ok(s.scanner);assert.ok(g.valid(s));assert.ok(g.valid(old));assert.deepEqual(g.upgrade(s),s);
 });
-test('building is adjacent to character, spends timber and gives bot only one action',()=>{
+test('building is adjacent, spends timber and does not trigger a bot action',()=>{
  const s=g.fresh(),original=JSON.stringify(s);
  assert.equal(g.act(s,{type:'build',x:260,y:260,kind:'outpost'}).frontier.tick,0);
  const next=g.act(s,{type:'build',x:256,y:257,kind:'outpost'});
  assert.ok(next.frontier.structures.some(p=>p.x===256&&p.y===257&&p.owner===1));
- assert.equal(next.frontier.timber,10);assert.equal(next.frontier.tick,1);assert.equal(JSON.stringify(s),original);
+ assert.equal(next.frontier.timber,10);assert.equal(next.frontier.tick,0);assert.equal(JSON.stringify(s),original);
  const bot=g.act(s,{type:'move',dx:1,dy:0}).frontier;
  assert.ok(Math.abs(bot.bot.x-s.frontier.bot.x)+Math.abs(bot.bot.y-s.frontier.bot.y)<=1);
 });
@@ -23,10 +24,10 @@ test('outposts block enemies but not their owner; movement is cardinal',()=>{
  s.frontier.structures[0].owner=1;assert.equal(g.act(s,{type:'move',dx:1,dy:0}).x,276);
  const moved=g.act(away(),{type:'move',dx:1,dy:1});assert.equal(Math.abs(moved.x-275)+Math.abs(moved.y-275),1);
 });
-test('bot walks and builds only adjacent; waits for player actions',()=>{
+test('bot walks and builds only adjacent, independently of player actions',()=>{
  let s=away();s.frontier.bot={x:279,y:275};
  for(let i=0;i<10;i++){
-  const before=s.frontier; s=g.act(s,{type:'gather'});
+  const before=s.frontier; s=elapse(s,g.BOT_INTERVAL_MS);
   const added=s.frontier.structures.filter(p=>!before.structures.some(q=>q.x===p.x&&q.y===p.y));
   added.forEach(p=>assert.equal(Math.abs(p.x-before.bot.x)+Math.abs(p.y-before.bot.y),1));
   assert.ok(Math.abs(s.frontier.bot.x-before.bot.x)+Math.abs(s.frontier.bot.y-before.bot.y)<=1);
@@ -57,16 +58,16 @@ test('world edges close fences but sparse distant walls do not enclose empty lan
  assert.ok(!g.enclosed({...f,structures:distant},{x:1000,y:1000},1));
  assert.equal(g.SIZE*g.SIZE,4194304);
 });
-test('three besieged actions defeat and respawn explorer while preserving discoveries',()=>{
+test('twelve real simulation seconds defeat an idle besieged explorer, preserving discoveries',()=>{
  let s=away();s.ore=5;s.frontier.structures=g.neighbors(s).map(n=>post(n.x,n.y));
- s=g.act(s,{type:'rest'});assert.equal(s.frontier.siege,1);
- s=g.act(s,{type:'rest'});assert.equal(s.frontier.siege,2);
- s=g.act(s,{type:'rest'});assert.equal(s.frontier.defeats,1);assert.equal(s.x,s.frontier.home.x);assert.equal(s.ore,5);assert.equal(s.frontier.timber,6);
+ s=elapse(s,6000);assert.equal(s.frontier.siege,6000);
+ s=elapse(s,5750);assert.equal(s.frontier.defeats,0);
+ s=g.step(s);assert.equal(s.frontier.defeats,1);assert.equal(s.x,s.frontier.home.x);assert.equal(s.ore,5);assert.equal(s.frontier.timber,6);
  assert.match(s.message,/defeated/);
 });
 test('bot also gets defeated inside a friendly fence',()=>{
  let s=away();s.frontier.bot={x:280,y:280};s.frontier.structures=g.neighbors(s.frontier.bot).map(n=>post(n.x,n.y,1));
- for(let i=0;i<3;i++)s=g.act(s,{type:'rest'});
+ s=elapse(s,g.SIEGE_MS);
  assert.equal(s.frontier.botDefeats,1);assert.deepEqual(s.frontier.bot,s.frontier.botHome);
 });
 test('paths save energy, dismantling recovers timber and no action occurs on invalid input',()=>{
@@ -81,8 +82,8 @@ test('gathering advances resource regrowth; inspection and failed building do no
  const tick=s.frontier.tick;
  s=g.act(s,{type:'mark'});assert.equal(s.frontier.tick,tick);
  s=g.act(s,{type:'build',kind:'outpost',x:999,y:999});assert.equal(s.frontier.tick,tick);
- for(let i=0;i<12;i++)s=g.act(s,{type:'gather'});
- s=g.act(s,{type:'investigate'});assert.equal(s.fruit,4);
+ for(let i=0;i<12;i++)s=g.act(elapse(s,1500),{type:'gather'});
+ s=g.act(elapse(s,1500),{type:'investigate'});assert.equal(s.fruit,4);
 });
 test('safe refuges cannot be fenced by the enemy and malformed saves are rejected',()=>{
  const s=g.fresh();assert.ok(g.build(s.frontier,2,{x:s.x,y:s.y}).error);

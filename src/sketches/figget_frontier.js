@@ -1,18 +1,25 @@
 // Shared-world characters, construction and Go-inspired encirclement.
-// One successful explorer action advances the bot once. No wall-clock simulation.
+// Player actions and fixed simulation steps are independent. No offline catch-up.
 const world = require('./figget_world.js');
 const HUMAN=1, BOT=2, MAX_STRUCTURES=256, MAX_TIMBER=30;
+const STEP_MS=250, BOT_INTERVAL_MS=1500, SIEGE_MS=12000;
+const COOLDOWNS={move:250,build:1500,dismantle:1000,gather:1500,rest:1000,investigate:750,eat:500,retreat:500};
 const key=p=>world.key(p.x,p.y);
 const distance=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
 const inside=p=>Number.isInteger(p.x)&&Number.isInteger(p.y)&&p.x>=0&&p.y>=0&&p.x<world.SIZE&&p.y<world.SIZE;
 const neighbors=p=>[{x:p.x-1,y:p.y},{x:p.x+1,y:p.y},{x:p.x,y:p.y-1},{x:p.x,y:p.y+1}].filter(inside);
 const same=(a,b)=>a.x===b.x&&a.y===b.y;
 function upgrade(s) {
-  if(s.frontier)return s;
+  if(s.frontier){
+    if(s.frontier.version===2)return s;
+    return {...s,frontier:{...s.frontier,version:2,elapsedMs:0,botElapsedMs:0,cooldownMs:0,siege:0,botSiege:0,
+      botMessage:'Realtime enabled. The bot acts independently every 1.5 seconds. Pause whenever you need.'}};
+  }
   const home={x:s.x,y:s.y}, botHome={x:s.x+(s.x<world.SIZE-12?6:-6),y:s.y};
-  return {...s,frontier:{version:1,home,botHome,bot:{...botHome},structures:[],timber:12,botTimber:12,tick:0,
+  return {...s,frontier:{version:2,home,botHome,bot:{...botHome},structures:[],timber:12,botTimber:12,tick:0,
+    elapsedMs:0,botElapsedMs:0,cooldownMs:0,
     siege:0,botSiege:0,captures:0,botCaptures:0,defeats:0,botDefeats:0,
-    botMessage:'An orange rival has made camp six tiles away. It moves and builds after your actions.'}};
+    botMessage:'An orange rival has made camp six tiles away. It acts independently every 1.5 seconds.'}};
 }
 function fresh(){return upgrade(world.fresh());}
 function index(structures){return new Map(structures.filter(p=>p.kind==='outpost').map(p=>[key(p),p]));}
@@ -131,41 +138,51 @@ function botAct(f,player) {
   }
   return {...f,botMessage:'The bot waits. It cannot find a legal nearby building site.'};
 }
-function advance(s) {
-  let f=botAct(s.frontier,s);f={...f,tick:f.tick+1};
-  f.siege=enclosed(f,s,HUMAN)?f.siege+1:0;
-  f.botSiege=enclosed(f,f.bot,BOT)?f.botSiege+1:0;
+function step(input) {
+  let s=upgrade(input),f={...s.frontier};
+  f.elapsedMs+=STEP_MS;f.botElapsedMs+=STEP_MS;f.cooldownMs=Math.max(0,f.cooldownMs-STEP_MS);
+  // Count only time already spent enclosed. A fence completed this step starts
+  // its countdown on the next step; escaping at the boundary cancels the siege.
+  const trapped=enclosed(f,s,HUMAN),botTrapped=enclosed(f,f.bot,BOT);
+  if(f.botElapsedMs>=BOT_INTERVAL_MS){
+    f=botAct(f,s);f={...f,tick:f.tick+1,botElapsedMs:f.botElapsedMs-BOT_INTERVAL_MS};
+  }
+  f.siege=enclosed(f,s,HUMAN)?f.siege+(trapped?STEP_MS:0):0;
+  f.botSiege=enclosed(f,f.bot,BOT)?f.botSiege+(botTrapped?STEP_MS:0):0;
   let message=s.message;
-  if(f.siege>=3){
+  if(f.siege>=SIEGE_MS){
     s={...s,x:f.home.x,y:f.home.y,energy:100};f={...f,siege:0,defeats:f.defeats+1,timber:Math.floor(f.timber/2)};
-    message='Your character was surrounded and defeated. You respawn at camp, losing half your timber; discoveries and other supplies are safe.';
-  }else if(f.siege)message+=` SURROUNDED: ${3-f.siege} actions until defeat. Break the fence or retreat to camp.`;
-  if(f.botSiege>=3){
+    message='Your character was surrounded for 12 seconds and defeated. You respawn at camp, losing half your timber; discoveries and other supplies are safe.';
+  }
+  if(f.botSiege>=SIEGE_MS){
     f={...f,bot:{...f.botHome},botSiege:0,botDefeats:f.botDefeats+1,botTimber:Math.floor(f.botTimber/2),botMessage:'You surrounded and defeated the bot! It respawns at its refuge with half its timber.'};
-  }else if(f.botSiege)f.botMessage+=` Bot surrounded: ${3-f.botSiege} actions until defeat.`;
+  }
   return {...s,frontier:f,message};
 }
 function act(input,action) {
   const s=upgrade(input),f=s.frontier;
   const fail=message=>({...s,message});
-  const takeTurn=next=>advance({...next,turn:s.turn+1});
+  if(action.type!=='retreat'&&COOLDOWNS[action.type]&&f.cooldownMs>0)return s;
+  const finish=next=>({...next,turn:s.turn+1,frontier:{...next.frontier,cooldownMs:COOLDOWNS[action.type]||0,
+    siege:enclosed(next.frontier,next,HUMAN)?next.frontier.siege:0,
+    botSiege:enclosed(next.frontier,next.frontier.bot,BOT)?next.frontier.botSiege:0}});
   if(action.type==='build'){
     const p={x:action.x,y:action.y};
     if(distance(p,s)!==1)return fail('Walk closer: you can build only one tile north, south, east or west of your character.');
     if(same(p,f.bot))return fail('The bot is standing there. Surround it; you cannot build on a character.');
     const result=build(f,HUMAN,p,action.kind);
     if(result.error)return fail(result.error);
-    return takeTurn({...s,frontier:result.frontier,message:`Built ${action.kind} at ${p.x}, ${p.y}.${result.captured?` Captured ${result.captured} enemy outposts!`:''}`});
+    return finish({...s,frontier:result.frontier,message:`Built ${action.kind} at ${p.x}, ${p.y}.${result.captured?` Captured ${result.captured} enemy outposts!`:''}`});
   }
   if(action.type==='dismantle'){
     const p={x:action.x,y:action.y};
     if(distance(p,s)>1)return fail('Stand next to your structure to dismantle it.');
     const structure=f.structures.find(q=>same(q,p)&&q.owner===HUMAN);
     if(!structure)return fail('You can dismantle only your own structures.');
-    return takeTurn({...s,frontier:{...f,structures:f.structures.filter(q=>q!==structure),timber:Math.min(MAX_TIMBER,f.timber+1)},message:'Dismantled your structure. Recovered one timber.'});
+    return finish({...s,frontier:{...f,structures:f.structures.filter(q=>q!==structure),timber:Math.min(MAX_TIMBER,f.timber+1)},message:'Dismantled your structure. Recovered one timber.'});
   }
-  if(action.type==='gather')return takeTurn({...s,frontier:{...f,timber:Math.min(MAX_TIMBER,f.timber+3)},message:'Salvaged three timber from the surroundings (capacity 30). The bot takes its turn.'});
-  if(action.type==='retreat')return takeTurn({...s,x:f.home.x,y:f.home.y,energy:100,frontier:{...f,timber:Math.floor(f.timber/2),siege:0},message:'You retreat to your protected camp, leaving half your timber behind.'});
+  if(action.type==='gather')return finish({...s,frontier:{...f,timber:Math.min(MAX_TIMBER,f.timber+3)},message:'Salvaged three timber from the surroundings (capacity 30).'});
+  if(action.type==='retreat')return finish({...s,x:f.home.x,y:f.home.y,energy:100,frontier:{...f,timber:Math.floor(f.timber/2),siege:0},message:'You retreat to your protected camp, leaving half your timber behind.'});
   if(action.type==='move'){
     let dx=Math.sign(action.dx),dy=Math.sign(action.dy);
     if(!Number.isFinite(dx)||!Number.isFinite(dy)||(!dx&&!dy))return s;
@@ -175,23 +192,24 @@ function act(input,action) {
     if(!inside(p))return fail('You reached the edge of the atlas.');
     if(occupied(f,p,HUMAN,s))return fail('An enemy outpost, the bot or its protected refuge blocks this tile. Find another route or surround its outposts.');
     const road=f.structures.some(q=>same(q,p)&&q.kind==='path');
-    if(road){const moved=world.act({...s,energy:Math.max(2,s.energy)},{type:'move',dx,dy});return advance({...moved,energy:s.energy});}
+    if(road){const moved=world.act({...s,energy:Math.max(2,s.energy)},{type:'move',dx,dy});return finish({...moved,energy:s.energy});}
     const moved=world.act(s,{type:'move',dx,dy});
-    return moved.turn===s.turn?moved:advance(moved);
+    return moved.turn===s.turn?moved:finish(moved);
   }
   const next=world.act(s,action);
-  // Inspecting/marking a location without consuming a world turn never moves the bot.
-  if(next.turn!==s.turn||(action.type==='eat'&&next.fruit!==s.fruit))return takeTurn(next);
+  // Only successful actions start a cooldown. None of them trigger a bot action.
+  if(next.turn!==s.turn||(action.type==='eat'&&next.fruit!==s.fruit))return finish(next);
   return next;
 }
 function valid(s) {
   if(!world.valid(s))return false;
   if(!s.frontier)return true; // Migration from the exploration-only save.
   const f=s.frontier,number=n=>Number.isInteger(n)&&n>=0;
-  return f.version===1&&[f.home,f.botHome,f.bot].every(p=>p&&inside(p))&&
+  return [1,2].includes(f.version)&&[f.home,f.botHome,f.bot].every(p=>p&&inside(p))&&
+    (f.version===1||(['elapsedMs','botElapsedMs','cooldownMs'].every(k=>number(f[k]))&&f.botElapsedMs<BOT_INTERVAL_MS&&f.cooldownMs<=1500))&&
     ['timber','botTimber','tick','siege','botSiege','captures','botCaptures','defeats','botDefeats'].every(k=>number(f[k]))&&
-    f.timber<=MAX_TIMBER&&f.botTimber<=MAX_TIMBER&&f.siege<3&&f.botSiege<3&&typeof f.botMessage==='string'&&
+    f.timber<=MAX_TIMBER&&f.botTimber<=MAX_TIMBER&&f.siege<(f.version===1?3:SIEGE_MS)&&f.botSiege<(f.version===1?3:SIEGE_MS)&&typeof f.botMessage==='string'&&
     Array.isArray(f.structures)&&f.structures.length<=MAX_STRUCTURES&&f.structures.every(p=>p&&inside(p)&&[1,2].includes(p.owner)&&['outpost','path'].includes(p.kind))&&
     new Set(f.structures.map(key)).size===f.structures.length;
 }
-module.exports={...world,HUMAN,BOT,MAX_STRUCTURES,fresh,upgrade,act,valid,neighbors,group,enclosed,build,botAct};
+module.exports={...world,HUMAN,BOT,MAX_STRUCTURES,STEP_MS,BOT_INTERVAL_MS,SIEGE_MS,fresh,upgrade,act,step,valid,neighbors,group,enclosed,build,botAct};

@@ -1,4 +1,4 @@
-# Figget-A-Balls: Shared Frontier
+# Figget-A-Balls: Realtime Frontier
 
 One continuous exploration map, one player character and one local bot. The
 separate 7×7 encounter has been removed: movement, construction, capture and
@@ -13,17 +13,23 @@ sieges now happen directly on the map. The app name and menu slot are unchanged.
   button. You must physically walk beside a site before building there.
 - An outpost costs 2 timber; a path costs 1. **Gather wood** salvages 3 timber
   from the surroundings, capped at 30. Both characters use the same costs.
-- **Inspect** reports the selected structure's group liberties without taking
-  a turn. **Remove** dismantles your current/adjacent structure for 1 timber.
-- Each successful move, construction, dismantling, gathering, rest, resource
-  investigation or fruit consumption gives the bot one action. Invalid actions,
-  selecting tools, inspecting structures and marking places do not.
+- **Inspect** reports the selected structure's group liberties. The bot keeps
+  acting while you inspect. **Remove** dismantles a nearby structure for 1 timber.
+- The bot acts independently every **1.5 seconds**, even when you stand still.
+  Clicking faster does not accelerate it. Movement has a **250ms cooldown**;
+  building/gathering have a **1.5s cooldown**. Other actions have short cooldowns
+  shown as `Ready in…`. Failed actions do not start a cooldown.
+- **Pause / Resume** freezes both characters, cooldowns and siege timers.
+  The sketch menu, hidden tab and switching sketches pause automatically.
+  Returning never replays elapsed offline time. Inspection/tools work while
+  manually paused, but movement and construction do not.
 - The bot can walk one tile, build adjacent to itself, gather timber or wait.
   It tries to defend threatened groups, finish captures and close your exits
   when you are within 12 tiles and outside your refuge. Otherwise it expands
   around its camp. It is a simple local heuristic, not a strategic Go engine.
-- No simulation runs while you are away or idle. There is no separate combat
-  screen or mode switch. The bot is explicitly automated, not an online player.
+- Simulation runs while this sketch is visible and unpaused, including while
+  you are idle. There is no separate combat screen. The bot is explicitly
+  automated, not an online player.
 
 ## Territory and defeat
 
@@ -42,12 +48,13 @@ cannot be used to escape a closed fence. Characters are not stones: their siege
 rule searches for a walkable route out of the enemy fence, not just adjacent
 liberties. Large empty pockets inside a closed fence still count as surrounded.
 
-After three successful actions spent surrounded, a character is defeated and
+After **12 seconds continuously surrounded**, a character is defeated and
 respawns at its own camp, losing half its timber. The same rule applies to the
 bot. Discoveries, ore, fruit and tools survive. Each camp and its four entrances
 are protected: enemies cannot enter or build there, and reaching your own
 refuge ends a siege. Respawns therefore cannot land on the other character.
-**Retreat to camp** is always available, with the same half-timber cost.
+Escaping resets the timer. **Retreat to camp** bypasses action cooldowns while
+unpaused, with the same half-timber cost.
 
 ## Exploration
 
@@ -69,16 +76,25 @@ after twelve successful world actions, including building; deposits are finite.
 
 ## Saves / implementation
 
-- `figget.cljs`: Quil lifecycle, resize, pointer and keyboard bridge.
+- `figget.cljs`: Quil lifecycle, per-frame clock update, resize and input bridge.
 - `figget_world.js`: deterministic terrain, exploration and original expedition.
 - `figget_frontier.js`: pure world actions, sparse structures, bot, captures,
-  encirclement and migration from exploration-only saves.
-- `figget_game.js`: Canvas 2D world rendering, HTML controls, local persistence.
+  encirclement, fixed 250ms simulation steps, cooldowns and save migration.
+- `figget_clock.js`: session-local monotonic clock, frame-rate independent steps,
+  suspension/reset and long-gap protection. Gaps over 1s are discarded rather
+  than replayed as a dangerous catch-up burst.
+- `figget_game.js`: Canvas 2D world rendering, pause controls, clock integration
+  and local persistence. Autosaves every 2s while running, immediately after
+  player actions, and flushes on pause, menu, visibility change and sketch exit.
 - Saves still use `figget-exploration-v1`. Existing exploration progress is
   retained; migration establishes your refuge at your saved position and the
   bot's refuge six tiles away. Old separate `figget-siege-v1` saves are ignored.
 - Restarting the sketch or reloading restores the world. **New expedition**
   asks before clearing the local world. Storage failures are shown in the UI.
+- Frontier saves migrate from v1 (turn-based) to v2 (realtime), retaining
+  characters, buildings and resources while resetting old action-based siege
+  counts. Realtime timers are stored as simulation durations, never wall-clock
+  deadlines. Reload starts unpaused, without any offline advancement.
 
 The prototype caps total structures at 256. Characters cannot build on another
 character, and the bot never places structures remotely. Enclosure checks use
@@ -98,7 +114,8 @@ Use Java 17 (Processing does not load under Java 11). Serve `docs/` after the
 production build for browser checks. The existing development `viewport`
 namespace/global collision in Chromium is avoided by the production build.
 
-Tests cover migration, shared-world turns, adjacent construction, bot movement,
+Tests cover migration, independent bot timing, input cooldowns, frame rates,
+pause/resume and long clock gaps, adjacent construction, bot movement,
 movement blocking, captures, suicide, fence openings and map edges, sparse huge
 maps, both characters' siege/respawn, paths, dismantling, protected camps and
 save validation, as well as the original solo expedition.
