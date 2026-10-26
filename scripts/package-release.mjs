@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 
@@ -14,5 +15,6 @@ mkdirSync('dist/images', { recursive: true });
 writeFileSync(`dist/${asset}`, js);
 writeFileSync('dist/index.html', html);
 copyFileSync('docs/images/fav.png', 'dist/images/fav.png');
+execFileSync('python3', ['scripts/package-plugin.py', 'dist/downloads/figget-world.zip']);
 writeFileSync('dist/release.json', JSON.stringify({ commit, asset }) + '\n');
 console.log(`Packaged ${commit}: ${asset}`);

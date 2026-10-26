@@ -16,7 +16,7 @@ body[data-sketch='Figget-A-Balls'] #figget-explorer{display:block}
 `;
 function element(tag,text,parent){const el=document.createElement(tag);if(text)el.textContent=text;if(parent)parent.appendChild(el);return el;}
 function save(){try{localStorage.setItem(SAVE,JSON.stringify(state));saveNote='Saved on this device';}catch(_){saveNote='Storage unavailable — this session only';}dirty=false;lastSave=performance.now();}
-function inactive(){return paused||document.hidden||document.body.dataset.sketch!=='Figget-A-Balls'||!!document.querySelector('dialog[open]');}
+function inactive(){return paused||document.hidden||document.body.dataset['sketch']!=='Figget-A-Balls'||!!document.querySelector('dialog[open]');}
 function dispatch(action){
   if(inactive())return;
   const next=world.act(state,action);if(next===state)return;
@@ -84,9 +84,9 @@ function setup(){
     const suspend=()=>{clock.reset();if(state&&dirty)save();};
     document.addEventListener('visibilitychange',suspend);
     window.addEventListener('pagehide',suspend);
-    new MutationObserver(()=>{if(document.body.dataset.sketch!=='Figget-A-Balls')suspend();}).observe(document.body,{attributes:true,attributeFilter:['data-sketch']});
+    new MutationObserver(()=>{if(document.body.dataset['sketch']!=='Figget-A-Balls')suspend();}).observe(document.body,{attributes:true,attributeFilter:['data-sketch']});
     document.addEventListener('keydown',event=>{
-      if(document.body.dataset.sketch==='Figget-A-Balls'&&!document.querySelector('dialog[open]')&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key)&&!event.target.closest('input,textarea,select'))event.preventDefault();
+      if(document.body.dataset['sketch']==='Figget-A-Balls'&&!document.querySelector('dialog[open]')&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key)&&!event.target.closest('input,textarea,select'))event.preventDefault();
     });
   }
   sync();return {};

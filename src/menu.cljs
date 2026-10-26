@@ -13,7 +13,7 @@
   {"Cellular Origins" "Follow evolving cells, kin colonies and microbial pressure."
    "Emergence Garden" "Change local cell rules and discover living patterns."
    "Add Venture" "Solve arithmetic to blast incoming enemy ships."
-   "Figget-A-Balls" "Explore, build paths and outposts, and surround a rival bot in one shared world."
+   "Figget-A-Balls" "A persistent shared frontier: explore, gather, build and follow other players’ activity."
    "Euclid" "Living proofs, compass roses, and draggable geometry."})
 
 (def styles
