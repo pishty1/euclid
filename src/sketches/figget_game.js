@@ -1,4 +1,5 @@
 const world = require('./figget_world.js');
+const siege = require('./figget_siege_ui.js');
 const SAVE='figget-exploration-v1';
 const colors={grass:'#163c37',ridge:'#38434c',pond:'#22566e',garden:'#6da478',mineral:'#d6af66',camp:'#f0dcc0',workshop:'#b69bd2',tower:'#84c8d8',haven:'#d6d995'};
 let state, panel, status, message, journal, saveNote='', cachedSeen, seen;
@@ -29,6 +30,7 @@ function setup() {
     message=element('p','',panel);message.id='figget-message';message.setAttribute('aria-live','polite');
     const actions=element('div',null,panel);actions.className='actions';
     [['Investigate','investigate'],['Rest','rest'],['Eat fruit','eat'],['Mark place','mark']].forEach(([label,type])=>button(label,{type},actions));
+    const encounter=element('button','Play vs bot',actions);encounter.type='button';encounter.onclick=()=>siege.open();
     const help=element('p','Tap terrain to step towards it · Arrows / WASD move · E investigates',panel);help.className='help';
     const details=element('details',null,panel);element('summary','Field journal & map key',details);
     element('p','Gold: ore · Green: orchard · Blue: water · Rings: places · Diamond: your marker. No other players are connected in this local prototype.',details);
@@ -71,12 +73,14 @@ function draw(ctx,w,h) {
   ctx.textAlign='left';ctx.fillStyle='#9ac9b0';ctx.fillText('N ↑',18,100);
 }
 function click(x,y,w,h) {
+  if(document.querySelector('#figget-siege[open]'))return;
   const target=document.elementFromPoint(x,y);
   if(target&&target.closest('#figget-explorer,#euclid-nav,#euclid-menu'))return;
   const {size,cx,cy}=layout(w,h);const dx=Math.round((x-cx)/size),dy=Math.round((y-cy)/size);
   dispatch(dx||dy?{type:'move',dx,dy}:{type:'investigate'});
 }
 function keypress(key) {
+  if(document.querySelector('#figget-siege[open]'))return;
   if(document.activeElement&&document.activeElement.closest('#figget-explorer,#euclid-nav,#euclid-menu'))return;
   const keys={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]};
   if(keys[key])dispatch({type:'move',dx:keys[key][0],dy:keys[key][1]});
