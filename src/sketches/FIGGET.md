@@ -1,67 +1,91 @@
-# Figget-A-Balls: The Quiet Atlas
+# Figget-A-Balls: Shared Frontier
 
-The existing sketch entry now runs a solo-first exploration prototype rather
-than the cellular-sea simulation. Its name and menu position are unchanged.
+One continuous exploration map, one player character and one local bot. The
+separate 7×7 encounter has been removed: movement, construction, capture and
+sieges now happen directly on the map. The app name and menu slot are unchanged.
 
 ## Play
 
-Tap terrain to take one step towards it, use arrows/WASD, or use the directional
-buttons. Investigate your tile with E or the button. Rest anywhere to recover;
-there is no death or offline penalty. Mark interesting places and consult the
-field journal. New expedition asks before erasing progress.
+- Mint dot: you. Orange dot: the bot. Squares: outposts; dashed tiles: paths.
+- Select **Walk** and tap terrain or a direction button to take one cardinal
+  step. Arrow keys / WASD always walk, even when a building tool is selected.
+- Select **Outpost** or **Path**, then tap an adjacent tile or a direction
+  button. You must physically walk beside a site before building there.
+- An outpost costs 2 timber; a path costs 1. **Gather wood** salvages 3 timber
+  from the surroundings, capped at 30. Both characters use the same costs.
+- **Inspect** reports the selected structure's group liberties without taking
+  a turn. **Remove** dismantles your current/adjacent structure for 1 timber.
+- Each successful move, construction, dismantling, gathering, rest, resource
+  investigation or fruit consumption gives the bot one action. Invalid actions,
+  selecting tools, inspecting structures and marking places do not.
+- The bot can walk one tile, build adjacent to itself, gather timber or wait.
+  It tries to defend threatened groups, finish captures and close your exits
+  when you are within 12 tiles and outside your refuge. Otherwise it expands
+  around its camp. It is a simple local heuristic, not a strategic Go engine.
+- No simulation runs while you are away or idle. There is no separate combat
+  screen or mode switch. The bot is explicitly automated, not an online player.
 
-The deterministic world is 512 × 512 tiles, drawn only around the player with
-persistent fog of exploration. Begin at 256,256. Study and extract two ore at
-252,253, restore the workshop at 262,259, visit the tower at 267,248, then find
-Hidden hollow at 273,242. A scanner expands sight and bypasses mineral study.
-Orchards regrow after twelve actions; deposits are finite. No human collaborator
-is needed to finish the expedition.
+## Territory and defeat
 
-## Play against one bot
+Orthogonally connected outposts of one owner share their empty neighboring tiles
+(liberties). Paths count as empty for this rule and never join outpost groups.
+A placement removes adjacent enemy groups with zero liberties, then checks that
+the new friendly group has breathing room. Suicidal placements are rejected.
+Captures return 1 timber per captured outpost and increment the capture count.
+These are Go-inspired rules, not full Go: there are no global alternating stone
+turns, territory scores or superko restrictions in the walking world.
 
-Choose **Play vs bot** from the exploration controls. This opens a separate,
-local 7 × 7 contested-quarry encounter; exploration energy is not used.
+Enemy outposts, enemy refuges and the other character block movement; your own
+outposts do not.
+All terrain is currently traversable. Movement is cardinal, so a diagonal gap
+cannot be used to escape a closed fence. Characters are not stones: their siege
+rule searches for a walkable route out of the enemy fence, not just adjacent
+liberties. Large empty pockets inside a closed fence still count as surrounded.
 
-- Mint outposts are yours; orange outposts belong to one automated opponent.
-- Place on an empty intersection, then the bot responds. Placement is allowed
-  anywhere empty, not only adjacent to an existing outpost.
-- Orthogonally connected groups share liberties (empty neighboring spaces).
-  Numbers show those shared liberties. Select an outpost to highlight them.
-- Groups with zero liberties are captured. Capturing the marked camp wins.
-- Suicide and repeating any prior board position are prohibited (positional
-  superko). Capturing happens before checking your own liberties.
-- Two passes or 80 actions end by score: surviving stones + captured stones,
-  plus 3 for occupying the central quarry. This is not standard Go scoring.
-- The bot uses a deterministic one-response lookahead, prioritizing captures
-  and camp safety. It is a small tactical opponent, not a Go engine.
-- Back to exploration / Escape pauses; Retreat safely concedes. Neither loses
-  your explorer's resources. Rematch resets only the encounter.
-- Encounters save separately under `figget-siege-v1`; interrupted bot turns
-  resume when the encounter is reopened. No bot actions run while closed.
+After three successful actions spent surrounded, a character is defeated and
+respawns at its own camp, losing half its timber. The same rule applies to the
+bot. Discoveries, ore, fruit and tools survive. Each camp and its four entrances
+are protected: enemies cannot enter or build there, and reaching your own
+refuge ends a siege. Respawns therefore cannot land on the other character.
+**Retreat to camp** is always available, with the same half-timber cost.
 
-This encounter is a rules prototype, not yet a map settlement: roads,
-workshops, shared building, alliances, resource rewards and persistent world
-ownership are not implemented. It does not change the exploration map's size.
+## Exploration
 
-## Implementation / limits
+The deterministic atlas is now **2,048 × 2,048 = 4,194,304 tiles**. Terrain is
+computed on demand; only the viewport is drawn. Only discovered tile keys and
+changes are saved. Terrain is procedural, not Google Maps or OpenStreetMap data.
+Tactical objects (characters and structures) are visible in the viewport even
+on uncharted terrain, so combat does not rely on invisible walls. The HUD gives
+the bot's relative position. Zoom controls are under Rules, journal & map controls.
 
-- `figget.cljs`: Quil lifecycle, resize, input, existing menu integration.
-- `figget_world.js`: deterministic terrain and immutable action transitions.
-- `figget_game.js`: Canvas 2D presentation, accessible HTML controls, local saves.
-- `figget_siege.js`: pure group/liberty/capture rules, scoring and tactical bot.
-- `figget_siege_ui.js`: modal encounter board, turn controls and separate saves.
-- Saves: versioned `figget-exploration-v1` localStorage key. Storage failures are
-  displayed; there is no guarantee of persistence in private/blocked storage.
-- This is a local prototype, **not connected multiplayer**. No fake online
-  players, WordPress endpoint, credentials, or database writes are included.
-- The hundred-variable profile, trading, emergent settlements, world NPCs, and deeper
-  investigation puzzles are future work, not features of this first slice.
+Normal movement costs 2 energy. Rest anywhere to recover; the Rest button is
+highlighted when exhausted. Walking onto a path costs no energy, including
+paths built by the bot. Roads are public infrastructure, not exclusive territory.
 
-For WordPress integration, implement authenticated REST actions with server-side
-validation, transactional resource updates and state revisions before allowing
-shared writes. Keep private perceptions separate from public map data. Local
-saves must not be trusted as authoritative shared-world state. The pure action
-model provides a reference for the server rules, not a security boundary.
+The original solo expedition remains: study/extract two ore at 252,253; restore
+the workshop at 262,259; investigate the tower at 267,248; find Hidden hollow at
+273,242. The scanner increases sight and bypasses mineral study. Orchards regrow
+after twelve successful world actions, including building; deposits are finite.
+
+## Saves / implementation
+
+- `figget.cljs`: Quil lifecycle, resize, pointer and keyboard bridge.
+- `figget_world.js`: deterministic terrain, exploration and original expedition.
+- `figget_frontier.js`: pure world actions, sparse structures, bot, captures,
+  encirclement and migration from exploration-only saves.
+- `figget_game.js`: Canvas 2D world rendering, HTML controls, local persistence.
+- Saves still use `figget-exploration-v1`. Existing exploration progress is
+  retained; migration establishes your refuge at your saved position and the
+  bot's refuge six tiles away. Old separate `figget-siege-v1` saves are ignored.
+- Restarting the sketch or reloading restores the world. **New expedition**
+  asks before clearing the local world. Storage failures are shown in the UI.
+
+The prototype caps total structures at 256. Characters cannot build on another
+character, and the bot never places structures remotely. Enclosure checks use
+sparse enemy bounds plus unobstructed-ray exits to avoid flooding the entire
+atlas. There is no server, online multiplayer, WordPress connection, city import,
+hundred-variable character profile, alliance system or building production yet.
+Do not treat browser saves as authoritative state for future multiplayer.
 
 ## Verification
 
@@ -70,14 +94,11 @@ node --test test/sketches/figget*.test.cjs
 JAVA_HOME=$(/usr/libexec/java_home -v 17) PATH="$(/usr/libexec/java_home -v 17)/bin:$PATH" npx shadow-cljs release prod
 ```
 
-Production browser smoke checks cover desktop/mobile presentation, keyboard
-and directional-button movement, save/reload, investigation and switching
-sketches without leaking controls. Encounter checks cover bot replies, liberty
-highlights, input isolation from exploration, save/reload, pause/resume, retreat,
-rematch, pass scoring, camp-capture victory, and mobile portrait/landscape.
-Serve `docs/` after the production build.
+Use Java 17 (Processing does not load under Java 11). Serve `docs/` after the
+production build for browser checks. The existing development `viewport`
+namespace/global collision in Chromium is avoided by the production build.
 
-Environment note: Java 11 cannot load this project's Processing dependency;
-use Java 17. In the current Chromium, the development build encounters the
-existing `viewport` namespace/global collision; the optimized production build
-works and was used for browser checks.
+Tests cover migration, shared-world turns, adjacent construction, bot movement,
+movement blocking, captures, suicide, fence openings and map edges, sparse huge
+maps, both characters' siege/respawn, paths, dismantling, protected camps and
+save validation, as well as the original solo expedition.

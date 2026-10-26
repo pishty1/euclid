@@ -1,5 +1,5 @@
 // Deterministic, action-based world. No DOM or network dependencies.
-const SIZE = 512;
+const SIZE = 2048;
 const START = 256;
 const key = (x, y) => `${x},${y}`;
 function noise(x, y) {
@@ -26,7 +26,7 @@ function tile(x,y) {
 }
 function reveal(s) {
   const seen = new Set(s.seen);
-  const radius = s.scanner ? 7 : 4;
+  const radius = s.scanner ? 10 : 7;
   for(let dy=-radius;dy<=radius;dy++) for(let dx=-radius;dx<=radius;dx++) {
     const x=s.x+dx,y=s.y+dy;
     if(x>=0 && y>=0 && x<SIZE && y<SIZE && dx*dx+dy*dy<=radius*radius) seen.add(key(x,y));
@@ -93,7 +93,7 @@ function act(state,action) {
       s.tower=true;return log(s,'Your scanner resolves the signal: a sheltered hollow at 273, 242. Find it and leave a marker.');
     case 'haven':
       if(!s.tower) return tell(s,'A sheltered hollow. An old symbol resembles a tower; perhaps it has a story.');
-      return log(s,'You found Hidden hollow. Your first expedition is complete! Mark this haven, then explore beyond: the world spans a 512 × 512 tile atlas.');
+      return log(s,'You found Hidden hollow. Your first expedition is complete! Mark this haven, then explore beyond: the world spans a 2,048 × 2,048 tile atlas.');
     default:return tell(s,here.type==='ridge'?'From this ridge you watch the quiet land. Mark it as a landmark.':'You study the meadow. Look for blue water, gold deposits, green orchards, and outlined structures.');
   }
 }
