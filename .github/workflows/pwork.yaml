@@ -36,23 +36,14 @@ jobs:
         with:
           path: ~/.m2/repository
           key: euclid-maven-${{ runner.os }}-${{ hashFiles('shadow-cljs.edn', 'package-lock.json') }}
-      - name: Check WordPress plugin
-        run: |
-          php -l wordpress/figget-world/figget-world.php
-          php -l wordpress/figget-world/world.php
-          php test/wordpress/world.test.php
       - name: Build and package static app
         run: |
           npm ci
+          node scripts/generate-figget-worker.mjs --check
+          node --test test/rendering/figget_life.test.cjs
           npx shadow-cljs release prod
           node scripts/package-release.mjs
           (cd dist && tar -czf ../release.tar.gz index.html images/fav.png release.json js/main-*.js)
-      - name: Publish installable WordPress plugin
-        uses: actions/upload-artifact@v4
-        with:
-          name: figget-world-wordpress-plugin
-          path: dist/downloads/figget-world.zip
-          if-no-files-found: error
       - name: Configure restricted deployment credentials
         env:
           DEPLOY_KEY: ${{ secrets.EUCLID_DEPLOY_KEY }}

@@ -94,10 +94,9 @@ This generates the optimized assets in `docs/`.
 
 ## 🔗 Links
 [Open Euclid](https://pishty.uk/apps/euclid/) · [Blog Post](https://pishty.uk/euclid/)
-### Figget WordPress plugin
+### Figget-A-Balls: local learning world
 
-Figget-A-Balls now offers an action-based persistent world using WordPress accounts.
-The backend is the installable `wordpress/figget-world` plugin. Build its ZIP with
-`python3 scripts/package-plugin.py`; CI publishes the same ZIP as the
-`figget-world-wordpress-plugin` artifact. The app's restricted static deployment
-cannot install or activate plugins. See [Figget setup and rules](src/sketches/FIGGET.md).
+Figget-A-Balls runs entirely in the browser with independent Q-learning bots,
+mutated descendants, a resource economy and local IndexedDB saves. Auto population
+scales up to 512 bots according to measured cost; a Web Worker handles simulation.
+The WordPress backend is no longer used. See [rules and implementation](src/sketches/FIGGET.md).

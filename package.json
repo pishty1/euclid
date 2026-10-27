@@ -12,8 +12,8 @@
   },
   "license": "EPL-2.0",
   "scripts": {
-    "dev": "shadow-cljs watch app",
-    "release": "shadow-cljs release app",
+    "dev": "node scripts/generate-figget-worker.mjs && shadow-cljs watch app",
+    "release": "node scripts/generate-figget-worker.mjs && shadow-cljs release app",
     "server": "shadow-cljs server",
     "clean": "rm -rf target && rm -rf public/js",
     "clean-win": "rmdir /s /q public/js & rmdir /s /q target"

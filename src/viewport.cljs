@@ -24,7 +24,7 @@
 
 (def backgrounds
   {"Cellular Origins" "#0b111c" "Emergence Garden" "#060e10"
-   "Add Venture" "#040d14" "Figget-A-Balls" "#062442" "Euclid" "#080f17"})
+   "Add Venture" "#040d14" "Figget-A-Balls" "#09201f" "Euclid" "#080f17"})
 
 (defn match-background! [name]
   ;; Safari may paint the home-indicator region from the document background.

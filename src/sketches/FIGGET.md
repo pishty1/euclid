@@ -1,81 +1,111 @@
-# Figget-A-Balls: Shared Frontier
+# Figget-A-Balls: The Living Frontier
 
-The default entry now offers a persistent WordPress-backed world and the existing
-solo expedition. The two saves and rules are separate. Installing the frontend
-alone does not install or activate the WordPress backend.
+The active sketch is now entirely local: one human player and a population of
+independent learning bots. No WordPress plugin, login, REST requests or game
+server is used. WordPress and the older solo implementation remain archived in
+source; their saved worlds are not imported or overwritten.
 
-## Shared world
+## Play
 
-- Uses WordPress accounts, with standard login cookies and REST nonces. All
-  signed-in players share one 48 × 48 tile world.
-- Walk with arrows/WASD or on-screen directions. Select a tile to inspect it;
-  Walk towards takes one cardinal step. There is no client-side teleporting.
-- Gather finite wood, food and ore from adjacent nodes. Each holds eight units
-  and regenerates one per two minutes of server time, capped at eight.
-- Carry up to 30 units. Mining costs 15 health; food restores 30. At zero health,
-  respawn at sanctuary and lose half carried supplies, rounded down per resource.
-  Buildings survive. There is no PvP combat or offline destruction yet.
-- Public depots cost eight wood and two ore, with eight per owner. Anyone can
-  contribute food or consume one stored food for recovery. Stocks persist while
-  owners are offline. Contribution counts are historical records, not money.
-- World map gives an overview; Me returns the camera to your character. Activity
-  entries and People/depot entries locate their map tile when selected.
-- Online markers mean a heartbeat within 90 seconds. Hollow offline markers show
-  last-known locations. Names, ownership and positions are shared with signed-in
-  players. Movement is visible through snapshots; significant actions enter the
-  latest-200-event journal, with gathering logged at most once per minute/player.
-- Recent events since a previous visit are marked using a local bookmark. This is
-  bounded history, not a permanent ledger; the bookmark is device-specific.
-- Snapshots refresh every eight seconds, stop while hidden or in the sketch menu,
-  and return immediately after actions. Other players keep acting when you leave.
-- Timestamp-based regeneration works without a continuously running process or
-  WP-Cron. It is a modest-population, action-based prototype, not a realtime MMO.
+- Explore a 96 × 96 world. Move with arrows/WASD or the direction pad. Select a
+  map tile to inspect it; Walk towards takes one cardinal step toward it.
+- Gather adjacent food, timber and ore. Carry at most 30 total units. Ore mining
+  costs eight health; eating food restores up to 30. Resources are finite and
+  regenerate from simulation time, not clicks or wall-clock time.
+- Regions differ in resource density and regrowth speed. Harvesting degrades a
+  node's growing conditions; unharvested nodes gradually recover. Darker sparse
+  regions and greener productive regions use the actual resource-region map.
+- Build a depot on open ground for six wood and one ore. Four depots per
+  character, at most 1,024 in the world. Supplying one food plus one wood adds
+  food and renews the depot's eight-minute lifetime. Any character can eat from
+  stocked depots. Unmaintained depots disappear; death preserves your depots.
+- An adjacent attack costs one ore and causes 20 damage. A kill loots up to two
+  of each carried resource, within your pack capacity. The victim loses half its
+  remaining supplies and respawns at home with eight seconds of protection. The
+  central sanctuary also prevents attacks. Bots avoid attacking their lineage.
+- World → Activity locates recent events and shows a selected bot's intentions,
+  learning updates, gathering, deliveries and combat history. World → Bots
+  locates the top 80 learners; all active bots appear on the map. Map shows the
+  entire world; Me returns to your character.
 
-## Plugin and deployment
+## Actual learning and inheritance
 
-Source: `wordpress/figget-world/`. Build an installable ZIP with:
+Each bot has its own Float32 Q table: 144 local states × nine macro actions.
+States encode health, carried food, building readiness, adjacent resource/depot
+and nearby rivals. Actions seek food, harvest timber, mine, build, supply, raid,
+recover, explore or return home. Seeking performs physical movement and local
+resource searches: it does not teleport or grant remote access.
+
+Policies start with modest, disclosed preferences for sensible early activity.
+They then use epsilon-greedy exploration and the Q-learning update
+`Q(s,a) += alpha * (reward + gamma * max Q(s',.) - Q(s,a))`.
+Rewards cover gathering, useful healing, construction and deliveries; failed
+attempts, received damage and death are penalised. Pending transitions account
+for attacks received between decisions. Death terminates the transition so its
+update does not bootstrap from the respawn state. Brains survive ordinary death.
+
+Every three simulated minutes, mature bots are ranked by recent fitness. The
+lowest eighth is replaced by independent, mutated copies of policies from the
+top quarter. Young brains get 90 seconds before entering selection. Descendants
+inherit lineage, a copied learned table, exploration rate and aggression, with
+bounded mutations. Survivor fitness decays between selection rounds. Learned
+skills are experimental; neither stronger play nor biological open-ended
+complexity is guaranteed. Freezing learning disables Q updates and selection
+while leaving movement and the economy running.
+
+## Performance and persistence
+
+- Starts with 64 bots on touch devices and 128 otherwise. Auto probes every ten
+  seconds, growing or retiring 32 at a time based on measured simulation and
+  drawing cost, up to 512. Explicit 32/64/128/256/512 choices are under Rules.
+  Retirement leaves depots to decay. Counts are device-dependent, not an FPS
+  guarantee. Without Web Workers the population is limited to 128.
+- A Blob Web Worker runs fixed 250ms steps and staggers bot decisions across
+  four ticks, once per bot per second. Spatial tile indexes bound local searches.
+  Rendering receives snapshots without Q tables, interpolates short movements,
+  and never chooses actions or advances learning.
+- Worker source is generated into a JS string inside the normal app bundle.
+  No new deployment files, remote worker scripts, eval or server endpoints are
+  needed. CSP/unsupported-worker failures use a bounded main-thread fallback.
+- IndexedDB `figget-life-v1` saves the complete world, RNG and typed learning
+  tables every 15 seconds and on pause. Switching sketches requests a final
+  checkpoint before terminating the worker. Browser shutdown can still lose
+  changes since the last completed save; storage errors are shown in Activity.
+- Pause, the sketch menu and hidden tabs suspend time. Long gaps are discarded;
+  there is no offline catch-up. Starting a new world requires confirmation and
+  affects only this new local save. Legacy local and WordPress saves are kept.
+
+## Implementation and checks
+
+- `figget_life_model.js`: seeded model, resource economy, combat, Q-learning,
+  inheritance, bounded views and structured-clone save validation.
+- `figget_life_worker.js`: fixed-step worker runtime and message protocol.
+- `figget_worker_source.js`: generated embedded worker; do not hand edit.
+- `figget_life.js`: native interface, Canvas map, adaptive population, worker
+  fallback, IndexedDB saves and lifecycle cleanup.
+- `figget.cljs`: Quil lifecycle bridge in the existing menu slot.
 
 ```
-python3 scripts/package-plugin.py
+node scripts/generate-figget-worker.mjs
+node scripts/generate-figget-worker.mjs --check
+node --test test/rendering/figget_life.test.cjs
+npx shadow-cljs release prod
 ```
 
-Upload `dist/downloads/figget-world.zip` through WordPress Admin → Plugins → Add
-New → Upload Plugin, then activate. Existing Subscriber accounts work. Account
-registration follows the site's existing policy. The app expects WordPress at the
-same origin and root admin path; standard and plain REST permalinks are supported.
-See the plugin readme for caching, backup and capacity guidance.
+The build workflow checks the generated worker and model tests. `npm run dev`
+and `npm run release` regenerate it automatically. The existing static release
+archive is unchanged; plugin packaging and plugin CI checks are no longer part
+of the active app deployment.
 
-CI validates the PHP rules and publishes the installable ZIP as the
-`figget-world-wordpress-plugin` Actions artifact alongside the app deployment.
-The existing **static app SSH receiver explicitly cannot modify WordPress**;
-its release archive format is unchanged. Uploading the artifact is not plugin
-activation. Automatic plugin installation requires a separately configured,
-authorized server deployment path. Never place PHP in the public static app
-release or weaken its restricted SSH account to bypass that boundary.
-
-The plugin stores one JSON state row in an InnoDB table and serializes writes
-with `SELECT ... FOR UPDATE` transactions. The server controls inventories,
-movement, regeneration and health. A 500ms action cooldown and 64-action retry
-journal prevent immediate spam/recent duplicate mutations; host-level request
-limits remain necessary for public registration. Snapshots omit other players'
-inventories and internal request journals. Deactivation and uninstall preserve
-world data; include the table in WordPress backups.
-
-Verification:
-
-```
-php test/wordpress/world.test.php
-node --test test/rendering/*.test.cjs test/sketches/figget*.test.cjs
-```
-
-`test/wordpress/browser.mjs` exercises an installed, disposable WordPress instance
-with two Subscriber accounts and the separately compiled UI. It checks nonce
-isolation, authoritative movement, concurrent transactions, activity, map pixels,
-mobile layout, original solo mode and disposal. Never run it against production.
+`test/rendering/figget_life.browser.mjs` covers advanced-compiled worker and
+fallback paths, desktop/mobile layouts, actual map pixels, movement, population
+controls, learning toggle, pause/menu suspension, IndexedDB save/resume and zero
+HTTP game requests. A 512-bot model stress test covers ten simulated minutes,
+multiple selections and hundreds of thousands of learning updates.
 
 ---
 
-## Preserved solo expedition
+## Archived earlier solo prototype
 
 ### Realtime Frontier
 
