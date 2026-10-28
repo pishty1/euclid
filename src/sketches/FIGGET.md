@@ -1,107 +1,166 @@
-# Figget-A-Balls: The Living Frontier
+# Figget-A-Balls: The Living Frontier (rules v2)
 
-The active sketch is now entirely local: one human player and a population of
-independent learning bots. No WordPress plugin, login, REST requests or game
-server is used. WordPress and the older solo implementation remain archived in
-source; their saved worlds are not imported or overwritten.
+One human and up to 512 independently learning rivals share a browser-only world.
+The rule update addresses the inventory, maintenance, ownership, observation and
+reward problems found in the October 2026 economy audit. No game server or
+WordPress plugin is used.
 
-## Play
+## Play and materials
 
-- Explore a 96 × 96 world. Move with arrows/WASD or the direction pad. Select a
-  map tile to inspect it; Walk towards takes one cardinal step toward it.
-- Gather adjacent food, timber and ore. Carry at most 30 total units. Ore mining
-  costs eight health; eating food restores up to 30. Resources are finite and
-  regenerate from simulation time, not clicks or wall-clock time.
-- Regions differ in resource density and regrowth speed. Harvesting degrades a
-  node's growing conditions; unharvested nodes gradually recover. Darker sparse
-  regions and greener productive regions use the actual resource-region map.
-- Build a depot on open ground for six wood and one ore. Four depots per
-  character, at most 1,024 in the world. Supplying one food plus one wood adds
-  food and renews the depot's eight-minute lifetime. Any character can eat from
-  stocked depots. Unmaintained depots disappear; death preserves your depots.
-- An adjacent attack costs one ore and causes 20 damage. A kill loots up to two
-  of each carried resource, within your pack capacity. The victim loses half its
-  remaining supplies and respawns at home with eight seconds of protection. The
-  central sanctuary also prevents attacks. Bots avoid attacking their lineage.
-- World → Activity locates recent events and shows a selected bot's intentions,
-  learning updates, gathering, deliveries and combat history. World → Bots
-  locates the top 80 learners; all active bots appear on the map. Map shows the
-  entire world; Me returns to your character.
+Move with arrows/WASD or the on-screen directions. Select a tile to inspect it;
+Walk towards takes one cardinal step toward it. Movement takes half a second;
+work and attacks take one second. Bots make one decision per second. Humans can
+move faster, but attacks no longer have a fourfold cadence advantage.
 
-## Actual learning and inheritance
+Health drains at 0.05 per second; sanctuary prevents attacks but does not stop
+hunger. Pause when away. The pack holds 30 units. Gather beside food, timber or ore. Mining costs eight
+health. A meal heals 30: ordinary eating requires 25 missing health, while nearby
+unprotected rivals allow emergency eating with ten missing health. Open
+**Inventory & depot** to store/take up to five of any material or deliberately
+discard unwanted items. Every full-pack composition has a disposal action.
 
-Each bot has its own Float32 Q table: 144 local states × nine macro actions.
-States encode health, carried food, building readiness, adjacent resource/depot
-and nearby rivals. Actions seek food, harvest timber, mine, build, supply, raid,
-recover, explore or return home. Seeking performs physical movement and local
-resource searches: it does not teleport or grant remote access.
+Depots cost six timber and one ore, with four per character and 1,024 globally.
+They store 12 food, 30 timber and 12 ore, and all characters can use them. Bots
+also use nearby stocked stores as sources of materials. **Supply** transfers one
+food, with no repair bundled into it. **Repair** spends one timber to add four
+minutes, capped at eight minutes from now. It becomes available with four minutes
+or less remaining and works even when all stores are full. Tile details show
+stored goods, historical builder and remaining lifetime. Expiry destroys stored
+goods; repair is consequently a meaningful choice.
 
-Policies start with modest, disclosed preferences for sensible early activity.
-They then use epsilon-greedy exploration and the Q-learning update
-`Q(s,a) += alpha * (reward + gamma * max Q(s',.) - Q(s,a))`.
-Rewards cover gathering, useful healing, construction and deliveries; failed
-attempts, received damage and death are penalised. Pending transitions account
-for attacks received between decisions. Death terminates the transition so its
-update does not bootstrap from the respawn state. Brains survive ordinary death.
+One ore loads three shots, each causing 20 damage. Protection prevents both
+incoming and outgoing attacks in sanctuary or shortly after respawn. An attack
+can select a specific inspected actor; otherwise it prefers an eligible rival
+rather than a protected actor sharing the tile. A kill loots up to two of each
+material, limited by pack capacity. Death loses all remaining ore and loaded
+shots, plus half food and timber, and returns the character home. This removes
+profitable suicide-mining as a source of ore. Buildings remain public assets.
 
-Every three simulated minutes, mature bots are ranked by recent fitness. The
-lowest eighth is replaced by independent, mutated copies of policies from the
-top quarter. Young brains get 90 seconds before entering selection. Descendants
-inherit lineage, a copied learned table, exploration rate and aggression, with
-bounded mutations. Survivor fitness decays between selection rounds. Learned
-skills are experimental; neither stronger play nor biological open-ended
-complexity is guaranteed. Freezing learning disables Q updates and selection
-while leaving movement and the economy running.
+## Richness, population and performance
 
-## Performance and persistence
+The 96 × 96 map has fixed rich and poor regions. Density and regrowth differ;
+harvesting reduces local soil quality and resting ground recovers. Resource
+capacity and regrowth scale with the explicitly selected population. This keeps
+the material budget per actor comparable without removing local competition.
+**Resource pressure** separately selects Abundant, Balanced or Scarce conditions.
+Changing capacity never deletes existing node stock; surplus is spent naturally.
 
-- Starts with 64 bots on touch devices and 128 otherwise. Auto probes every ten
-  seconds, growing or retiring 32 at a time based on measured simulation and
-  drawing cost, up to 512. Explicit 32/64/128/256/512 choices are under Rules.
-  Retirement leaves depots to decay. Counts are device-dependent, not an FPS
-  guarantee. Without Web Workers the population is limited to 128.
-- A Blob Web Worker runs fixed 250ms steps and staggers bot decisions across
-  four ticks, once per bot per second. Spatial tile indexes bound local searches.
-  Rendering receives snapshots without Q tables, interpolates short movements,
-  and never chooses actions or advances learning.
-- Worker source is generated into a JS string inside the normal app bundle.
-  No new deployment files, remote worker scripts, eval or server endpoints are
-  needed. CSP/unsupported-worker failures use a bounded main-thread fallback.
-- IndexedDB `figget-life-v1` saves the complete world, RNG and typed learning
-  tables every 15 seconds and on pause. Switching sketches requests a final
-  checkpoint before terminating the worker. Browser shutdown can still lose
-  changes since the last completed save; storage errors are shown in Activity.
-- Pause, the sketch menu and hidden tabs suspend time. Long gaps are discarded;
-  there is no offline catch-up. Starting a new world requires confirmation and
-  affects only this new local save. Legacy local and WordPress saves are kept.
+New games start with 128 bots on all devices. **Rival population** explicitly
+chooses 32, 64, 128, 256 or 512. **Adaptive rendering** reduces drawing frequency
+when necessary; it never retires bots, replaces brains or changes scarcity.
+A failed/unsupported worker retains all saved bots in a main-thread fallback;
+large populations can be slower there. Rendering detail is not an FPS guarantee.
 
-## Implementation and checks
+The model uses fixed 250ms steps and staggers each bot's decisions across four
+phases. Priority rotates within a phase to reduce fixed-ID advantages on scarce
+stocks. Snapshot rendering interpolates short movements. Worker source is bundled
+as a generated string, so the static deployment archive needs no new asset types.
 
-- `figget_life_model.js`: seeded model, resource economy, combat, Q-learning,
-  inheritance, bounded views and structured-clone save validation.
-- `figget_life_worker.js`: fixed-step worker runtime and message protocol.
-- `figget_worker_source.js`: generated embedded worker; do not hand edit.
-- `figget_life.js`: native interface, Canvas map, adaptive population, worker
-  fallback, IndexedDB saves and lifecycle cleanup.
-- `figget.cljs`: Quil lifecycle bridge in the existing menu slot.
+## Learning and useful outcomes
+
+Each bot has a separate Float32 Q table: **576 observations × ten choices**.
+Observations include health, carried food, available ore, timber readiness,
+remaining pack capacity, nearby resource/depot type and rival proximity. Choices
+seek food, harvest, mine, build, supply, raid, recover, explore, retreat home or
+manage storage/repairs. Macros still perform actual local movement and actions.
+
+Legal-action masks exclude unaffordable, unavailable or unsuitable behaviours,
+including pointless harvesting into a full pack. TD bootstrapping also masks
+unavailable actions. Initial preferences provide a starting policy; they are not
+pretrained opponents. Q-learning uses epsilon-greedy exploration and gamma 0.97.
+
+Rewards track changes in useful carried reserves and health. Reserve values
+saturate, so collecting surplus timber does not earn unlimited value. Merely
+building, stocking or killing is not a fitness payout. Fitness values useful
+reserves, recovery, actual provision to others and survival, with death penalties.
+Repair rewards are limited to recently useful infrastructure. Bots retain stock
+reserves and can store or discard excess instead of economically trapping
+themselves.
+
+Food carries its supplier identity through storage, withdrawal, transport and
+reuse. Actual consumption credits the original supplier for useful healing.
+Recorded delivery state/action receives delayed learning credit, rather than an
+arbitrary later movement. Unused or discarded food earns no meal credit; deleted
+individuals cannot transfer old delivery credit to new children. Lineage-based
+non-aggression remains a prescribed faction rule, not learned kin recognition.
+
+**Learning** and **Evolution** are independent controls. Every three simulated
+minutes, mature agents can be ranked by outcomes. Up to the lowest eighth can be
+replaced by mutated descendants of the top quarter. Young brains receive 90
+seconds before selection. Birth requires a funded parent: one food is consumed,
+one food goes to the child and up to two timber/one ore are transferred. Nothing
+is minted. If parents lack supplies or a nearby spawn site is crowded, fewer
+births occur. Children have fresh IDs and copied/mutated policy tables, exploration
+rate and risk tolerance. Their former rivals' properties never count toward their
+building allowances. Old depots retain original builder and lineage identities.
+
+This remains experimental learning. Stronger play on every map or against every
+human strategy is not guaranteed. Resource geography is shared between seeds;
+seeds change decisions and starting jitter, not terrain.
+
+## Persistence and migration
+
+IndexedDB database `figget-life-v1` now writes **world-v2**. The original **world**
+record is left untouched as a backup. Valid v1 worlds migrate positions,
+inventories, buildings, history and learned action preferences. Old 144 × 9 tables
+are projected onto the new observations, with a new management action. In-flight
+transitions are cleared. Legacy depots whose old slot was reused by another
+individual/lineage are detached from that active owner while preserving stores
+and historical lineage. New outcome telemetry starts at the migration baseline.
+
+Full worlds, RNG, learning tables and food provenance save every 15 seconds and
+on pause. Switching sketches requests a final checkpoint before worker shutdown;
+returning waits for that checkpoint. Browser shutdown can still lose changes
+since the last completed write. Storage errors are shown; an in-memory checkpoint
+is retained even when IndexedDB is unavailable. Hidden tabs and the sketch menu
+pause simulation, and long stalls do not cause offline catch-up. Reset requires
+confirmation and replaces only the v2 local world, preserving the legacy record.
+
+## Resource accounting and verification
+
+The world records opening stocks, regeneration, explicit population introductions,
+consumption and losses for food/timber/ore. Birth donations, looting, storage and
+withdrawal are transfers. Meals, construction, repairs, ammunition and birth food
+are consumption. Death, discarded goods, expired stores and retired/replaced
+inventories are explicit losses. The conservation check is:
+
+`opening + regrown + introduced - consumed - lost - current == 0`
+
+Manual population additions have explicit starter grants; Auto never changes
+population. Evolution cannot grant starter equipment without funding it.
+Activity reports useful meals and healing, and its chart shows healing outcomes.
+Per-character counters are individual; cumulative world deaths/kills survive
+individual replacement.
+
+Files:
+
+- `figget_life_model.js`: rules, Q-learning, legal masks, migration and ledger.
+- `figget_life_worker.js`: fixed-step runtime and message protocol.
+- `figget_worker_source.js`: generated embedded source; do not hand edit.
+- `figget_life.js`: native controls, map, adaptive drawing and persistence.
+- `figget.cljs`: Quil lifecycle bridge.
+
+**Keep save/message object keys quoted.** If formatting the model, use
+`--quote-props preserve`; stripping quotes can break advanced-compiled migrations.
 
 ```
 node scripts/generate-figget-worker.mjs
 node scripts/generate-figget-worker.mjs --check
 node --test test/rendering/figget_life.test.cjs
+node scripts/benchmark-figget-life.cjs --controls --out /tmp/figget-benchmark.json
 npx shadow-cljs release prod
 ```
 
-The build workflow checks the generated worker and model tests. `npm run dev`
-and `npm run release` regenerate it automatically. The existing static release
-archive is unchanged; plugin packaging and plugin CI checks are no longer part
-of the active app deployment.
+The benchmark runs nine 30-minute worlds at 64/128/512 bots and seeds 7/42/99,
+then six matched learning-on/off runs with evolution disabled. It checks finite
+state and an exact material ledger, and records meals, healing, public services,
+births and cumulative deaths. These are outcome measurements, not Q-update
+counts presented as proof of intelligence.
 
-`test/rendering/figget_life.browser.mjs` covers advanced-compiled worker and
-fallback paths, desktop/mobile layouts, actual map pixels, movement, population
-controls, learning toggle, pause/menu suspension, IndexedDB save/resume and zero
-HTTP game requests. A 512-bot model stress test covers ten simulated minutes,
-multiple selections and hundreds of thousands of learning updates.
+`figget_life.browser.mjs` exercises advanced-compiled worker/fallback paths,
+responsive layouts, controls, independent toggles, persistence and zero game HTTP
+requests. `figget_economy.browser.mjs` adds mobile discard/store/take, full-depot
+repair and actual v1 migration with an untouched backup.
 
 ---
 

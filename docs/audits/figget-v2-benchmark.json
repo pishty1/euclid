@@ -1,0 +1,594 @@
+{
+  "modelVersion": 2,
+  "modelHash": "f3f183bea6d72926d1d31092d203cf74c2bd5f293ec8cab57f5b12b1057c5867",
+  "seconds": 1800,
+  "player": "idle in sanctuary",
+  "terrain": "fixed spatial map; seeds vary decisions and spawn jitter",
+  "runs": [
+    {
+      "count": 64,
+      "seed": 7,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 2221,
+      "meanHealing": 27.87274876181943,
+      "smallMeals": 0,
+      "services": 475,
+      "births": 77,
+      "attacks": 2455,
+      "kills": 32,
+      "deaths": 32,
+      "depots": 174,
+      "stocks": {
+        "food": {
+          "stock": 421,
+          "capacity": 978
+        },
+        "wood": {
+          "stock": 397,
+          "capacity": 753
+        },
+        "ore": {
+          "stock": 122,
+          "capacity": 279
+        }
+      },
+      "updates": 115441,
+      "meanHealth": 91.39492187499883,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 64,
+      "seed": 42,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 2167,
+      "meanHealing": 27.789068989386767,
+      "smallMeals": 0,
+      "services": 460,
+      "births": 74,
+      "attacks": 2410,
+      "kills": 33,
+      "deaths": 34,
+      "depots": 156,
+      "stocks": {
+        "food": {
+          "stock": 440,
+          "capacity": 978
+        },
+        "wood": {
+          "stock": 410,
+          "capacity": 753
+        },
+        "ore": {
+          "stock": 108,
+          "capacity": 279
+        }
+      },
+      "updates": 115431,
+      "meanHealth": 88.87890624999855,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 64,
+      "seed": 99,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 2296,
+      "meanHealing": 27.93399390243946,
+      "smallMeals": 0,
+      "services": 460,
+      "births": 76,
+      "attacks": 2590,
+      "kills": 38,
+      "deaths": 39,
+      "depots": 161,
+      "stocks": {
+        "food": {
+          "stock": 429,
+          "capacity": 978
+        },
+        "wood": {
+          "stock": 431,
+          "capacity": 753
+        },
+        "ore": {
+          "stock": 108,
+          "capacity": 279
+        }
+      },
+      "updates": 115430,
+      "meanHealth": 91.12246093749904,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 7,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 4960,
+      "meanHealing": 27.93463205645198,
+      "smallMeals": 0,
+      "services": 1244,
+      "births": 160,
+      "attacks": 6097,
+      "kills": 147,
+      "deaths": 147,
+      "depots": 264,
+      "stocks": {
+        "food": {
+          "stock": 682,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 869,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 198,
+          "capacity": 465
+        }
+      },
+      "updates": 231170,
+      "meanHealth": 89.03173828124852,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 42,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 5191,
+      "meanHealing": 27.710693989597683,
+      "smallMeals": 0,
+      "services": 1192,
+      "births": 154,
+      "attacks": 6086,
+      "kills": 97,
+      "deaths": 98,
+      "depots": 264,
+      "stocks": {
+        "food": {
+          "stock": 601,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 834,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 169,
+          "capacity": 465
+        }
+      },
+      "updates": 231132,
+      "meanHealth": 90.55429687499894,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 99,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 5052,
+      "meanHealing": 27.664801068883936,
+      "smallMeals": 0,
+      "services": 1043,
+      "births": 148,
+      "attacks": 5969,
+      "kills": 112,
+      "deaths": 113,
+      "depots": 260,
+      "stocks": {
+        "food": {
+          "stock": 666,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 847,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 181,
+          "capacity": 465
+        }
+      },
+      "updates": 231013,
+      "meanHealth": 89.30498046874872,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 512,
+      "seed": 7,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 14038,
+      "meanHealing": 27.116887199031336,
+      "smallMeals": 0,
+      "services": 5537,
+      "births": 640,
+      "attacks": 18355,
+      "kills": 767,
+      "deaths": 768,
+      "depots": 423,
+      "stocks": {
+        "food": {
+          "stock": 2746,
+          "capacity": 6520
+        },
+        "wood": {
+          "stock": 4050,
+          "capacity": 5020
+        },
+        "ore": {
+          "stock": 322,
+          "capacity": 1860
+        }
+      },
+      "updates": 925424,
+      "meanHealth": 89.99238281249852,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 512,
+      "seed": 42,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 13558,
+      "meanHealing": 26.999765820917737,
+      "smallMeals": 0,
+      "services": 4974,
+      "births": 640,
+      "attacks": 17442,
+      "kills": 715,
+      "deaths": 716,
+      "depots": 411,
+      "stocks": {
+        "food": {
+          "stock": 2953,
+          "capacity": 6520
+        },
+        "wood": {
+          "stock": 3912,
+          "capacity": 5020
+        },
+        "ore": {
+          "stock": 376,
+          "capacity": 1860
+        }
+      },
+      "updates": 924865,
+      "meanHealth": 89.95295410156092,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 512,
+      "seed": 99,
+      "learning": true,
+      "evolution": true,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 13596,
+      "meanHealing": 26.803558031774223,
+      "smallMeals": 0,
+      "services": 4540,
+      "births": 640,
+      "attacks": 17226,
+      "kills": 687,
+      "deaths": 689,
+      "depots": 408,
+      "stocks": {
+        "food": {
+          "stock": 2897,
+          "capacity": 6520
+        },
+        "wood": {
+          "stock": 3928,
+          "capacity": 5020
+        },
+        "ore": {
+          "stock": 380,
+          "capacity": 1860
+        }
+      },
+      "updates": 924513,
+      "meanHealth": 90.11577148437338,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 7,
+      "learning": true,
+      "evolution": false,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 5903,
+      "meanHealing": 27.790847873962647,
+      "smallMeals": 0,
+      "services": 1080,
+      "births": 0,
+      "attacks": 7049,
+      "kills": 116,
+      "deaths": 117,
+      "depots": 262,
+      "stocks": {
+        "food": {
+          "stock": 469,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 948,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 114,
+          "capacity": 465
+        }
+      },
+      "updates": 231301,
+      "meanHealth": 88.90517578124907,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 7,
+      "learning": false,
+      "evolution": false,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 4968,
+      "meanHealing": 27.939231078905372,
+      "smallMeals": 0,
+      "services": 521,
+      "births": 0,
+      "attacks": 6323,
+      "kills": 222,
+      "deaths": 222,
+      "depots": 300,
+      "stocks": {
+        "food": {
+          "stock": 823,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 731,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 89,
+          "capacity": 465
+        }
+      },
+      "updates": 0,
+      "meanHealth": 88.06445312499847,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 42,
+      "learning": true,
+      "evolution": false,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 5403,
+      "meanHealing": 27.739158800666633,
+      "smallMeals": 0,
+      "services": 1058,
+      "births": 0,
+      "attacks": 6474,
+      "kills": 127,
+      "deaths": 127,
+      "depots": 271,
+      "stocks": {
+        "food": {
+          "stock": 597,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 921,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 142,
+          "capacity": 465
+        }
+      },
+      "updates": 231291,
+      "meanHealth": 87.14921874999894,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 42,
+      "learning": false,
+      "evolution": false,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 5078,
+      "meanHealing": 27.77212485230435,
+      "smallMeals": 0,
+      "services": 632,
+      "births": 0,
+      "attacks": 6579,
+      "kills": 246,
+      "deaths": 248,
+      "depots": 300,
+      "stocks": {
+        "food": {
+          "stock": 762,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 822,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 93,
+          "capacity": 465
+        }
+      },
+      "updates": 0,
+      "meanHealth": 87.99667968749868,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 99,
+      "learning": true,
+      "evolution": false,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 5849,
+      "meanHealing": 27.7601983245002,
+      "smallMeals": 0,
+      "services": 847,
+      "births": 0,
+      "attacks": 6954,
+      "kills": 111,
+      "deaths": 111,
+      "depots": 259,
+      "stocks": {
+        "food": {
+          "stock": 539,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 955,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 120,
+          "capacity": 465
+        }
+      },
+      "updates": 231093,
+      "meanHealth": 87.05576171874893,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    },
+    {
+      "count": 128,
+      "seed": 99,
+      "learning": false,
+      "evolution": false,
+      "time": 1800,
+      "woodLocked": 0,
+      "meals": 4696,
+      "meanHealing": 27.646135008518257,
+      "smallMeals": 0,
+      "services": 615,
+      "births": 0,
+      "attacks": 6018,
+      "kills": 236,
+      "deaths": 238,
+      "depots": 294,
+      "stocks": {
+        "food": {
+          "stock": 947,
+          "capacity": 1630
+        },
+        "wood": {
+          "stock": 855,
+          "capacity": 1255
+        },
+        "ore": {
+          "stock": 162,
+          "capacity": 465
+        }
+      },
+      "updates": 0,
+      "meanHealth": 88.7811523437487,
+      "ledger": {
+        "food": 0,
+        "wood": 0,
+        "ore": 0
+      },
+      "valid": true
+    }
+  ]
+}

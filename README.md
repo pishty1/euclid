@@ -97,6 +97,6 @@ This generates the optimized assets in `docs/`.
 ### Figget-A-Balls: local learning world
 
 Figget-A-Balls runs entirely in the browser with independent Q-learning bots,
-mutated descendants, a resource economy and local IndexedDB saves. Auto population
-scales up to 512 bots according to measured cost; a Web Worker handles simulation.
+mutated descendants, a resource economy and local IndexedDB saves. Choose up to 512 bots; adaptive drawing keeps population and economic difficulty
+independent of device performance. A Web Worker handles simulation.
 The WordPress backend is no longer used. See [rules and implementation](src/sketches/FIGGET.md).
