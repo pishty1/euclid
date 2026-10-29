@@ -287,3 +287,7 @@ pause/resume and long clock gaps, adjacent construction, bot movement,
 movement blocking, captures, suicide, fence openings and map edges, sparse huge
 maps, both characters' siege/respawn, paths, dismantling, protected camps and
 save validation, as well as the original solo expedition.
+
+### Player quick start
+
+The first visit opens a six-card tutorial covering movement, resources, survival, public depots, rivals and world controls. **Help** in the top toolbar reopens it anytime. The world pauses while it is open; closing it preserves a manual pause. Players can skip with Close tutorial or Escape, navigate Back/Next, and finish with Start exploring. The dismissal is saved in `settings-v2` alongside adaptive rendering when device storage is available. The dialog traps focus, returns it on close and scrolls on small screens.
