@@ -40,7 +40,7 @@ jobs:
         run: |
           npm ci
           node scripts/generate-figget-worker.mjs --check
-          node --test test/rendering/figget_life.test.cjs
+          node --test test/rendering/figget_life.test.cjs test/sketches/euclid_challenges.test.cjs
           npx shadow-cljs release prod
           node scripts/package-release.mjs
           (cd dist && tar -czf ../release.tar.gz index.html images/fav.png release.json js/main-*.js)

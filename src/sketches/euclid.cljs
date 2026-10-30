@@ -3,7 +3,8 @@
             [quil.middleware :as m]
             [menu :as menu]
             [registry :as registry]
-            [viewport :as viewport]))
+            [viewport :as viewport]
+            ["./euclid_challenges.js" :as challenges]))
 
 (def epsilon 0.000001)
 (def limits {:points 40 :lines 32 :circles 18})
@@ -93,7 +94,7 @@
     {:points [] :lines [] :circles [] :next-id 0}))
 
 (defn snapshot [state]
-  (select-keys state [:points :lines :circles :next-id :scene :motion? :phase :guides?]))
+  (select-keys state [:points :lines :circles :next-id :scene :motion? :phase :guides? :challenge :challenge-return]))
 
 (defn remember [state before]
   (update state :history #(vec (take-last 24 (conj % before)))))
@@ -118,7 +119,65 @@
    #euclid-instruments button:hover{background:#ffffff0b;color:#e7e1d0}
    #euclid-instruments button[aria-pressed=true]{background:#e9c69117;border-color:#e9c69160;color:#f0d7b1}
    #euclid-instruments button:focus-visible{outline:2px solid #efcf95;outline-offset:2px}
-   @media(max-width:600px){#euclid-instruments{width:calc(100vw - 24px)}#euclid-instruments .instrument-row{display:grid;grid-template-columns:repeat(4,1fr)}#euclid-instruments button{padding:0 3px;min-height:36px;font-size:11px}}")
+   #euclid-challenges{display:none;position:fixed;z-index:16;right:max(12px,env(safe-area-inset-right));top:calc(max(12px,env(safe-area-inset-top)) + 52px);width:min(370px,calc(100vw - 24px));max-height:calc(100dvh - 260px);overflow:auto;overscroll-behavior:contain;padding:16px;border:1px solid #c5d4c84a;border-radius:16px;background:#101c25f5;color:#d9e6e5;box-shadow:0 12px 48px #0008;font:13px/1.5 system-ui,sans-serif;box-sizing:border-box}body[data-sketch=Euclid] #euclid-challenges[data-open=true]{display:block}#euclid-challenges h2{font:24px Georgia,serif;color:#f0d7b1;margin:0 0 6px}#euclid-challenges p{margin:8px 0;color:#bcd0d4}#euclid-challenges label{display:block;margin:12px 0 5px}#euclid-challenges select{width:100%;min-height:40px;color:#ecdfc7;background:#172c39;border:1px solid #8aa5ad66;border-radius:8px;padding:8px;font:inherit}#euclid-challenges button{min-height:40px;padding:7px 12px;background:#233a45;border:1px solid #8aa5ad66;border-radius:8px;color:#e5e9dc;font:inherit;cursor:pointer;touch-action:manipulation}#euclid-challenges button:focus-visible,#euclid-challenges select:focus-visible{outline:2px solid #efcf95;outline-offset:2px}#euclid-challenges .challenge-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}#euclid-challenges [hidden]{display:none!important}#euclid-challenges .challenge-progress{border-left:2px solid #e9c691;padding-left:10px}#euclid-challenges .challenge-result{color:#f4d9a5;font-weight:600}#euclid-challenges .challenge-note{font-size:11px;color:#9eb3bb}
+   @media(max-width:600px){#euclid-challenges{top:calc(max(12px,env(safe-area-inset-top)) + 52px);max-height:calc(100dvh - 260px);padding:12px}#euclid-challenges h2{font-size:20px}#euclid-instruments{width:calc(100vw - 24px)}#euclid-instruments .instrument-row{display:grid;grid-template-columns:repeat(4,1fr)}#euclid-instruments button{padding:0 3px;min-height:36px;font-size:11px}}")
+
+(def challenge-info
+  {:double {:title "A length of 2r"
+            :hints ["Draw your reference segment AB with Ruler. Its length is r."
+                    "Use Compass: choose B as centre and A as its edge. Look where that circle meets the line AB on the far side of B."
+                    "Use Point to anchor that intersection C, then Ruler to draw AC. The whole segment AC has length 2r."]}
+   :triangle {:title "Equilateral triangle, side r"
+              :hints ["Draw your reference segment AB with Ruler. Its length is r."
+                      "Draw a compass circle centred at A through B, and another centred at B through A."
+                      "Place point C at either circle intersection. Draw ruler segments AC and BC. All three sides should be r."]}
+   :square {:title "Square of area r²"
+            :hints ["Draw the reference segment AB with Ruler; a square of side r has area r²."
+                    "Draw a circle centred at A through B. Mark its other intersection with the line AB; call it X (the canvas may label it C)."
+                    "Draw circles centred at B through X and at X through B. Draw a line from A to either intersection of those circles: it is perpendicular to AB."
+                    "Mark C where that line meets the first circle. Draw circles centred at B and C, each through A. Mark their other intersection D, then draw AC, CD and DB."]}
+   :double-square {:title "Square of area 2r²"
+                   :hints ["Draw the reference segment AB with Ruler. A square of area 2r² needs a side of √2r. You can close this panel while drawing and reopen Challenges for hints."
+                           "To build the first square, draw a circle centred at A through B. Mark its other intersection with line AB; call that point X."
+                           "Draw circles centred at B through X and at X through B. Draw a line from A to either circle intersection. Mark C where that line meets the circle centred at A."
+                           "Draw circles centred at B and C, each through A. Mark their other intersection D, then draw AC, CD and DB to complete a square of side r."
+                           "Draw its diagonal AD. This has length √2r. Repeat the square construction using AD as the base, and draw all four sides of the new square."]}})
+
+(defn start-challenge [state kind]
+  (let [original (or (:challenge-return state) (assoc (snapshot state) :history (:history state) :tool (:tool state)))]
+    (-> (load-scene state :free)
+        (assoc :tool :line :challenge-panel? true :challenge-return original
+               :challenge {:kind kind :reference nil :hint-index -1 :checked? false}
+               :history []))))
+
+(defn check-challenge [state]
+  (let [{:keys [kind reference]} (:challenge state)]
+    (and reference
+         (challenges/check (name kind)
+                           (clj->js (mapv (fn [p] {:id (:id p) :pos (:pos p)
+                                                 :valid (not= false (:valid? p))}) (:points state)))
+                           (clj->js (:lines state)) (clj->js reference)))))
+
+(defn sync-challenge! [state]
+  (when-let [panel (.getElementById js/document "euclid-challenges")]
+    (.setAttribute panel "data-open" (str (boolean (:challenge-panel? state))))
+    (let [{:keys [kind reference hint-index checked?]} (:challenge state)
+          info (get challenge-info kind)
+          progress (.querySelector panel ".challenge-progress")
+          hint (.querySelector panel ".challenge-hint")
+          result (.querySelector panel ".challenge-result")]
+      (set! (.-textContent progress)
+            (if info (str (:title info) " · " (if reference "Reference r is set" "Draw your first ruler segment to set r"))
+                "Choose a challenge and press Start challenge."))
+      (set! (.-textContent hint) (if (and info (>= hint-index 0))
+                                  (str "Hint " (inc hint-index) ": " (nth (:hints info) hint-index)) ""))
+      (set! (.-textContent result) (if (and info checked?)
+                                    (cond (nil? reference) "Draw a reference segment with Ruler first."
+                                          (check-challenge state) "Target reached! Your construction matches within 2%."
+                                          :else "Not quite yet. Check that the complete target is drawn, then try a hint.") ""))
+      (doseq [action ["challenge-hint" "challenge-check" "challenge-exit"]]
+        (when-let [button (.querySelector panel (str "[data-action='" action "']"))]
+          (set! (.-disabled button) (not info)))))))
 
 (defn init-controls! []
   (when-not (.getElementById js/document "euclid-instruments")
@@ -137,7 +196,8 @@
                                       [:rose "Rose" "A sixfold compass construction"]
                                       [:play "Pause" "Animate or hold the construction"]
                                       [:guides "Guides" "Show or hide construction guides"]
-                                      [:undo "Undo" "Undo the last edit"] [:clear "Clear" "Start a blank construction"]]]]]
+                                      [:undo "Undo" "Undo the last edit"] [:clear "Clear" "Start a blank construction"]
+                                      [:challenges "Challenges" "Guided geometry challenges"]]]]]
         (doseq [[action label title] items]
           (let [button (menu/element "button" "" label)]
             (set! (.-type button) "button")
@@ -150,16 +210,52 @@
       (.appendChild panel scenes)
       (doseq [event-name ["click" "mousedown" "mouseup" "mousemove" "touchstart" "touchend" "touchmove" "keydown" "keyup"]]
         (.addEventListener panel event-name (fn [event] (.stopPropagation event))))
-      (.appendChild (.-body js/document) panel))))
+      (.appendChild (.-body js/document) panel)
+      (let [challenge-panel (menu/element "section" "" nil)
+            heading (menu/element "h2" "" "Construction challenges")
+            intro (menu/element "p" "" "Draw your first ruler segment to define r, then construct the target. Close this panel while drawing and reopen Challenges for hints.")
+            label (menu/element "label" "" "Choose a challenge")
+            select (menu/element "select" "" nil)
+            buttons (menu/element "div" "challenge-actions" nil)
+            progress (menu/element "p" "challenge-progress" "")
+            hint (menu/element "p" "challenge-hint" "")
+            result (menu/element "p" "challenge-result" "")
+            note (menu/element "p" "challenge-note" "Checks dimensions within 2%. Draw the complete segment or all sides. Hint letters describe roles; canvas labels may differ. This checks the result, not a formal proof.")]
+        (set! (.-id challenge-panel) "euclid-challenges")
+        (.setAttribute challenge-panel "aria-label" "Construction challenges")
+        (.setAttribute challenge-panel "data-open" "false")
+        (set! (.-id select) "euclid-challenge-select")
+        (.setAttribute label "for" "euclid-challenge-select")
+        (doseq [[value text] [["double" "1 · A length of 2r"] ["triangle" "2 · Equilateral triangle, side r"]
+                              ["square" "3 · Square of area r²"] ["double-square" "4 · Square of area 2r²"]]]
+          (let [option (menu/element "option" "" text)]
+            (set! (.-value option) value)
+            (.appendChild select option)))
+        (doseq [[label action] [["Start challenge" :challenge-start] ["Hint" :challenge-hint]
+                                ["Check" :challenge-check] ["Exit challenge" :challenge-exit]
+                                ["Close" :challenges]]]
+          (let [button (menu/element "button" "" label)]
+            (set! (.-type button) "button")
+            (.setAttribute button "data-action" (name action))
+            (.addEventListener button "click" (fn [_] (enqueue! (if (= action :challenge-start)
+                                                                    (keyword (str "challenge-" (.-value select)))
+                                                                    action))))
+            (.appendChild buttons button)))
+        (.setAttribute result "role" "status")
+        (doseq [node [heading intro label select buttons progress hint result note]] (.appendChild challenge-panel node))
+        (doseq [event-name ["click" "mousedown" "mouseup" "mousemove" "touchstart" "touchend" "touchmove" "keydown" "keyup"]]
+          (.addEventListener challenge-panel event-name (fn [event] (.stopPropagation event))))
+        (.appendChild (.-body js/document) challenge-panel)))))
 
 (defn sync-controls! [state]
-  (doseq [action [:move :point :line :circle :triangle :vesica :rose :play :guides]]
+  (doseq [action [:move :point :line :circle :triangle :vesica :rose :play :guides :challenges]]
     (when-let [button (.querySelector js/document (str "#euclid-instruments [data-action='" (name action) "']"))]
-      (let [active (case action :play (:motion? state) :guides (:guides? state)
+      (let [active (case action :play (:motion? state) :guides (:guides? state) :challenges (:challenge-panel? state)
                          (:move :point :line :circle) (= action (:tool state))
                          (= action (:scene state)))]
         (.setAttribute button "aria-pressed" (str (boolean active)))
-        (when (= action :play) (set! (.-textContent button) (if (:motion? state) "Pause" "Play")))))))
+        (when (= action :play) (set! (.-textContent button) (if (:motion? state) "Pause" "Play"))))))
+  (sync-challenge! state))
 
 (defn setup []
   (init-controls!)
@@ -170,18 +266,31 @@
     (set! (.-tabIndex host) 0)
     (.setAttribute host "aria-label" "Living geometry: drag points or use the construction instruments")
     (.focus host))
-  (load-scene {:history [] :guides? true :ghosts [] :mouse-pos [0 0] :snapped nil} :triangle))
+  (load-scene {:history [] :guides? true :ghosts [] :mouse-pos [0 0] :snapped nil :challenge-panel? false} :triangle))
 
 (defn apply-action [state action]
   (cond
+    (= action :challenges) (update state :challenge-panel? not)
+    (contains? #{:challenge-double :challenge-triangle :challenge-square :challenge-double-square} action)
+    (start-challenge state (keyword (subs (name action) 10)))
+    (= action :challenge-hint)
+    (if-let [info (get challenge-info (get-in state [:challenge :kind]))]
+      (update-in state [:challenge :hint-index] #(min (dec (count (:hints info))) (inc %))) state)
+    (= action :challenge-check) (if (:challenge state) (assoc-in state [:challenge :checked?] true) state)
+    (= action :challenge-exit)
+    (if-let [original (:challenge-return state)]
+      (merge state original {:challenge nil :challenge-return nil :selection nil :dragging nil
+                             :trails [] :status "" :challenge-panel? true}) state)
     (contains? #{:move :point :line :circle} action)
     (assoc state :tool action :selection nil :dragging nil :motion? false)
     (contains? #{:triangle :vesica :rose} action)
-    (remember (load-scene state action) (snapshot state))
+    (remember (assoc (load-scene state action) :challenge nil :challenge-return nil) (snapshot state))
     (= action :play) (assoc state :motion? (not (:motion? state)) :selection nil :tool :move)
     (= action :guides) (update state :guides? not)
     (= action :undo) (undo state)
-    (= action :clear) (remember (load-scene state :free) (snapshot state))
+    (= action :clear) (if-let [kind (get-in state [:challenge :kind])]
+                        (start-challenge state kind)
+                        (remember (load-scene state :free) (snapshot state)))
     :else state))
 
 (defn drain-actions [state]
@@ -354,8 +463,10 @@
               (assoc state :selection nil :status "Construction limit reached — undo or clear")
               (let [[s a] (ensure-point state start) [s b] (ensure-point s pos)]
                 (if (or (nil? a) (nil? b)) (assoc state :selection nil :status "Point limit reached")
-                    (remember (-> s (update kind conj (if (= kind :lines) {:a a :b b} {:center a :edge b}))
-                                  (assoc :selection nil)) (snapshot state)))))))
+                    (remember (cond-> (-> s (update kind conj (if (= kind :lines) {:a a :b b} {:center a :edge b}))
+                                             (assoc :selection nil))
+                                (and (= kind :lines) (:challenge state) (nil? (get-in state [:challenge :reference])))
+                                (assoc-in [:challenge :reference] [a b])) (snapshot state)))))))
         (assoc state :selection pos))
       state)))
 
@@ -513,6 +624,9 @@
   (doseq [{:keys [id pos constraint]} (filter #(not= false (:valid? %)) (:points state))]
     (dot-at pos (:gold palette) (if (= id (:dragging state)) 7 (if constraint 6 5)))
     (when (:guides? state) (label pos (if (< id 26) (js/String.fromCharCode (+ 65 id)) (str "P" id)) (:gold palette))))
+  (when-let [[a b] (get-in state [:challenge :reference])]
+    (when-let [p (point-pos state a)]
+      (when-let [q (point-pos state b)] (label (midpoint p q) "r" (:ink palette)))))
   (when-let [snap (:snapped state)]
     (q/no-fill)
     (q/stroke-weight 1)

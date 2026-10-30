@@ -100,3 +100,7 @@ Figget-A-Balls runs entirely in the browser with independent Q-learning bots,
 mutated descendants, a resource economy and local IndexedDB saves. Choose up to 512 bots; adaptive drawing keeps population and economic difficulty
 independent of device performance. A Web Worker handles simulation.
 The WordPress backend is no longer used. See [rules and implementation](src/sketches/FIGGET.md).
+
+### Euclid construction challenges
+
+In Euclid, open **Challenges**, choose a target and select **Start challenge**. The first ruler segment defines the reference length r; use points, compass circles and ruler segments to build the target. Hints are optional. **Check** verifies the completed segment or closed figure numerically within 2% of the target dimensions; it does not verify the construction as a formal proof. Close and reopen the panel as needed while drawing. **Exit challenge** restores the previous construction and its undo history.
