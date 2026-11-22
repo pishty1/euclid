@@ -2,6 +2,8 @@ const model=require('./garden_model.js');
 const gpu=require('./garden_gpu.js');
 let active=null;
 const storageKey='euclid-emergence-discoveries-v1';
+const snapshotVersion=2;
+function supportedVersion(version){return version===1||version===snapshotVersion;}
 const css=`
 .eg-root{position:absolute;inset:0;z-index:2;color:#dfebe1;font-family:system-ui,-apple-system,sans-serif;pointer-events:none}
 .eg-root *{box-sizing:border-box}.eg-root canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;touch-action:none;cursor:crosshair}
@@ -26,7 +28,7 @@ function dispose(app){if(!app||app.stopped)return;app.stopped=true;app.abort.abo
 function say(app,message){app.toast.textContent=message;app.toast.hidden=false;app.toastUntil=performance.now()+3500;}
 function encode(data){const bytes=new Uint8Array(data.buffer,data.byteOffset,data.byteLength);let text='';for(let i=0;i<bytes.length;i+=8192)text+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(text);}
 function decode(saved){
-  if(saved['version']!==1||!Number.isInteger(saved['width'])||!Number.isInteger(saved['height'])||saved['width']<16||saved['height']<16||saved['width']>512||saved['height']>512)throw new Error('Invalid world');
+  if(!supportedVersion(saved['version'])||!Number.isInteger(saved['width'])||!Number.isInteger(saved['height'])||saved['width']<16||saved['height']<16||saved['width']>512||saved['height']>512)throw new Error('Invalid world');
   const raw=atob(saved['cells']);if(raw.length!==saved['width']*saved['height']*16)throw new Error('Invalid cells');
   const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));const data=new Float32Array(bytes.buffer);
   for(let i=0;i<data.length;i++)if(!Number.isFinite(data[i])||data[i]<0||data[i]>1)throw new Error('Invalid cell values');
@@ -45,6 +47,7 @@ function settingsUI(app){
     'feed':['Nutrient renewal','More replenishes food faster. Too much can flood the field.'],
     'decay':['Activity decay','More makes growth harder to sustain; too much clears the field.'],
     'spread':['Activity spreading','How strongly activity diffuses to neighbouring cells.'],
+    'nutrientDiffusion':['Nutrient diffusion','How freely nutrients move between cells. Zero keeps nutrients local.'],
     'supply':['Available nutrients','The background food level each cell replenishes toward.'],
     'growth':['Cooperative growth','Activity needs activity nearby to consume food and grow.']
   };
@@ -58,6 +61,12 @@ function settingsUI(app){
   const speedLabel=element('label','','Time flow',panel),speed=element('input','',null,speedLabel);speed.type='range';speed.min=1;speed.max=6;speed.value=6;app.speedSlider=speed;speed.step=1;speed.setAttribute('aria-label','Time flow');speed.addEventListener('input',()=>app.speed=Number(speed.value));
   element('small','','Updates per frame. Lower this on a warm or slow device.',speedLabel);
   const radiusLabel=element('label','','Brush size',panel),radius=element('input','',null,radiusLabel);radius.type='range';radius.min=2;radius.max=14;radius.value=4;radius.setAttribute('aria-label','Brush size');radius.addEventListener('input',()=>app.radius=Number(radius.value));
+  const fertilityLabel=element('label','','Fertility brush',panel);
+  app.fertilityChoice=element('select','',null,fertilityLabel);
+  for(const [value,title] of [['fertility-rich','Rich · 2× renewal'],['fertility-poor','Poor · ¼× renewal'],['fertility-normal','Normal · 1× renewal']]){
+    const option=element('option','',title,app.fertilityChoice);option.value=value;
+  }
+  element('small','','Paint how quickly a patch replenishes nutrients. Use the Fertility view to see the terrain.',fertilityLabel);
   const nameLabel=element('label','','Discovery name · optional',panel);app.discoveryName=element('input','',null,nameLabel);app.discoveryName.type='text';app.discoveryName.maxLength=40;app.discoveryName.placeholder='Name a pattern worth keeping';app.discoveryName.setAttribute('aria-label','Discovery name');
   const actions=element('div','eg-actions',null,panel);
   button('Mutate rules',actions,()=>{app.rule=model.rules({...app.rule,'feed':app.rule['feed']+(Math.random()-0.5)*0.004,'decay':app.rule['decay']+(Math.random()-0.5)*0.003,'spread':app.rule['spread']+(Math.random()-0.5)*0.04});presets.value='custom';syncRules(app);say(app,'Small rule variation applied. Keep it, tune it, or restore a discovery.');});
@@ -69,12 +78,12 @@ function settingsUI(app){
   const info=element('details','',null,panel);element('summary','','How the cells work',info);
   element('p','','Each cell stores nutrients and activity. Both diffuse to eight neighbours. Activity consumes nutrients to create more activity, while decay removes it. Barriers reflect diffusion; outer edges wrap around.',info);
   element('p','','This is a Gray–Scott reaction–diffusion garden, not a trained neural model. Shapes are emergent patterns, not organisms with genomes. “Mutate rules” changes the world’s rules; it does not evolve inherited traits.',info);
-  element('p','','Seeds add activity. Feed restores local nutrients. Erase removes activity and barriers. Walls block exchange. New seeds keeps your rules. Saving stores the field and rules together. Quiet or extinct worlds are allowed: seed again or try another rule.',info);
-  element('p','','Keyboard: Space pauses, 1–4 choose tools, R replants. Drawing works with a mouse, pen or one finger.',info);
+  element('p','','Seeds add activity. Feed restores local nutrients. Fertility changes local nutrient renewal. Erase resets the painted cells to blank, normal soil. Walls block exchange. New seeds starts a fresh field with your current rules. Saving stores the field and rules together. Quiet or extinct worlds are allowed: seed again or try another rule.',info);
+  element('p','','Keyboard: Space pauses, 1–5 choose tools, R replants. Drawing works with a mouse, pen or one finger.',info);
   syncRules(app);refreshSaved(app);
 }
 function syncRules(app){for(const [key,{slider,output}] of Object.entries(app.sliders)){slider.value=app.rule[key];output.textContent=app.rule[key].toFixed(key==='feed'||key==='decay'?4:2);}}
-function readSaves(){try{const value=JSON.parse(window.localStorage.getItem(storageKey)||'[]');return Array.isArray(value)?value.filter(item=>item && item['version']===1 && typeof item['name']==='string' && typeof item['cells']==='string').slice(0,3):[];}catch(_){return [];}}
+function readSaves(){try{const value=JSON.parse(window.localStorage.getItem(storageKey)||'[]');return Array.isArray(value)?value.filter(item=>item && supportedVersion(item['version']) && typeof item['name']==='string' && typeof item['cells']==='string').slice(0,3):[];}catch(_){return [];}}
 function refreshSaved(app){const items=readSaves();app.savedChoice.textContent='';for(let i=0;i<items.length;i++){const option=element('option','',items[i]['name'],app.savedChoice);option.value=String(i);}if(!items.length){const option=element('option','','No discoveries saved yet',app.savedChoice);option.value='';}app.restoreButton.disabled=!items.length;}
 async function currentField(app){
   const renderer=app.gpu;
@@ -88,7 +97,7 @@ async function save(app){
   const epoch=app.epoch,rule={...app.rule},generation=app.generation;
   try {
     const data=await currentField(app);if(app.stopped||epoch!==app.epoch)return;
-    const items=readSaves();const saved={'version':1,'name':app.discoveryName.value.trim()||`Discovery ${new Date().toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}`,'width':app.width,'height':app.height,'rule':rule,'generation':generation,'cells':encode(data)};
+    const items=readSaves();const saved={'version':snapshotVersion,'name':app.discoveryName.value.trim()||`Discovery ${new Date().toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}`,'width':app.width,'height':app.height,'rule':rule,'generation':generation,'cells':encode(data)};
     items.unshift(saved);window.localStorage.setItem(storageKey,JSON.stringify(items.slice(0,3)));refreshSaved(app);say(app,'Field and rules saved. Your last 3 discoveries stay on this device.');
   }catch(_){say(app,'Could not save. Device storage may be unavailable or full.');}
   finally{app.busy=false;app.saveButton.disabled=false;}
@@ -122,7 +131,7 @@ function paintAt(app,event){
   const previous=app.pointer?.last;
   const distance=previous?Math.hypot((x-previous.x)*app.width,(y-previous.y)*app.height):0;
   const count=Math.max(1,Math.ceil(distance/Math.max(1,app.radius*0.6)));
-  for(let n=1;n<=count;n++)app.brushes.push({x:previous?previous.x+(x-previous.x)*n/count:x,y:previous?previous.y+(y-previous.y)*n/count:y,radius:app.radius,tool:app.tool});
+  for(let n=1;n<=count;n++)app.brushes.push({x:previous?previous.x+(x-previous.x)*n/count:x,y:previous?previous.y+(y-previous.y)*n/count:y,radius:app.radius,tool:app.tool==='fertility'?app.fertilityChoice.value:app.tool});
   if(app.pointer)app.pointer.last={x,y};
 }
 function create(host){
@@ -142,8 +151,8 @@ function create(host){
   app.status=element('div','eg-status','LOCAL CELLS / LIVE RULES',root);
   const caption=element('div','eg-caption',null,root);element('div','eg-eyebrow','A SMALL WORLD, LEFT TO ITSELF',caption);element('h1','','Emergence Garden',caption);element('p','','Paint a seed. Change a rule. See what holds together.',caption);app.stateLabel=element('p','eg-state','Establishing…',caption);
   const bottom=element('div','eg-bottom',null,root),tools=element('div','eg-tools',null,bottom);tools.setAttribute('role','group');tools.setAttribute('aria-label','Garden brushes');app.toolButtons={};
-  for(const [key,title] of [['seed','Seed'],['feed','Feed'],['erase','Erase'],['wall','Wall']]){const el=button(title,tools,()=>selectTool(app,key));el.setAttribute('aria-pressed',String(key==='seed'));app.toolButtons[key]=el;}
-  const view=element('select','eg-view',null,bottom);view.setAttribute('aria-label','Field view');for(const [value,title] of [['0','Living field'],['1','Activity'],['2','Nutrients']]){const option=element('option','',title,view);option.value=value;}view.addEventListener('change',()=>app.view=Number(view.value));
+  for(const [key,title] of [['seed','Seed'],['feed','Feed'],['erase','Erase'],['wall','Wall'],['fertility','Fertility']]){const el=button(title,tools,()=>selectTool(app,key));el.setAttribute('aria-pressed',String(key==='seed'));app.toolButtons[key]=el;}
+  const view=element('select','eg-view',null,bottom);view.setAttribute('aria-label','Field view');for(const [value,title] of [['0','Living field'],['1','Activity'],['2','Nutrients'],['3','Fertility']]){const option=element('option','',title,view);option.value=value;}view.addEventListener('change',()=>app.view=Number(view.value));
   app.toast=element('div','eg-toast',null,root);app.toast.hidden=true;app.toast.setAttribute('role','status');
   settingsUI(app);
   canvas.addEventListener('pointerdown',event=>{if(event.button!==0||app.menu||app.pointer)return;event.preventDefault();canvas.setPointerCapture(event.pointerId);app.pointer={id:event.pointerId};paintAt(app,event);});
@@ -156,7 +165,7 @@ function create(host){
     if(event.repeat)return;
     if(event.code==='Space'){event.preventDefault();app.pauseButton.click();}
     if(event.key==='r'||event.key==='R')resetField(app,false);
-    const tool={'1':'seed','2':'feed','3':'erase','4':'wall'}[event.key];if(tool)selectTool(app,tool);
+    const tool={'1':'seed','2':'feed','3':'erase','4':'wall','5':'fertility'}[event.key];if(tool)selectTool(app,tool);
   },{signal:app.abort.signal});
   app.observer=new MutationObserver(()=>{if(!root.isConnected)dispose(app);});app.observer.observe(host,{childList:true});
   startGPU(app);return app;
@@ -171,6 +180,12 @@ function renderCPU(app,width,height){
     let r=6+ink*14+rim*46+core*191,g=14+ink*58+rim*161+core*140,b=16+ink*49+rim*122+core*66;
     if(app.view===1){const heat=Math.min(1,app.data[i+2]*150);r=6+249*heat;g=14+108*heat;b=16+48*heat;}
     if(app.view===2){r=10+66*u;g=23+138*u;b=31+158*u;}
+    if(app.view===3){
+      const terrain=app.data[i+3];
+      if(terrain===0.125){r=115;g=71;b=41;}
+      else if(terrain===0.25){r=89;g=168;b=77;}
+      else{r=38;g=54;b=51;}
+    }
     if(wall){r=41;g=56;b=61;}
     pixels[i]=r;pixels[i+1]=g;pixels[i+2]=b;pixels[i+3]=255;
   }

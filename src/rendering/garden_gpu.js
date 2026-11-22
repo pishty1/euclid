@@ -19,8 +19,12 @@ fn index(p:vec2i)->u32 {
       let tool=u32(brush.w);
       if(tool==4u){cell=vec4f(1.,0.,0.,1.);}
       else if(tool==2u){cell=vec4f(1.,0.,0.,0.);}
-      else if(cell.w<0.5){
-        if(tool==3u){cell.x=1.;}else{cell.x=0.5;cell.y=0.32;}
+      else if(cell.w<=0.5){
+        if(tool==3u){cell.x=1.;}
+        else if(tool==5u){cell.w=0.25;}
+        else if(tool==6u){cell.w=0.125;}
+        else if(tool==7u){cell.w=0.;}
+        else{cell.x=0.5;cell.y=0.32;}
       }
     }
   }
@@ -39,9 +43,10 @@ fn index(p:vec2i)->u32 {
     lap+=weight*select(neighbor.xy,cell.xy,neighbor.w>0.5);
   }}
   let reaction=settings.extra.x*cell.x*cell.y*cell.y;
-  let u=clamp(cell.x+lap.x-reaction+settings.rule.x*(settings.rule.w-cell.x),0.,1.);
+  let renewal=settings.rule.x*select(select(1.,2.,cell.w==0.25),0.25,cell.w==0.125);
+  let u=clamp(cell.x+settings.extra.z*lap.x-reaction+renewal*(settings.rule.w-cell.x),0.,1.);
   let v=clamp(cell.y+settings.rule.z*lap.y+reaction-(settings.rule.x+settings.rule.y)*cell.y,0.,1.);
-  nextCells[i]=vec4f(u,v,abs(v-cell.y),0.);
+  nextCells[i]=vec4f(u,v,abs(v-cell.y),cell.w);
 }
 struct Vertex { @builtin(position) position:vec4f, @location(0) uv:vec2f }
 @vertex fn vertex(@builtin(vertex_index) i:u32)->Vertex {
@@ -63,7 +68,13 @@ fn sampleField(uv:vec2f)->vec4f {
   let mode=u32(settings.extra.y);
   if(mode==1u){color=mix(base,vec3f(1.,0.48,0.25),clamp(c.z*150.,0.,1.));color+=ink*vec3f(0.02,0.08,0.09);}
   if(mode==2u){color=mix(vec3f(0.04,0.09,0.12),vec3f(0.3,0.63,0.74),c.x);}
-  if(c.w>0.5){color=vec3f(0.16,0.22,0.24);}
+  let terrain=source[index(vec2i(v.uv*settings.size.xy))].w;
+  if(mode==3u){
+    color=vec3f(0.15,0.21,0.2);
+    if(terrain==0.125){color=vec3f(0.45,0.28,0.16);}
+    if(terrain==0.25){color=vec3f(0.35,0.66,0.3);}
+  }
+  if(terrain>0.5){color=vec3f(0.16,0.22,0.24);}
   // A restrained vignette keeps the field legible rather than adding false motion.
   color*=1.-0.2*length(v.uv-0.5);
   return vec4f(color,1.);
@@ -113,9 +124,9 @@ function frame(r,rule,steps,view,brushes=[]) {
   }
 }
 function submitFrame(r,rule,steps,view,brushes) {
-  const tool={'seed':1,'erase':2,'feed':3,'wall':4};
+  const tool={'seed':1,'erase':2,'feed':3,'wall':4,'fertility-rich':5,'fertility-poor':6,'fertility-normal':7};
   const values=new Float32Array([r.width,r.height,0,0,rule['feed'],rule['decay'],rule['spread'],rule['supply'],
-    0,0,0,0,rule['growth'],view,0,brushes.length]);
+    0,0,0,0,rule['growth'],view,rule['nutrientDiffusion'] ?? 1,brushes.length]);
   r.device.queue.writeBuffer(r.uniform,0,values);
   if(brushes.length){
     const values=new Float32Array(brushes.length*4);

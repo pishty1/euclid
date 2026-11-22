@@ -1,11 +1,12 @@
 // Local Gray–Scott cells. Colony shapes are outcomes of the rules, not entities.
 const presets = {
-  'reef': {name: 'Reef', 'feed': 0.0545, 'decay': 0.062, 'spread': 0.5, 'supply': 1, 'growth': 1},
-  'threads': {name: 'Threads', 'feed': 0.029, 'decay': 0.057, 'spread': 0.5, 'supply': 1, 'growth': 1},
-  'pearls': {name: 'Pearls', 'feed': 0.035, 'decay': 0.065, 'spread': 0.5, 'supply': 1, 'growth': 1},
-  'waves': {name: 'Waves', 'feed': 0.018, 'decay': 0.051, 'spread': 0.5, 'supply': 1, 'growth': 1}
+  'reef': {name: 'Reef', 'nutrientDiffusion': 1, 'feed': 0.0545, 'decay': 0.062, 'spread': 0.5, 'supply': 1, 'growth': 1},
+  'threads': {name: 'Threads', 'nutrientDiffusion': 1, 'feed': 0.029, 'decay': 0.057, 'spread': 0.5, 'supply': 1, 'growth': 1},
+  'pearls': {name: 'Pearls', 'nutrientDiffusion': 1, 'feed': 0.035, 'decay': 0.065, 'spread': 0.5, 'supply': 1, 'growth': 1},
+  'waves': {name: 'Waves', 'nutrientDiffusion': 1, 'feed': 0.018, 'decay': 0.051, 'spread': 0.5, 'supply': 1, 'growth': 1}
 };
-const bounds = {'feed': [0.005, 0.085], 'decay': [0.025, 0.08], 'spread': [0.15, 0.8], 'supply': [0.3, 1], 'growth': [0.65, 1.35]};
+const fertility = {'fertility-poor': 0.125, 'fertility-normal': 0, 'fertility-rich': 0.25};
+const bounds = {'nutrientDiffusion': [0, 1], 'feed': [0.005, 0.085], 'decay': [0.025, 0.08], 'spread': [0.15, 0.8], 'supply': [0.3, 1], 'growth': [0.65, 1.35]};
 function rules(values) {
   const result = {};
   for (const [key, [low, high]] of Object.entries(bounds)) {
@@ -27,8 +28,9 @@ function paint(data, width, height, x, y, radius, tool) {
       const i = (yy * width + xx) * 4;
       if (tool === 'wall') { data[i]=1; data[i+1]=0; data[i+2]=0; data[i+3]=1; }
       else if (tool === 'erase') { data[i]=1; data[i+1]=0; data[i+2]=0; data[i+3]=0; }
-      else if (!data[i+3]) {
-        if (tool === 'feed') data[i]=1;
+      else if (data[i+3] <= 0.5) {
+        if (Number.isFinite(fertility[tool])) data[i+3]=fertility[tool];
+        else if (tool === 'feed') data[i]=1;
         else { data[i]=0.5; data[i+1]=0.32; }
       }
     }
@@ -44,7 +46,7 @@ function seed(width, height, random = Math.random) {
   return data;
 }
 function step(input, output, width, height, rule) {
-  const feed=rule['feed'],decay=rule['decay'],spread=rule['spread'],supply=rule['supply'],growth=rule['growth'];
+  const feed=rule['feed'],decay=rule['decay'],spread=rule['spread'],supply=rule['supply'],growth=rule['growth'],nutrientDiffusion=rule['nutrientDiffusion'] ?? 1;
   for (let y=0;y<height;y++) {
     const up=((y+height-1)%height)*width, down=((y+1)%height)*width, row=y*width;
     for (let x=0;x<width;x++) {
@@ -58,10 +60,12 @@ function step(input, output, width, height, rule) {
         const j=neighbors[n],w=n<4?0.2:0.05,wall=input[j+3]>0.5;
         lu+=w*(wall?u:input[j]);lv+=w*(wall?v:input[j+1]);
       }
+      const terrain=input[i+3];
+      const renewal=feed*(terrain===0.125?0.25:terrain===0.25?2:1);
       const reaction=growth*u*v*v;
       const next=Math.max(0,Math.min(1,v+spread*lv+reaction-(feed+decay)*v));
-      output[i]=Math.max(0,Math.min(1,u+lu-reaction+feed*(supply-u)));
-      output[i+1]=next;output[i+2]=Math.abs(next-v);output[i+3]=0;
+      output[i]=Math.max(0,Math.min(1,u+nutrientDiffusion*lu-reaction+renewal*(supply-u)));
+      output[i+1]=next;output[i+2]=Math.abs(next-v);output[i+3]=terrain;
     }
   }
   return output;

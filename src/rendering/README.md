@@ -200,14 +200,15 @@ from the update rule, rather than scripted organisms. This is neither Lenia nor
 a trained NCA, and rule mutation is user-directed experimentation, not inherited
 biological evolution.
 
-Rules opens live controls for nutrient renewal, activity decay, activity spreading,
+Rules opens live controls for nutrient renewal, nutrient diffusion, activity decay, activity spreading,
 available nutrients and cooperative growth. Reef, Threads, Pearls and Waves are
 starting rule sets; selecting one changes the rules without resetting the field.
 Mutate rules makes small changes to the current feed/decay/spreading values. New
 seeds keeps the rules; Clear field leaves a blank world. Extinction is allowed:
-there is no hidden reseeding. Seed, Feed, Erase and Wall brushes work by pointer
-capture with interpolated strokes, including while paused. Views show the living
-field, actual per-step activity, or nutrients. Space pauses; 1–4 select brushes;
+there is no hidden reseeding. Seed, Feed, Erase, Wall and Fertility brushes use interpolated pointer strokes,
+including while paused. Set the Fertility brush to Rich, Poor or Normal in Rules
+to paint how quickly each patch renews nutrients. The Fertility view shows the
+painted terrain. Space pauses; 1–5 select brushes;
 R replants. The rules panel scrolls within the visible mobile viewport.
 
 Save discovery stores an optional user name, the complete Float32 field,
