@@ -5,8 +5,8 @@ Euclid is a creative coding playground built with ClojureScript and Quil (Proces
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js** (for `shadow-cljs`)
-- **Java** (JDK 17+ recommended for Quil 4.3+)
+- **Node.js 24 LTS** (see `.nvmrc`)
+- **JDK 25 LTS** (CI uses Eclipse Temurin, see `.java-version`)
 
 ### Running Locally
 1.  Install dependencies:
@@ -69,7 +69,7 @@ Production: **https://pishty.uk/apps/euclid/** (static hosting, separate from Wo
 
 ### Automated Deployment
 Pushing to `main` triggers `.github/workflows/pwork.yaml`, which:
-1. Installs locked npm dependencies and builds with Java 17 / `shadow-cljs release prod` on GitHub.
+1. Installs locked npm dependencies and builds with Node.js 24, JDK 25 and `shadow-cljs release prod` on GitHub.
 2. Packages an allowlisted static release with a fingerprinted JavaScript asset and commit metadata.
 3. Deploys over restricted SSH, atomically switching the server's current release.
 4. Checks the public release commit and HTTPS response.

@@ -275,10 +275,10 @@ Do not treat browser saves as authoritative state for future multiplayer.
 
 ```
 node --test test/sketches/figget*.test.cjs
-JAVA_HOME=$(/usr/libexec/java_home -v 17) PATH="$(/usr/libexec/java_home -v 17)/bin:$PATH" npx shadow-cljs release prod
+JAVA_HOME=$(/usr/libexec/java_home -v 25) PATH="$(/usr/libexec/java_home -v 25)/bin:$PATH" npx shadow-cljs release prod
 ```
 
-Use Java 17 (Processing does not load under Java 11). Serve `docs/` after the
+Use the project JDK 25 and Node.js 24. Serve `docs/` after the
 production build for browser checks. The existing development `viewport`
 namespace/global collision in Chromium is avoided by the production build.
 
