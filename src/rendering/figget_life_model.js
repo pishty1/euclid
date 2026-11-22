@@ -611,7 +611,6 @@ function eat(w, a, b, idx) {
     donor = b["foodOwners"].shift();
     b["lastUsed"] = w["time"];
     b["uses"]++;
-    w["stats"]["services"]++;
   } else
     return {
       "reward": -0.06,
@@ -625,8 +624,8 @@ function eat(w, a, b, idx) {
   w["stats"]["healing"] += restored;
   if (restored < 5) w["stats"]["smallMeals"]++;
   if (donor && donor["id"] !== a["id"]) {
+    w["stats"]["services"]++;
     if (!fromDepot) {
-      w["stats"]["services"]++;
       if (Number.isInteger(donor["x"]) && Number.isInteger(donor["y"])) {
         const source = idx.buildings.get(key(donor["x"], donor["y"]));
         if (source) {

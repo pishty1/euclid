@@ -17,8 +17,8 @@ function publish(message = "") {
   });
   lastView = performance.now();
 }
-function checkpoint() {
-  self.postMessage({ type: "save", run: run, world: world });
+function checkpoint(requestId) {
+  self.postMessage({ type: "save", run: run, world: world, "requestId": requestId });
 }
 self.onmessage = function (event) {
   const data = event.data;
@@ -56,7 +56,10 @@ self.onmessage = function (event) {
     return;
   }
   if (!world || data["run"] !== run) return;
-  if (data["type"] === "pause") {
+  if (data["type"] === "close") {
+    paused = true;
+    checkpoint(data["requestId"]);
+  } else if (data["type"] === "pause") {
     paused = !!data["value"];
     pending = 0;
     last = performance.now();

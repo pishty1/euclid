@@ -15,11 +15,52 @@ function botName(a){return a['id']===0?'You':`Bot ${a['id']} · G${a['generation
 function colour(a){return a['id']===0?'#f6ebbc':model.COLORS[(a['lineage']-1)%8];}
 function age(time,now){const s=Math.max(0,Math.floor(now-time));return s<60?s+'s ago':Math.floor(s/60)+'m ago';}
 function openDB(){return new Promise((resolve,reject)=>{if(!window.indexedDB){reject(new Error('IndexedDB unavailable'));return;}const req=indexedDB.open(DB,1);req.onupgradeneeded=()=>req.result.createObjectStore('saves');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);req.onblocked=()=>reject(new Error('Storage is blocked'));});}
-async function load(a){try{await closing;if(a.disposed)return null;a.db=await openDB();return await new Promise((resolve,reject)=>{const tx=a.db.transaction('saves'),store=tx.objectStore('saves'),req=store.get(KEY),legacy=store.get('world'),settings=store.get('settings-v2');settings.onsuccess=()=>{if(typeof settings.result?.['auto']==='boolean')a.auto=settings.result['auto'];a.tutorialSeen=settings.result?.['tutorialSeen']===true;};tx.oncomplete=()=>resolve(req.result||legacy.result||null);tx.onerror=()=>reject(tx.error);});}catch(_){a.saveStatus='Storage unavailable · this session only';return null;}}
+async function load(a){
+ try{
+  await closing;
+  if(a.disposed)return null;
+  a.db=await openDB();
+  if(a.disposed)return null;
+  return await new Promise((resolve,reject)=>{
+   const tx=a.db.transaction('saves','readwrite'),store=tx.objectStore('saves');
+   const req=store.get(KEY),legacy=store.get('world'),settings=store.get('settings-v2');
+   const owner=store.get('world-owner');
+   owner.onsuccess=()=>{
+    a.saveOwner=(owner.result||0)+1;
+    store.put(a.saveOwner,'world-owner');
+   };
+   tx.oncomplete=()=>{
+    if(typeof settings.result?.['auto']==='boolean')a.auto=settings.result['auto'];
+    a.tutorialSeen=settings.result?.['tutorialSeen']===true;
+    resolve(req.result||legacy.result||null);
+   };
+   tx.onabort=()=>reject(tx.error);
+  });
+ }catch(_){a.saveOwner=null;a.saveStatus='Storage unavailable · this session only';return null;}
+}
 function saveSettings(a){if(a.db)try{a.db.transaction('saves','readwrite').objectStore('saves').put({'auto':a.auto,'tutorialSeen':a.tutorialSeen},'settings-v2');}catch(_){}}
 function persist(a,w){
- if(a.disposed)return;a.saved=w;if(!a.db)return;
- try{const tx=a.db.transaction('saves','readwrite');tx.objectStore('saves').put(w,KEY);tx.oncomplete=()=>{if(!a.disposed){a.saveStatus='Saved on this device';a.lastSaved=Date.now();}};tx.onerror=()=>{a.saveStatus='Save failed · keep this tab open';};}catch(_){a.saveStatus='Save failed · keep this tab open';}
+ a.saved=w;
+ if(!a.db||!a.saveOwner)return Promise.resolve();
+ return new Promise(resolve=>{
+  try{
+   const tx=a.db.transaction('saves','readwrite'),store=tx.objectStore('saves');
+   const owner=store.get('world-owner');
+   owner.onsuccess=()=>{
+    if(owner.result===a.saveOwner)store.put(w,KEY);
+    else{
+     a.saveOwner=null;
+     a.saveStatus='Another tab owns the save · this session only';
+     if(!a.disposed)a.message.textContent=a.saveStatus;
+    }
+   };
+   tx.oncomplete=()=>{
+    if(a.saveOwner&&!a.disposed){a.saveStatus='Saved on this device';a.lastSaved=Date.now();}
+    resolve();
+   };
+   tx.onabort=()=>{a.saveStatus='Save failed · keep this tab open';resolve();};
+  }catch(_){a.saveStatus='Save failed · keep this tab open';resolve();}
+ });
 }
 function send(a,data){
  if(a.disposed||!a.started)return;data['run']=a.run;
@@ -35,7 +76,7 @@ function send(a,data){
 function suspend(a){const stopped=a.paused||a.menu||a.helpOpen||document.hidden;a.suspended=stopped;if(a.started)send(a,{'type':'pause','value':stopped});a.pause.textContent=a.paused?'Resume':'Pause';}
 function action(a,type,extra={}){const now=performance.now();if(a.paused||a.menu||a.helpOpen||document.hidden||!a.view)return;if(now<a.nextAction){a.message.textContent='Ready in a moment…';return;}a.nextAction=now+(type==='move'?500:1000);a.follow=true;send(a,{'type':'action','action':Object.assign({'type':type},extra)});}
 function target(a){return a.selected||{'x':a.view['player']['x'],'y':a.view['player']['y']};}
-function locate(a,p){a.inspectId=p['id']??p['actor']??null;a.camera={'x':p['x'],'y':p['y']};a.selected={'x':p['x'],'y':p['y']};a.follow=false;a.overview=false;a.panel.hidden=true;sync(a);}
+function locate(a,p,actorId){a.inspectId=actorId;a.camera={'x':p['x'],'y':p['y']};a.selected={'x':p['x'],'y':p['y']};a.follow=false;a.overview=false;a.panel.hidden=true;sync(a);}
 function snapshot(a,v){
  if(a.disposed)return;a.previous=a.view;a.received=performance.now();a.view=v;
  if(a.follow)a.camera={'x':v['player']['x'],'y':v['player']['y']};
@@ -66,7 +107,7 @@ function fallback(a,saved,message){
 }
 function sync(a){
  if(!a.view)return;const v=a.view,p=v['player'],t=target(a),near=Math.abs(p['x']-t['x'])+Math.abs(p['y']-t['y'])<=1;
- const n=v['nodes'].find(n=>n['x']===t['x']&&n['y']===t['y']),b=v['buildings'].find(b=>b['x']===t['x']&&b['y']===t['y']),actors=v['bots'].filter(b=>b['x']===t['x']&&b['y']===t['y']);a.inspected=v['bots'].find(b=>b['id']===a.inspectId)||actors[0]||null;
+ const n=v['nodes'].find(n=>n['x']===t['x']&&n['y']===t['y']),b=v['buildings'].find(b=>b['x']===t['x']&&b['y']===t['y']),actors=v['bots'].filter(b=>b['x']===t['x']&&b['y']===t['y']);a.inspected=(a.inspectId==null?actors[0]:v['bots'].find(b=>b['id']===a.inspectId))||null;
  a.status.textContent=`${v['bots'].length} RIVALS · GENERATION ${v['generation']} · ${Math.floor(v['time']/60)}m ${Math.floor(v['time']%60)}s\nHealth ${Math.ceil(p['health'])} · Wood ${p['wood']} / Food ${p['food']} / Ore ${p['ore']} · Shots ${p['charges']}${a.paused||a.helpOpen?' · PAUSED':''}`;
  a.tile.textContent=`${t['x']}, ${t['y']} · ${n?`${n['kind']} ${n['stock']}/${n['capacity']}`:b?`Depot · F${b['food']} W${b['wood']} O${b['ore']} · ${b['expires']-v['time']<60?Math.max(0,Math.ceil(b['expires']-v['time']))+'s':Math.ceil((b['expires']-v['time'])/60)+'m'} left · ${b['owner']===0?'your building':b['owner']>0?'built by Bot '+b['owner']:'earlier Bot '+(-b['owner']-1)}`:'Open ground'}${actors.length?' · '+actors.map(botName).join(', '):''}`;
  const stopped=a.paused||a.menu||a.helpOpen;
@@ -83,14 +124,14 @@ function renderPanel(a){
   if(a.inspected){const b=a.inspected,box=el('div',null,content);box.className='fl-inspect';el('strong',botName(b),box);el('p',`${names[b['intent']]} · ${Math.ceil(b['health'])} health · ${b['updates']} learned transitions · ${b['gathers']} gathered · ${b['delivered']} deliveries · ${b['kills']} kills / ${b['deaths']} deaths`,box);}
   el('p','Select an event to visit its location. Latest 100 events; the world pauses when you leave this sketch.',content);
   for(const e of [...v['events']].reverse()){
-   const b=button(`${e['actor']===0?'You':'Bot '+e['actor']} · ${e['text']}`,content,()=>locate(a,e));b.className='fl-item';el('small',`${age(e['time'],v['time'])} · ${e['x']}, ${e['y']}`,b);
+   const b=button(`${e['actor']===0?'You':'Bot '+e['actor']} · ${e['text']}`,content,()=>locate(a,e,e['actor']));b.className='fl-item';el('small',`${age(e['time'],v['time'])} · ${e['x']}, ${e['y']}`,b);
   }
  }else if(a.tab==='bots'){
   el('h2','Rival lineages',content);el('p','Each bot learns independently. Colour identifies its lineage; descendants can cooperate through public depots and avoid attacking their own lineage.',content);
   const groups=new Map();for(const b of v['bots'])groups.set(b['lineage'],(groups.get(b['lineage'])||0)+1);
   for(const [lineage,n]of groups){const row=el('p',`● Lineage ${lineage} · ${n} bots`,content);row.style.color=model.COLORS[(lineage-1)%8];}
   const sorted=[...v['bots']].sort((b,c)=>c['fitness']-b['fitness']);
-  for(const b of sorted.slice(0,80)){const n=button(`${botName(b)} · ${names[b['intent']]}`,content,()=>locate(a,b));n.className='fl-item';n.style.borderLeftColor=colour(b);n.style.borderLeftWidth='3px';el('small',`${b['x']}, ${b['y']} · fitness ${b['fitness'].toFixed(1)} · ${b['updates']} updates · ${b['gathers']} gathered`,n);}
+  for(const b of sorted.slice(0,80)){const n=button(`${botName(b)} · ${names[b['intent']]}`,content,()=>locate(a,b,b['id']));n.className='fl-item';n.style.borderLeftColor=colour(b);n.style.borderLeftWidth='3px';el('small',`${b['x']}, ${b['y']} · fitness ${b['fitness'].toFixed(1)} · ${b['updates']} updates · ${b['gathers']} gathered`,n);}
   if(sorted.length>80)el('p','Showing the top 80 learners. All bots remain visible on the map.',content);
  }else{
   el('h2','Shape the world',content);
@@ -104,7 +145,7 @@ function renderPanel(a){
   el('p',`${a.worker?'Worker simulation':'Main-thread fallback'} · ${a.stepMs.toFixed(1)}ms/step. Adaptive rendering reduces drawing frequency when necessary, without retiring bots.`,content);
   for(const text of ['Move with arrows/WASD or the direction pad. Movement takes half a second; work and attacks take one second. Select a tile, then Walk towards to take one step. Your pack holds 30 units.', 'Open Inventory to store or take any material at a public depot, or discard five unwanted items to free space. A depot costs 6 wood + 1 ore. Supply adds food; Repair spends 1 timber to add four minutes, even when all stores are full. Repair is available when four minutes or less remain.', 'Food heals 30. Eat when missing at least 25 health, or 10 with a vulnerable rival nearby. Suppliers gain credit for useful meals others actually eat, not for filling unused stores. Health slowly drains over time, including in sanctuary. Pause when away. Mining costs 8 health.', 'One ore loads three shots; each shot deals 20 damage. Attacks take one second for you and bots. Movement remains quicker for you. Kills loot up to two of each carried item, within pack space. Death loses all carried ore and loaded shots, plus half your food and wood; sanctuary and respawn protection prevent attacks.', 'Rich and poor regions differ in density and regrowth. Resource capacity scales with the population. Resource pressure lets you choose scarcity independently of your device performance.', 'Each bot uses 576 local observations and ten behaviour choices. Pack capacity, ore and timber availability affect its observations. Unavailable actions are masked. Decisions value useful supplies, health, actual public meals and maintaining working depots. Stored food grants credit to its original supplier only when used.', 'Every three simulated minutes, mature low-performing bots can be replaced by resource-funded descendants of successful parents. Parents provide the child’s materials and consume food for reproduction. Children have unique identities; old depots remain public monuments to their original builders. Learning and evolution can be controlled separately.', 'World and policy saves stay on this device. Earlier worlds are migrated with inventories, buildings and learned preferences preserved; the original save is kept. Hidden tabs and menus pause time. No server or WordPress plugin is used.'])el('p',text,content);
   const chart=el('canvas',null,content);chart.className='fl-chart';chart.width=300;chart.height=72;const ctx=chart.getContext('2d'),history=v['history'];if(history.length>1){const max=Math.max(1,...history.map(p=>p['healing']||0));ctx.strokeStyle='#d5d496';ctx.beginPath();history.forEach((p,i)=>{const x=i/(history.length-1)*300,y=65-(p['healing']||0)/max*60;if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);});ctx.stroke();}el('p','Useful healing over the last 20 simulated minutes.',content);
-  const reset=button('New local world',content,()=>{const was=a.paused;a.paused=true;suspend(a);if(window.confirm('Replace this local world and its learned bot population? Earlier solo saves are kept.')){a.run++;a.view=null;a.selected=null;a.follow=true;a.paused=was;
+  const reset=button('New local world',content,()=>{const was=a.paused;a.paused=true;suspend(a);if(window.confirm('Replace this local world and its learned bot population? Earlier solo saves are kept.')){a.run++;a.saved=null;a.view=null;a.selected=null;a.follow=true;a.paused=was;
    if(a.worker)a.worker.postMessage({'type':'reset','run':a.run,'seed':42,'count':a.targetCount,'paused':a.paused||a.menu||a.helpOpen||document.hidden});else{a.local=model.fresh(42,a.targetCount);snapshot(a,model.view(a.local));persist(a,structuredClone(a.local));}
   }else a.paused=was;suspend(a);});reset.className='fl-item';
  }
@@ -194,13 +235,30 @@ function frame(a,width,height,menu){
 }
 function dispose(a){
  if(!a||a.disposed)return;
- if(a.local)persist(a,structuredClone(a.local));
  const worker=a.worker,db=a.db;
  a.disposed=true;a.abort.abort();a.observer.disconnect();a.root.remove();if(active===a)active=null;
- if(worker){closing=new Promise(resolve=>{let finished=false;const finish=world=>{if(finished)return;finished=true;clearTimeout(timer);worker.terminate();
-   if(db&&world){try{const tx=db.transaction('saves','readwrite');tx.objectStore('saves').put(world,KEY);tx.oncomplete=resolve;tx.onerror=resolve;tx.onabort=resolve;}catch(_){resolve();}}else resolve();db?.close();};
-  const timer=setTimeout(()=>finish(a.saved),1000);worker.onmessage=event=>{if(event.data['type']==='save'&&event.data['run']===a.run)finish(event.data['world']);};worker.onerror=()=>finish(a.saved);
-  worker.postMessage({'type':'pause','value':true,'run':a.run});worker.postMessage({'type':'save','run':a.run});
- });}else db?.close();
+ if(worker){
+  const finalId='close-'+a.run;
+  closing=new Promise(resolve=>{
+   let finished=false;
+   const finish=world=>{
+    if(finished)return;
+    finished=true;clearTimeout(timer);worker.terminate();
+    const saved=world?persist(a,world):Promise.resolve();
+    saved.finally(()=>{db?.close();resolve();});
+   };
+   const timer=setTimeout(()=>finish(a.saved),3000);
+   worker.onmessage=({data})=>{
+    if(data['type']!=='save'||data['run']!==a.run)return;
+    a.saved=data['world'];
+    if(data['requestId']===finalId)finish(a.saved);
+   };
+   worker.onerror=()=>finish(a.saved);
+   try{worker.postMessage({'type':'close','run':a.run,'requestId':finalId});}
+   catch(_){finish(a.saved);}
+  });
+ }else if(a.local){
+  closing=persist(a,a.local).finally(()=>db?.close());
+ }else db?.close();
 }
 module.exports={create,frame,dispose};

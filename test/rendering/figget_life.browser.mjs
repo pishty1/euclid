@@ -43,6 +43,50 @@ try{
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);await page.evaluate(()=>{clearInterval(window.loop);window.figgetLife.dispose(window.app);});await page.waitForTimeout(100);await context.close();console.log('PASS',width,height,fallback?'fallback':'worker','controls, learning, pause/menu, save/resume, map pixels, no network');
  }
 
+ const shared=await browser.newContext();
+ await shared.route('https://figget.test/**',route=>route.fulfill({contentType:'text/html',body:'<div id="sketch" style="position:fixed;inset:0"></div>'}));
+ async function openSketch(){
+  const tab=await shared.newPage();
+  await tab.goto('https://figget.test/');
+  await tab.addScriptTag({content:code});
+  await tab.evaluate(()=>{
+   window.app=figgetLife.create(document.getElementById('sketch'));
+   window.loop=setInterval(()=>figgetLife.frame(app,innerWidth,innerHeight,false),34);
+  });
+  await tab.waitForSelector('.fl-dock:not([hidden])');
+  const tutorial=tab.getByRole('button',{name:'Close tutorial',exact:true});
+  if(await tutorial.isVisible())await tutorial.click();
+  return tab;
+ }
+ const older=await openSketch();
+ await older.getByRole('button',{name:'Pause',exact:true}).click();
+ await older.getByRole('button',{name:'World',exact:true}).click();
+ await older.getByRole('button',{name:/You · arrived at the sanctuary/}).click();
+ await older.getByRole('button',{name:'World',exact:true}).click();
+ assert.equal(await older.locator('.fl-inspect').count(),0);
+ const newer=await openSketch();
+ await newer.getByRole('button',{name:'Move east',exact:true}).click();
+ await newer.waitForFunction(()=>document.querySelector('.fl-dock p').textContent.startsWith('49, 48'));
+ await newer.evaluate(()=>{clearInterval(loop);figgetLife.dispose(app);});
+ async function savedX(tab){
+  return tab.evaluate(()=>new Promise((resolve,reject)=>{
+   const request=indexedDB.open('figget-life-v1');
+   request.onsuccess=()=>{
+    const db=request.result,read=db.transaction('saves').objectStore('saves').get('world-v2');
+    read.onsuccess=()=>{db.close();resolve(read.result?.player.x);};
+    read.onerror=()=>reject(read.error);
+   };
+  }));
+ }
+ for(let i=0;i<50&&await savedX(newer)!==49;i++)await newer.waitForTimeout(50);
+ assert.equal(await savedX(newer),49);
+ await older.evaluate(()=>{clearInterval(loop);figgetLife.dispose(app);});
+ // Reopening in this tab waits for its outgoing worker and final save transaction.
+ await older.evaluate(()=>{window.app=figgetLife.create(document.getElementById('sketch'));});
+ await older.waitForSelector('.fl-dock:not([hidden])');
+ assert.match(await older.locator('.fl-dock p').first().innerText(),/^49, 48/);
+ await shared.close();
+ console.log('PASS activity actor selection and stale-tab shutdown');
  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
  await page.route('https://figget.test/**',r=>r.fulfill({contentType:'text/html',body:'<html><head><meta charset="utf-8"></head><body><div id="sketch" style="position:fixed;inset:0"></div></body></html>'}));
  await page.goto('https://figget.test/');await page.evaluate(()=>{Object.defineProperty(window,'indexedDB',{value:undefined});const NativeWorker=window.Worker;window.Worker=class extends NativeWorker{constructor(...args){super(...args);window.testWorker=this;}};});

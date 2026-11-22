@@ -430,3 +430,33 @@ test("withdrawn food retains its original supplier credit until it is actually e
   balanced(w);
   assert.ok(m.valid(w));
 });
+
+test("eating your own depot food never counts as a shared meal", () => {
+  for (const withdraw of [false, true]) {
+    const w = m.fresh(42, 8);
+    depot(w);
+    w.player.food = 2;
+    w.player.health = 60;
+    act(w, { type: "store", kind: "food", x: 10, y: 10 });
+    assert.equal(w.player.food, 0);
+    if (withdraw) act(w, { type: "take", kind: "food", x: 10, y: 10 });
+    assert.match(act(w, { type: "eat" }), /Recovered 30/);
+    assert.equal(w.stats.services, 0);
+    assert.equal(w.stats.meals, 1);
+  }
+});
+
+test("shutdown waits for the requested final worker snapshot", () => {
+  const {dispose} = require("../../src/rendering/figget_life.js");
+  let request, terminated = false;
+  const worker = { postMessage(data) { request = data; }, terminate() { terminated = true; } };
+  const app = {run: 1, worker, abort: {abort() {}}, observer: {disconnect() {}}, root: {remove() {}}};
+  dispose(app);
+  assert.equal(request.type, "close");
+  assert.ok(request.requestId);
+  worker.onmessage({data: {type: "save", run: 1, world: {time: 10}}});
+  assert.equal(terminated, false);
+  worker.onmessage({data: {type: "save", run: 1, requestId: request.requestId, world: {time: 15}}});
+  assert.equal(terminated, true);
+  assert.equal(app.saved.time, 15);
+});
