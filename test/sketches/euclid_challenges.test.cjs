@@ -31,3 +31,12 @@ test('invalidated intersection points and unknown targets never pass', () => {
  assert.equal(check('double',invalid,[base,l(0,2)],[0,1]),false);
  assert.equal(check('unknown',points,[base],[0,1]),false);
 });
+test('square feedback identifies open ends, diagonals, and a completed outline', () => {
+ const {assess}=require('../../src/sketches/euclid_challenges.js');
+ const edges=[base,l(1,3),l(3,4),l(4,0)];
+ assert.deepEqual(assess('square',points,edges.slice(0,3),[0,1]).vertices,[0,4]);
+ const skew=points.map(v=>v.id===3?p(3,4.5,Math.sqrt(6.75)):v.id===4?p(4,1.5,Math.sqrt(6.75)):v);
+ assert.deepEqual(assess('square',skew,edges,[0,1]).highlights,[[0,3],[1,4]]);
+ assert.equal(assess('square',points,edges,[0,1]).highlights.length,4);
+ assert.deepEqual(assess('triangle',points,[base,l(1,5),l(5,0)],[0,1]).vertices,[0,1,5]);
+});

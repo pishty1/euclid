@@ -150,13 +150,15 @@
                :challenge {:kind kind :reference nil :hint-index -1 :checked? false}
                :history []))))
 
-(defn check-challenge [state]
-  (let [{:keys [kind reference]} (:challenge state)]
-    (and reference
-         (challenges/check (name kind)
-                           (clj->js (mapv (fn [p] {:id (:id p) :pos (:pos p)
-                                                 :valid (not= false (:valid? p))}) (:points state)))
-                           (clj->js (:lines state)) (clj->js reference)))))
+(defn refresh-assessment [state]
+  (let [{:keys [kind reference checked?]} (:challenge state)
+        inputs (when checked? [kind reference (:points state) (:lines state)])]
+    (if (= inputs (:assessment-inputs state)) state
+      (assoc state :assessment-inputs inputs
+             :assessment (when inputs
+                           (js->clj (challenges/assess (name kind) (clj->js (mapv (fn [p] {:id (:id p) :pos (:pos p) :valid (not= false (:valid? p))}) (:points state)))
+                                                      (clj->js (:lines state)) (clj->js reference))
+                                    :keywordize-keys true))))))
 
 (defn sync-challenge! [state]
   (when-let [panel (.getElementById js/document "euclid-challenges")]
@@ -171,10 +173,10 @@
                 "Choose a challenge and press Start challenge."))
       (set! (.-textContent hint) (if (and info (>= hint-index 0))
                                   (str "Hint " (inc hint-index) ": " (nth (:hints info) hint-index)) ""))
-      (set! (.-textContent result) (if (and info checked?)
-                                    (cond (nil? reference) "Draw a reference segment with Ruler first."
-                                          (check-challenge state) "Target reached! Your construction matches within 2%."
-                                          :else "Not quite yet. Check that the complete target is drawn, then try a hint.") ""))
+      (let [message (or (get-in state [:assessment :message]) "")
+            drag (.querySelector panel "[data-action='challenge-drag']")]
+        (when (not= message (.-textContent result)) (set! (.-textContent result) message))
+        (set! (.-hidden drag) (not (and (= kind :triangle) (get-in state [:assessment :passed])))))
       (doseq [action ["challenge-hint" "challenge-check" "challenge-exit"]]
         (when-let [button (.querySelector panel (str "[data-action='" action "']"))]
           (set! (.-disabled button) (not info)))))))
@@ -232,7 +234,7 @@
             (set! (.-value option) value)
             (.appendChild select option)))
         (doseq [[label action] [["Start challenge" :challenge-start] ["Hint" :challenge-hint]
-                                ["Check" :challenge-check] ["Exit challenge" :challenge-exit]
+                                ["Check" :challenge-check] ["Test by dragging" :challenge-drag] ["Exit challenge" :challenge-exit]
                                 ["Close" :challenges]]]
           (let [button (menu/element "button" "" label)]
             (set! (.-type button) "button")
@@ -277,6 +279,12 @@
     (if-let [info (get challenge-info (get-in state [:challenge :kind]))]
       (update-in state [:challenge :hint-index] #(min (dec (count (:hints info))) (inc %))) state)
     (= action :challenge-check) (if (:challenge state) (assoc-in state [:challenge :checked?] true) state)
+    (= action :challenge-drag)
+    (let [assessment (:assessment (refresh-assessment state))]
+      (if (and (= :triangle (get-in state [:challenge :kind])) (:passed assessment))
+        (-> state (assoc :tool :move :selection nil :motion? false :challenge-panel? false)
+            (assoc-in [:challenge :drag-vertices] (:vertices assessment)))
+        state))
     (= action :challenge-exit)
     (if-let [original (:challenge-return state)]
       (merge state original {:challenge nil :challenge-return nil :selection nil :dragging nil
@@ -428,7 +436,7 @@
     (reset! actions [])
     (let [state (if (:menu-visible? state) state (reduce apply-action state pending))
           state (if (and (:motion? state) (not (:menu-visible? state))) (animate state) state)
-          state (resolve-constraints state)
+          state (refresh-assessment (resolve-constraints state))
           ghosts (calculate-ghosts (primitives state))
           pos (world [(q/mouse-x) (q/mouse-y)])
           proof (current-proof state)
@@ -618,13 +626,36 @@
           (q/text-size 9)
           (q/text (str (Math/round (* angle (/ 180 Math/PI))) "°") (+ x 10) (+ y 12)))))))
 
+(defn point-name [id]
+  (if (< id 26) (js/String.fromCharCode (+ 65 id)) (str "P" id)))
+
+(defn draw-challenge [state]
+  (let [{:keys [highlights vertices passed]} (:assessment state)]
+    (doseq [[a b] highlights
+            :let [p (point-pos state a) q (point-pos state b)] :when (and p q)]
+      (q/stroke-weight 3)
+      (apply q/stroke (:blue palette))
+      (segment p q))
+    (when-not passed
+      (doseq [id vertices :let [pos (point-pos state id)] :when pos]
+        (dot-at pos (:blue palette) 8))))
+  (when-let [[i j k] (get-in state [:challenge :drag-vertices])]
+    (let [[a b] (get-in state [:challenge :reference])
+          pa (point-pos state a) pb (point-pos state b)
+          r (when (and pa pb) (distance pa pb))]
+      (doseq [[i j] [[i j] [j k] [k i]]
+              :let [p (point-pos state i) q (point-pos state j)]
+              :when (and p q r (> r epsilon))]
+        (label (midpoint p q) (str (point-name i) (point-name j) " " (.toFixed (/ (distance p q) r) 2) "r")
+               (:blue palette))))))
+
 (defn draw-interaction [state]
   (when (:guides? state)
     (doseq [pos (:ghosts state)] (dot-at pos (:guide palette) 2)))
   (doseq [{:keys [id pos constraint]} (filter #(not= false (:valid? %)) (:points state))]
     (dot-at pos (:gold palette) (if (= id (:dragging state)) 7 (if constraint 6 5)))
-    (when (:guides? state) (label pos (if (< id 26) (js/String.fromCharCode (+ 65 id)) (str "P" id)) (:gold palette))))
-  (when-let [[a b] (get-in state [:challenge :reference])]
+    (when (:guides? state) (label pos (point-name id) (:gold palette))))
+  (when-let [[a b] (when-not (get-in state [:challenge :drag-vertices]) (get-in state [:challenge :reference]))]
     (when-let [p (point-pos state a)]
       (when-let [q (point-pos state b)] (label (midpoint p q) "r" (:ink palette)))))
   (when-let [snap (:snapped state)]
@@ -654,6 +685,7 @@
       (q/ellipse x y 1.5 1.5)))
   (draw-primitives state)
   (draw-proof state)
+  (draw-challenge state)
   (draw-interaction state)
   (q/no-stroke)
   (q/text-align :right :top)
@@ -672,7 +704,10 @@
   (q/fill 147 171 181)
   (let [panel (.getElementById js/document "euclid-instruments")
         y (- (.-innerHeight js/window) (if panel (+ 34 (.-offsetHeight panel)) 164))
-        hint (if (seq (:status state)) (:status state)
+        hint (cond (and (= :move (:tool state)) (get-in state [:challenge :drag-vertices]))
+                   (str "Drag " (point-name (second (get-in state [:challenge :reference]))) " and watch the three side lengths.")
+                   (seq (:status state)) (:status state)
+                   :else
                (if (:selection state) "Choose the second point · Esc cancels"
                  (case (:tool state) :move "Drag anchors · Drag intersections to move their construction"
                        :point "Plant points · Intersections stay attached"
