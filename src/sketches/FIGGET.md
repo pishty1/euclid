@@ -28,6 +28,16 @@ or less remaining and works even when all stores are full. Tile details show
 stored goods, historical builder and remaining lifetime. Expiry destroys stored
 goods; repair is consequently a meaningful choice.
 
+The optional **First shared meal** goal tracks food you stock in your own depot.
+When a rival eats it, the goal shows who ate it and how much health they
+recovered. You can visit the depot or follow the recipient. If you hide the
+goal, open **World → Show depot goal** to bring it back.
+
+In **World → Bots**, choose a rival to follow its movements, health, intent and
+recent activity. **Me** returns the camera to your character.
+Use **Map → Map layer → Food and depots** to find food to gather and see which
+depots have food available. Selecting a tile shows its current stock.
+
 One ore loads three shots, each causing 20 damage. Protection prevents both
 incoming and outgoing attacks in sanctuary or shortly after respawn. An attack
 can select a specific inspected actor; otherwise it prefers an eligible rival

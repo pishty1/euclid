@@ -460,3 +460,66 @@ test("shutdown waits for the requested final worker snapshot", () => {
   assert.equal(terminated, true);
   assert.equal(app.saved.time, 15);
 });
+
+function preferAction(bot, choice) {
+  bot.epsilon = 0;
+  bot.q.fill(-2);
+  for (let state=0; state<m.STATES; state++) bot.q[state*N+choice] = 2;
+}
+test("a player depot goal records a real visitor's meal and survives save/resume", () => {
+  const w = m.fresh(31, 8), b = depot(w), bot = w.bots[0];
+  assert.deepEqual(m.view(w).depotGoal, {depot:{x:10,y:10}, stocked:false, meal:null});
+  act(w, {type:"supply", x:b.x, y:b.y});
+  assert.equal(m.view(w).depotGoal.stocked, true);
+  Object.assign(bot, {x:b.x, y:b.y, food:0, health:50});
+  preferAction(bot, 6);
+  m.step(w);
+  const meal = m.view(w).depotGoal.meal;
+  assert.deepEqual(meal, {actor:bot.id, health:30, time:w.time, x:10, y:10, depotX:10, depotY:10});
+  b.expires = 0;
+  m.step(w);
+  assert.deepEqual(m.view(m.restore(structuredClone(w))).depotGoal.meal, meal);
+});
+
+test("a transported serving keeps the original depot after expiry; restocking another supplier's food does not qualify", () => {
+  const w = m.fresh(32, 8), first = depot(w), bot = w.bots[0];
+  act(w, {type:"store", kind:"food", x:first.x, y:first.y});
+  act(w, {type:"take", kind:"food", x:first.x, y:first.y});
+  assert.equal(w.depotGoal.stocked, false);
+  first.expires = 0;
+  m.step(w);
+  assert.equal(w.depotGoal.depot, null);
+  const second = depot(w, 12, 10);
+  // Forward one serving to a different depot, then eat it while carrying it.
+  act(w, {type:"supply", x:second.x, y:second.y});
+  assert.deepEqual(w.depotGoal.depot, {x:10,y:10});
+  Object.assign(bot, {x:12, y:10, food:0, health:100});
+  preferAction(bot, 0);
+  steps(w, 4);
+  assert.ok(bot.food > 0);
+  second.expires = 0;
+  Object.assign(bot, {x:15, y:13, health:50});
+  preferAction(bot, 6);
+  steps(w, 4);
+  assert.deepEqual(w.depotGoal.meal, {actor:bot.id, health:30, time:w.time, x:15, y:13, depotX:10, depotY:10});
+
+  const other = m.fresh(33, 8), owned = depot(other);
+  other.player.food = 1;
+  other.player.foodOrigins = [{id:7, state:0, action:4, time:0, x:20, y:20}];
+  act(other, {type:"supply", x:owned.x, y:owned.y});
+  assert.equal(other.depotGoal.stocked, false);
+  assert.equal(owned.foodOwners[0].id, 7);
+  assert.equal(owned.foodOwners[0].depotX, undefined);
+});
+
+test("legacy v2 saves recover goal evidence without inventing historical meals", () => {
+  const w = m.fresh(34, 8), b = depot(w);
+  act(w, {type:"supply", x:b.x, y:b.y});
+  delete w.depotGoal;
+  delete b.foodOwners[0].depotX;
+  delete b.foodOwners[0].depotY;
+  const restored = m.restore(structuredClone(w));
+  assert.deepEqual(restored.depotGoal, {depot:{x:10,y:10}, stocked:true, meal:null});
+  w.events = [];
+  assert.deepEqual(m.restore(w).depotGoal, {depot:{x:10,y:10}, stocked:false, meal:null});
+});

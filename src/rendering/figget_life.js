@@ -5,9 +5,16 @@ const DB='figget-life-v1',KEY='world-v2';
 const names={'forage':'seeking food','harvest':'harvesting timber','mine':'mining ore','build':'building','supply':'supplying a depot','raid':'hunting a rival','recover':'recovering','explore':'exploring','home':'returning home','manage':'managing stores and repairs'};
 const colors={'food':'#e8c780','wood':'#94d3a0','ore':'#aaa7e8'};
 const css=`
-.fl-root{position:absolute;inset:0;z-index:2;color:#e3eee3;font:12px/1.5 system-ui,-apple-system,sans-serif;pointer-events:none}.fl-root *{box-sizing:border-box}.fl-root>canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;touch-action:none}.fl-root button,.fl-root select,.fl-root input{font:inherit}.fl-root button,.fl-root select{min-height:38px;padding:7px 11px;border:1px solid #acc6ab38;border-radius:9px;color:#dfeadc;background:#18332fec;cursor:pointer;touch-action:manipulation}.fl-root button:hover{border-color:#c6dc9a88}.fl-root :focus-visible{outline:2px solid #edce82;outline-offset:2px}.fl-root button:disabled{opacity:.4;cursor:default}.fl-root [hidden]{display:none!important}.fl-top{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));display:flex;gap:6px;pointer-events:auto}.fl-status{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 56px);left:18px;font:11px/1.7 monospace;white-space:pre-line;color:#a9c8bc;text-shadow:0 2px 5px #031a17}.fl-status strong{color:#f3ddb0}.fl-title{position:absolute;left:18px;top:calc(max(12px,env(safe-area-inset-top)) + 108px);color:#8bafa0;font:9px monospace;letter-spacing:.18em}.fl-title b{display:block;font:400 28px Georgia,serif;letter-spacing:-.025em;color:#dfe9d6;margin-top:4px}.fl-dock{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));width:min(390px,calc(100% - 24px));max-height:40%;overflow:auto;overscroll-behavior:contain;pointer-events:auto;border:1px solid #a1be9e40;border-radius:15px;padding:12px;background:#0b2424ec;backdrop-filter:blur(12px)}.fl-dock p{margin:0 0 7px}.fl-message{color:#ead3a1;min-height:18px}.fl-controls{display:flex;gap:5px;flex-wrap:wrap}.fl-controls button{font-size:11px;min-height:36px;padding:6px 9px}.fl-directions{float:right;display:grid;grid-template-columns:repeat(3,36px);gap:4px;margin-left:10px;margin-bottom:8px}.fl-directions button{padding:4px}.fl-inventory{clear:both;margin-top:8px}.fl-inventory summary{cursor:pointer;color:#d5d9b5}.fl-inventory select{margin:6px 0;max-width:130px}.fl-caption{clear:both;color:#8dada0;font:9px/1.5 monospace;margin-top:8px!important;margin-bottom:0!important}.fl-panel{position:absolute;z-index:3;right:max(12px,env(safe-area-inset-right));top:calc(max(12px,env(safe-area-inset-top)) + 53px);width:min(355px,calc(100% - 24px));max-height:calc(100% - 78px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;padding:16px;border:1px solid #abc19b3d;border-radius:15px;background:#102a27f8;pointer-events:auto;box-shadow:0 18px 60px #0005}.fl-panel h2{font:26px Georgia,serif;margin:8px 0}.fl-panel p{font-size:11px;color:#afc5b5}.fl-tabs{position:sticky;top:-16px;background:#102a27;display:flex;gap:4px;padding:8px 0;z-index:1}.fl-tabs button{padding:6px 9px;font-size:11px}.fl-tabs button[aria-pressed=true]{border-color:#e2c88b;color:#ead6a1}.fl-item{display:block;text-align:left;width:100%;margin:5px 0}.fl-item small{display:block;font:10px/1.6 monospace;color:#9ab6a3}.fl-panel label{display:block;margin:14px 0;color:#cfddc7}.fl-panel select{display:block;margin-top:6px;width:100%}.fl-panel input[type=checkbox]{accent-color:#e2c88b;width:18px;height:18px;vertical-align:middle}.fl-panel .fl-chart{width:100%;height:72px;background:#071e1c;border:1px solid #a1ba9626;border-radius:8px}.fl-alert{color:#edba87!important}.fl-inspect{border-left:2px solid #c8d798;padding-left:10px;margin-bottom:12px}.fl-bar{height:4px;background:#28433b;margin:5px 0}.fl-bar i{display:block;height:100%;background:#d3d88c}.fl-loading{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font:26px Georgia,serif;color:#d7dec8;max-width:80%;text-align:center}
+.fl-root{position:absolute;inset:0;z-index:2;color:#e3eee3;font:12px/1.5 system-ui,-apple-system,sans-serif;pointer-events:none}.fl-root *{box-sizing:border-box}.fl-root>canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;touch-action:none}.fl-root button,.fl-root select,.fl-root input{font:inherit}.fl-root button,.fl-root select{min-height:38px;padding:7px 11px;border:1px solid #acc6ab38;border-radius:9px;color:#dfeadc;background:#18332fec;cursor:pointer;touch-action:manipulation}.fl-root button:hover{border-color:#c6dc9a88}.fl-root :focus-visible{outline:2px solid #edce82;outline-offset:2px}.fl-root button:disabled{opacity:.4;cursor:default}.fl-root [hidden]{display:none!important}.fl-top{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));display:flex;gap:6px;pointer-events:auto}.fl-status{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 56px);left:18px;font:11px/1.7 monospace;white-space:pre-line;color:#a9c8bc;text-shadow:0 2px 5px #031a17}.fl-status strong{color:#f3ddb0}.fl-dock{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));width:min(390px,calc(100% - 24px));max-height:40%;overflow:auto;overscroll-behavior:contain;pointer-events:auto;border:1px solid #a1be9e40;border-radius:15px;padding:12px;background:#0b2424ec;backdrop-filter:blur(12px)}.fl-dock p{margin:0 0 7px}.fl-message{color:#ead3a1;min-height:18px}.fl-controls{display:flex;gap:5px;flex-wrap:wrap}.fl-controls button{font-size:11px;min-height:36px;padding:6px 9px}.fl-directions{float:right;display:grid;grid-template-columns:repeat(3,36px);gap:4px;margin-left:10px;margin-bottom:8px}.fl-directions button{padding:4px}.fl-inventory{clear:both;margin-top:8px}.fl-inventory summary{cursor:pointer;color:#d5d9b5}.fl-inventory select{margin:6px 0;max-width:130px}.fl-caption{clear:both;color:#8dada0;font:9px/1.5 monospace;margin-top:8px!important;margin-bottom:0!important}.fl-panel{position:absolute;z-index:3;right:max(12px,env(safe-area-inset-right));top:calc(max(12px,env(safe-area-inset-top)) + 53px);width:min(355px,calc(100% - 24px));max-height:calc(100% - 78px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;padding:16px;border:1px solid #abc19b3d;border-radius:15px;background:#102a27f8;pointer-events:auto;box-shadow:0 18px 60px #0005}.fl-panel h2{font:26px Georgia,serif;margin:8px 0}.fl-panel p{font-size:11px;color:#afc5b5}.fl-tabs{position:sticky;top:-16px;background:#102a27;display:flex;gap:4px;padding:8px 0;z-index:1}.fl-tabs button{padding:6px 9px;font-size:11px}.fl-tabs button[aria-pressed=true]{border-color:#e2c88b;color:#ead6a1}.fl-item{display:block;text-align:left;width:100%;margin:5px 0}.fl-item small{display:block;font:10px/1.6 monospace;color:#9ab6a3}.fl-panel label{display:block;margin:14px 0;color:#cfddc7}.fl-panel select{display:block;margin-top:6px;width:100%}.fl-panel input[type=checkbox]{accent-color:#e2c88b;width:18px;height:18px;vertical-align:middle}.fl-panel .fl-chart{width:100%;height:72px;background:#071e1c;border:1px solid #a1ba9626;border-radius:8px}.fl-alert{color:#edba87!important}.fl-inspect{border-left:2px solid #c8d798;padding-left:10px;margin-bottom:12px}.fl-bar{height:4px;background:#28433b;margin:5px 0}.fl-bar i{display:block;height:100%;background:#d3d88c}.fl-loading{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font:26px Georgia,serif;color:#d7dec8;max-width:80%;text-align:center}
+.fl-follow{clear:both;margin:8px 0;padding:8px 10px;background:#162f2c;border-left:3px solid #c8d798}.fl-follow button{float:right;min-height:32px;font-size:11px;padding:4px 8px;margin-left:8px}.fl-follow strong,.fl-follow small,.fl-follow span{display:block}.fl-follow small{color:#b2cbbc}.fl-follow span{clear:both;color:#dece9f;font-size:11px;padding-top:3px}
+.fl-map-controls{margin-bottom:8px}.fl-map-controls label{display:inline-flex;align-items:center;gap:6px}.fl-map-controls small{display:block;margin-top:4px;color:#c5d1ad}
 .fl-help{position:fixed;inset:0;margin:auto;width:min(460px,calc(100% - 24px));max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;border:1px solid #abc19b65;border-radius:20px;padding:22px;background:#102a27;color:#e3eee3;pointer-events:auto;box-shadow:0 20px 100px #0008}.fl-help::backdrop{background:#021411b8;backdrop-filter:blur(5px)}.fl-help h2{font:30px Georgia,serif;margin:12px 0}.fl-help p{font-size:14px;line-height:1.65;color:#c4d6c7}.fl-help .fl-help-count{font:11px monospace;color:#e8c780;letter-spacing:.1em}.fl-help .fl-help-tip{padding:12px;border-left:2px solid #e8c780;background:#ffffff07}.fl-help-nav{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:20px;flex-wrap:wrap}.fl-help-nav button{min-height:44px}.fl-help-next{background:#d8dda2!important;color:#102a27!important}.fl-help-symbols{font:24px monospace;letter-spacing:12px;color:#f6ebbc;padding:8px 0}.fl-help-paused{font-size:11px!important;color:#93b3a1!important}
-@media(max-width:600px){.fl-top{top:calc(max(12px,env(safe-area-inset-top)) + 54px)}.fl-top button{font-size:11px;padding:6px 9px}.fl-status{top:calc(max(12px,env(safe-area-inset-top)) + 101px);font-size:10px;left:14px}.fl-title{display:none}.fl-panel{top:calc(max(12px,env(safe-area-inset-top)) + 103px);max-height:calc(100% - 125px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}.fl-dock{left:8px;bottom:calc(8px + env(safe-area-inset-bottom));width:calc(100% - 16px);padding:10px;font-size:11px;max-height:35%}.fl-directions{grid-template-columns:repeat(3,34px);gap:4px}.fl-directions button{min-height:34px}.fl-controls button{font-size:10px;min-height:34px}.fl-caption{font-size:8px}.fl-message{min-height:16px}}
+@media(max-width:600px){.fl-top{top:calc(max(12px,env(safe-area-inset-top)) + 54px)}.fl-top button{font-size:11px;padding:6px 9px}.fl-status{top:calc(max(12px,env(safe-area-inset-top)) + 101px);font-size:10px;left:14px}.fl-panel{top:calc(max(12px,env(safe-area-inset-top)) + 103px);max-height:calc(100% - 125px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}.fl-dock{left:8px;bottom:calc(8px + env(safe-area-inset-bottom));width:calc(100% - 16px);padding:10px;font-size:11px;max-height:35%}.fl-directions{grid-template-columns:repeat(3,34px);gap:4px}.fl-directions button{min-height:34px}.fl-controls button{font-size:10px;min-height:34px}.fl-caption{font-size:8px}.fl-message{min-height:16px}}
+.fl-goal{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 108px);left:max(14px,env(safe-area-inset-left));max-width:min(290px,calc(100% - 28px));padding:7px 11px;border:1px solid #b8cd8d60;border-radius:11px;color:#dee9cd;background:#112922ef;pointer-events:auto}
+.fl-dock .fl-goal{position:static;margin-bottom:8px;max-width:100%}.fl-goal small{display:block;color:#adbea0;font:10px/1.4 monospace}.fl-goal summary{cursor:pointer;min-height:26px;line-height:26px;font-weight:600}.fl-goal p{margin:4px 0 8px;color:#b5cdb9}.fl-goal-actions{display:flex;flex-wrap:wrap;gap:5px}.fl-goal-actions button{min-height:32px;font-size:11px}
+@media(max-width:600px){.fl-goal{top:calc(max(12px,env(safe-area-inset-top)) + 148px);padding:4px 9px}}
+@media(max-height:500px) and (min-width:601px){.fl-goal{left:auto;right:12px;top:calc(max(12px,env(safe-area-inset-top)) + 56px);max-height:calc(100% - 85px);overflow:auto}}
+
 `;
 function el(tag,text,parent){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(parent)parent.appendChild(n);return n;}
 function button(text,parent,fn){const n=el('button',text,parent);n.type='button';n.addEventListener('click',fn);return n;}
@@ -32,13 +39,14 @@ async function load(a){
    tx.oncomplete=()=>{
     if(typeof settings.result?.['auto']==='boolean')a.auto=settings.result['auto'];
     a.tutorialSeen=settings.result?.['tutorialSeen']===true;
+    a.goalHidden=settings.result?.['goalHidden']===true;
     resolve(req.result||legacy.result||null);
    };
    tx.onabort=()=>reject(tx.error);
   });
  }catch(_){a.saveOwner=null;a.saveStatus='Storage unavailable · this session only';return null;}
 }
-function saveSettings(a){if(a.db)try{a.db.transaction('saves','readwrite').objectStore('saves').put({'auto':a.auto,'tutorialSeen':a.tutorialSeen},'settings-v2');}catch(_){}}
+function saveSettings(a){if(a.db)try{a.db.transaction('saves','readwrite').objectStore('saves').put({'auto':a.auto,'tutorialSeen':a.tutorialSeen,'goalHidden':!!a.goalHidden},'settings-v2');}catch(_){}}
 function persist(a,w){
  a.saved=w;
  if(!a.db||!a.saveOwner)return Promise.resolve();
@@ -74,14 +82,130 @@ function send(a,data){
  else if(data['type']==='save')persist(a,structuredClone(a.local));
 }
 function suspend(a){const stopped=a.paused||a.menu||a.helpOpen||document.hidden;a.suspended=stopped;if(a.started)send(a,{'type':'pause','value':stopped});a.pause.textContent=a.paused?'Resume':'Pause';}
-function action(a,type,extra={}){const now=performance.now();if(a.paused||a.menu||a.helpOpen||document.hidden||!a.view)return;if(now<a.nextAction){a.message.textContent='Ready in a moment…';return;}a.nextAction=now+(type==='move'?500:1000);a.follow=true;send(a,{'type':'action','action':Object.assign({'type':type},extra)});}
+function action(a,type,extra={}){const now=performance.now();if(a.paused||a.menu||a.helpOpen||document.hidden||!a.view)return;if(now<a.nextAction){a.message.textContent='Ready in a moment…';return;}a.nextAction=now+(type==='move'?500:1000);if(a.followBotId!=null)playerCamera(a);a.follow=true;send(a,{'type':'action','action':Object.assign({'type':type},extra)});}
 function target(a){return a.selected||{'x':a.view['player']['x'],'y':a.view['player']['y']};}
-function locate(a,p,actorId){a.inspectId=actorId;a.camera={'x':p['x'],'y':p['y']};a.selected={'x':p['x'],'y':p['y']};a.follow=false;a.overview=false;a.panel.hidden=true;sync(a);}
+function playerCamera(a){
+ a.followBotId=null;a.follow=true;a.overview=false;a.inspectId=null;a.selected=null;
+ if(a.view)a.camera={'x':a.view['player']['x'],'y':a.view['player']['y']};
+}
+function followBot(a,id){
+ const bot=a.view?.['bots'].find(b=>b['id']===id);
+ if(!bot){
+  a.message.textContent='Bot '+id+' has left this world.';
+  if(!a.panel.hidden)renderPanel(a);
+  return false;
+ }
+ a.followBotId=id;a.followHistory=[];a.followEventId=-1;a.lastFollowedBot=null;a.inspectId=id;a.overview=false;a.follow=false;
+ a.panel.hidden=true;
+ trackBot(a,bot);
+ sync(a);
+ a.stopFollowing.focus();
+ return true;
+}
+function trackBot(a,bot){
+ a.camera={'x':bot['x'],'y':bot['y']};a.selected=a.camera;
+ const events=a.view['events'];
+ const fresh=events.filter(e=>e['actor']===bot['id']&&e['id']>a.followEventId).map(e=>e['text']);
+ if(events.length)a.followEventId=events[events.length-1]['id'];
+ // The world feed samples gathering and deliveries. Show observed outcomes between its entries.
+ const before=a.lastFollowedBot;
+ if(before){
+  if(bot['gathers']>before['gathers']&&!fresh.some(text=>text.startsWith('gathered ')))fresh.push('gathered supplies');
+  if(bot['delivered']>before['delivered']&&!fresh.includes('stocked a depot'))fresh.push('stocked a depot');
+  if(bot['healed']>before['healed']&&!fresh.some(text=>text.startsWith('recovered ')))fresh.push('ate a meal');
+ }
+ a.lastFollowedBot=bot;
+ if(fresh.length)a.followHistory=a.followHistory.concat(fresh).slice(-3);
+ a.followHeader.textContent='Following '+botName(bot);
+ a.followCard.style.borderColor=colour(bot);
+ a.followState.textContent=names[bot['intent']]+' · '+Math.ceil(bot['health'])+' health';
+ a.followOutcomes.textContent=a.followHistory.join(' → ');
+}
+function locate(a,p,actorId=null){a.followBotId=null;a.inspectId=actorId;a.camera={'x':p['x'],'y':p['y']};a.selected={'x':p['x'],'y':p['y']};a.follow=false;a.overview=false;a.panel.hidden=true;sync(a);}
 function snapshot(a,v){
  if(a.disposed)return;a.previous=a.view;a.received=performance.now();a.view=v;
- if(a.follow)a.camera={'x':v['player']['x'],'y':v['player']['y']};
- a.loading.hidden=true;a.dock.hidden=false;
- sync(a);if(!a.panel.hidden&&a.tab!=='rules'&&performance.now()-a.lastPanel>1000)renderPanel(a);
+ if(a.followBotId!=null){
+  const bot=v['bots'].find(b=>b['id']===a.followBotId);
+  if(bot)trackBot(a,bot);
+  else{
+   a.message.textContent='Bot '+a.followBotId+' has left this world. Camera returned to you.';
+   playerCamera(a);
+  }
+ }else if(a.follow)a.camera={'x':v['player']['x'],'y':v['player']['y']};
+ a.loading.hidden=true;a.dock.hidden=false;updateGoal(a);
+ sync(a);
+ // Keep the focused entry in place while a keyboard user navigates the bot or event list.
+ if(!a.panel.hidden&&a.tab!=='rules'&&performance.now()-a.lastPanel>1000&&!a.content.contains(document.activeElement))renderPanel(a);
+}
+function createGoal(a){
+ const card=el('details',null,a.root);
+ card.className='fl-goal';card.hidden=true;
+ const summary=el('summary',null,card);
+ el('small','First shared meal · optional goal',card);
+ const status=el('span',null,summary);
+ status.className='fl-goal-status';status.setAttribute('aria-live','polite');
+ const hint=el('p',null,card),actions=el('div',null,card);
+ actions.className='fl-goal-actions';
+ const recipient=button('Follow recipient',actions,()=>{
+  const meal=a.view['depotGoal']['meal'];
+  if(a.view['bots'].some(bot=>bot['id']===meal['actor']))followBot(a,meal['actor']);
+  else locate(a,meal,null);
+  card.open=false;
+ });
+ const depot=button('Visit depot',actions,()=>{
+  const goal=a.view['depotGoal'],meal=goal['meal'];
+  const site=meal?{'x':meal['depotX'],'y':meal['depotY']}:goal['depot'];
+  if(site)locate(a,site,null);
+  card.open=false;
+ });
+ button('Hide goal',actions,()=>{
+  a.goalHidden=true;card.open=false;updateGoal(a);saveSettings(a);
+  a.panelButton.focus();
+ });
+ const reopen=button('Show depot goal',a.panel,()=>{
+  a.goalHidden=false;a.panel.hidden=true;updateGoal(a);saveSettings(a);sync(a);
+  card.open=true;summary.focus();
+ });
+ a.panel.insertBefore(reopen,a.content);
+ reopen.hidden=true;
+ a.goalUI={card,status,hint,recipient,depot,reopen};
+}
+function updateGoal(a){
+ const goal=a.view?.['depotGoal'];
+ if(!goal)return;
+ const {card,status,hint,recipient,depot,reopen}=a.goalUI;
+ const meal=goal['meal'],site=goal['depot'];
+ card.hidden=!!a.goalHidden;
+ reopen.hidden=!a.goalHidden;
+ let title,description;
+ if(meal){
+  title=`Bot ${meal['actor']} recovered ${Math.round(meal['health']*10)/10} health from your food`;
+  description=`First shared meal · food from your depot at ${meal['depotX']}, ${meal['depotY']}.`;
+  const alive=a.view['bots'].some(bot=>bot['id']===meal['actor']);
+  const label=alive?'Follow recipient':'Visit meal site';
+  if(recipient.textContent!==label)recipient.textContent=label;
+  if(!alive)description+=' The recipient has retired.';
+  if(a.previous?.['depotGoal']&&!a.previous['depotGoal']['meal']&&!a.goalHidden)card.open=true;
+ }else if(goal['stocked']){
+  title='Food stocked · waiting for a visitor';
+  description='Keep exploring. The goal updates when a rival heals with your food.';
+ }else if(site){
+  title='Stock your depot';
+  description=`Stand beside your depot at ${site['x']}, ${site['y']}, select its tile and choose Supply to leave food for a rival.`;
+ }else{
+  title='Build a depot';
+  description='For your first shared meal, gather 6 wood and 1 ore. Choose Build depot on open ground outside the sanctuary.';
+ }
+ if(status.textContent!==title)status.textContent=title;
+ if(hint.textContent!==description)hint.textContent=description;
+ recipient.hidden=!meal;
+ depot.hidden=!site&&!meal;
+ if(!depot.hidden){
+  const x=meal?meal['depotX']:site['x'],y=meal?meal['depotY']:site['y'];
+  const present=a.view['buildings'].some(b=>b['x']===x&&b['y']===y&&b['owner']===0);
+  const label=present?'Visit depot':'Visit depot site';
+  if(depot.textContent!==label)depot.textContent=label;
+ }
 }
 function start(a,saved){
  if(a.disposed)return;
@@ -110,6 +234,15 @@ function sync(a){
  const n=v['nodes'].find(n=>n['x']===t['x']&&n['y']===t['y']),b=v['buildings'].find(b=>b['x']===t['x']&&b['y']===t['y']),actors=v['bots'].filter(b=>b['x']===t['x']&&b['y']===t['y']);a.inspected=(a.inspectId==null?actors[0]:v['bots'].find(b=>b['id']===a.inspectId))||null;
  a.status.textContent=`${v['bots'].length} RIVALS · GENERATION ${v['generation']} · ${Math.floor(v['time']/60)}m ${Math.floor(v['time']%60)}s\nHealth ${Math.ceil(p['health'])} · Wood ${p['wood']} / Food ${p['food']} / Ore ${p['ore']} · Shots ${p['charges']}${a.paused||a.helpOpen?' · PAUSED':''}`;
  a.tile.textContent=`${t['x']}, ${t['y']} · ${n?`${n['kind']} ${n['stock']}/${n['capacity']}`:b?`Depot · F${b['food']} W${b['wood']} O${b['ore']} · ${b['expires']-v['time']<60?Math.max(0,Math.ceil(b['expires']-v['time']))+'s':Math.ceil((b['expires']-v['time'])/60)+'m'} left · ${b['owner']===0?'your building':b['owner']>0?'built by Bot '+b['owner']:'earlier Bot '+(-b['owner']-1)}`:'Open ground'}${actors.length?' · '+actors.map(botName).join(', '):''}`;
+ a.followCard.hidden=a.followBotId==null;
+ a.mapControls.hidden=!a.overview;
+ if(a.goalUI){
+  const card=a.goalUI.card;
+  const inDock=a.overview||(a.width<=600&&a.height<=500);
+  if(inDock&&card.parentNode!==a.dock)a.dock.insertBefore(card,a.mapControls);
+  else if(!inDock&&card.parentNode!==a.root)a.root.appendChild(card);
+ }
+ a.root.classList.toggle('fl-food-map',a.overview&&a.mapLayer.value==='food');
  const stopped=a.paused||a.menu||a.helpOpen;
  for(const button of a.actionButtons)button.disabled=stopped;
  a.gather.disabled=stopped||!near||!n||!n['stock'];a.supply.disabled=stopped||!near||!b;a.attack.disabled=stopped||!near||!actors.length;a.eat.disabled=stopped||!model.canEat(v,p,model.index(v));
@@ -121,7 +254,7 @@ function renderPanel(a){
  if(!a.view)return;a.lastPanel=performance.now();const content=a.content,v=a.view,scroll=a.panel.scrollTop;content.replaceChildren();
  if(a.tab==='activity'){
   el('h2','The living frontier',content);el('p',`${v['updates'].toLocaleString()} learning updates · ${v['stats']['services']} shared meals · ${v['stats']['meals']?Math.round(v['stats']['healing']/v['stats']['meals']):0}/30 average healing · ${a.saveStatus}`,content);
-  if(a.inspected){const b=a.inspected,box=el('div',null,content);box.className='fl-inspect';el('strong',botName(b),box);el('p',`${names[b['intent']]} · ${Math.ceil(b['health'])} health · ${b['updates']} learned transitions · ${b['gathers']} gathered · ${b['delivered']} deliveries · ${b['kills']} kills / ${b['deaths']} deaths`,box);}
+  if(a.inspected){const b=a.inspected,box=el('div',null,content);box.className='fl-inspect';el('strong',botName(b),box);el('p',`${names[b['intent']]} · ${Math.ceil(b['health'])} health · ${b['updates']} learned transitions · ${b['gathers']} gathered · ${b['delivered']} deliveries · ${b['kills']} kills / ${b['deaths']} deaths`,box);if(a.followBotId!==b['id'])button('Follow bot',box,()=>followBot(a,b['id']));}
   el('p','Select an event to visit its location. Latest 100 events; the world pauses when you leave this sketch.',content);
   for(const e of [...v['events']].reverse()){
    const b=button(`${e['actor']===0?'You':'Bot '+e['actor']} · ${e['text']}`,content,()=>locate(a,e,e['actor']));b.className='fl-item';el('small',`${age(e['time'],v['time'])} · ${e['x']}, ${e['y']}`,b);
@@ -131,7 +264,7 @@ function renderPanel(a){
   const groups=new Map();for(const b of v['bots'])groups.set(b['lineage'],(groups.get(b['lineage'])||0)+1);
   for(const [lineage,n]of groups){const row=el('p',`● Lineage ${lineage} · ${n} bots`,content);row.style.color=model.COLORS[(lineage-1)%8];}
   const sorted=[...v['bots']].sort((b,c)=>c['fitness']-b['fitness']);
-  for(const b of sorted.slice(0,80)){const n=button(`${botName(b)} · ${names[b['intent']]}`,content,()=>locate(a,b,b['id']));n.className='fl-item';n.style.borderLeftColor=colour(b);n.style.borderLeftWidth='3px';el('small',`${b['x']}, ${b['y']} · fitness ${b['fitness'].toFixed(1)} · ${b['updates']} updates · ${b['gathers']} gathered`,n);}
+  for(const b of sorted.slice(0,80)){const n=button(`Follow ${botName(b)} · ${names[b['intent']]}`,content,()=>followBot(a,b['id']));n.className='fl-item';n.style.borderLeftColor=colour(b);n.style.borderLeftWidth='3px';el('small',`${b['x']}, ${b['y']} · fitness ${b['fitness'].toFixed(1)} · ${b['updates']} updates · ${b['gathers']} gathered`,n);}
   if(sorted.length>80)el('p','Showing the top 80 learners. All bots remain visible on the map.',content);
  }else{
   el('h2','Shape the world',content);
@@ -145,7 +278,7 @@ function renderPanel(a){
   el('p',`${a.worker?'Worker simulation':'Main-thread fallback'} · ${a.stepMs.toFixed(1)}ms/step. Adaptive rendering reduces drawing frequency when necessary, without retiring bots.`,content);
   for(const text of ['Move with arrows/WASD or the direction pad. Movement takes half a second; work and attacks take one second. Select a tile, then Walk towards to take one step. Your pack holds 30 units.', 'Open Inventory to store or take any material at a public depot, or discard five unwanted items to free space. A depot costs 6 wood + 1 ore. Supply adds food; Repair spends 1 timber to add four minutes, even when all stores are full. Repair is available when four minutes or less remain.', 'Food heals 30. Eat when missing at least 25 health, or 10 with a vulnerable rival nearby. Suppliers gain credit for useful meals others actually eat, not for filling unused stores. Health slowly drains over time, including in sanctuary. Pause when away. Mining costs 8 health.', 'One ore loads three shots; each shot deals 20 damage. Attacks take one second for you and bots. Movement remains quicker for you. Kills loot up to two of each carried item, within pack space. Death loses all carried ore and loaded shots, plus half your food and wood; sanctuary and respawn protection prevent attacks.', 'Rich and poor regions differ in density and regrowth. Resource capacity scales with the population. Resource pressure lets you choose scarcity independently of your device performance.', 'Each bot uses 576 local observations and ten behaviour choices. Pack capacity, ore and timber availability affect its observations. Unavailable actions are masked. Decisions value useful supplies, health, actual public meals and maintaining working depots. Stored food grants credit to its original supplier only when used.', 'Every three simulated minutes, mature low-performing bots can be replaced by resource-funded descendants of successful parents. Parents provide the child’s materials and consume food for reproduction. Children have unique identities; old depots remain public monuments to their original builders. Learning and evolution can be controlled separately.', 'World and policy saves stay on this device. Earlier worlds are migrated with inventories, buildings and learned preferences preserved; the original save is kept. Hidden tabs and menus pause time. No server or WordPress plugin is used.'])el('p',text,content);
   const chart=el('canvas',null,content);chart.className='fl-chart';chart.width=300;chart.height=72;const ctx=chart.getContext('2d'),history=v['history'];if(history.length>1){const max=Math.max(1,...history.map(p=>p['healing']||0));ctx.strokeStyle='#d5d496';ctx.beginPath();history.forEach((p,i)=>{const x=i/(history.length-1)*300,y=65-(p['healing']||0)/max*60;if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);});ctx.stroke();}el('p','Useful healing over the last 20 simulated minutes.',content);
-  const reset=button('New local world',content,()=>{const was=a.paused;a.paused=true;suspend(a);if(window.confirm('Replace this local world and its learned bot population? Earlier solo saves are kept.')){a.run++;a.saved=null;a.view=null;a.selected=null;a.follow=true;a.paused=was;
+  const reset=button('New local world',content,()=>{const was=a.paused;a.paused=true;suspend(a);if(window.confirm('Replace this local world and its learned bot population? Earlier solo saves are kept.')){a.run++;a.saved=null;a.view=null;playerCamera(a);a.paused=was;
    if(a.worker)a.worker.postMessage({'type':'reset','run':a.run,'seed':42,'count':a.targetCount,'paused':a.paused||a.menu||a.helpOpen||document.hidden});else{a.local=model.fresh(42,a.targetCount);snapshot(a,model.view(a.local));persist(a,structuredClone(a.local));}
   }else a.paused=was;suspend(a);});reset.className='fl-item';
  }
@@ -155,7 +288,7 @@ const lessons=[
  ['Meet the living frontier','You are the glowing cream triangle marked YOU. This is a persistent world: gather supplies, build public depots and survive alongside rival bots. There is no timed match or final wave.','Start small: find food, collect timber, then build your first depot.','▲  ●  □'],
  ['Move & gather','Move one tile with the direction arrows or WASD. On a phone, use the arrow pad. Tap a map tile to select it, then Walk towards to take one step toward it.','Gold circles are food, green triangles are timber, violet diamonds are ore. Stand on or beside a resource, select it and press Gather. Dim resources need time to regrow.','●  ▲  ◆'],
  ['Keep yourself alive','Watch Health and Food at the top. Health slowly falls, even in sanctuary. Food restores up to 30 health; Eat becomes available at 75 health or below, or 90 near a vulnerable rival. Mining costs 8 health.','Your pack holds 30 items in total. Open Inventory & depot to discard unwanted items if you run out of space. Move takes half a second; other actions take one second.','♥  ●'],
- ['Build something useful','Collect 6 wood and 1 ore. Stand on open ground outside the central sanctuary and press Build depot. Square depots are public: you and bots can use any of them.','Select a nearby depot. Supply deposits food; Inventory & depot lets you Store or Take materials. Depots last 8 minutes. With 4 minutes or less left, Repair spends 1 wood to extend their life.','□  ◆  ▲'],
+ ['Build something useful','Collect 6 wood and 1 ore. Stand on open ground outside the central sanctuary and press Build depot. Square depots are public: you and bots can use any of them.','Select a nearby depot. Supply deposits food; Inventory & depot lets you Store or Take materials. Depots last 8 minutes. With 4 minutes or less left, Repair spends 1 wood to extend their life. Open the depot goal on the map to track your first shared meal.','□  ◆  ▲'],
  ['Rivals, recovery & discovery','Bots compete with you and other lineages, while avoiding attacks on their own colour. Select an adjacent rival and press Attack: one ore loads three shots, each dealing 20 damage. Sanctuary and fresh respawns block attacks.','Death respawns you at home, losing all ore and loaded shots plus half your food and wood. Map shows the world; Me returns to you. World → Activity shows what bots have done; select an event to visit it.','▲  ●  ●'],
  ['Make the world yours','World → Rules lets you change rival population and resource pressure, or switch bot learning and evolution independently. Bots learn as they act; successful parents can fund new descendants over time.','Your world saves on this device when storage is available. Pause before stepping away. Hidden tabs and the sketch menu pause time too. Reopen Help anytime for these instructions.','↻  □  ●']
 ];
@@ -172,22 +305,41 @@ function create(host){
  if(active)dispose(active);
  if(!document.getElementById('figget-life-style')){const s=el('style',css,document.head);s.id='figget-life-style';}
  const root=el('section',null,host);root.className='fl-root';root.setAttribute('aria-label','Figget-A-Balls evolving world');
- const a={root,canvas:el('canvas',null,root),view:null,previous:null,received:0,camera:{'x':48,'y':48},follow:true,overview:false,selected:null,paused:false,menu:false,suspended:false,worker:null,local:null,run:1,started:false,disposed:false,abort:new AbortController(),db:null,saved:null,saveStatus:'Loading local save…',lastSaved:0,initialCount:128,targetCount:128,auto:true,stepMs:0,paintMs:0,frameMs:33,nextProbe:performance.now()+10000,nextSave:performance.now()+15000,nextAction:0,nextPaint:0,lastPanel:0,tab:'activity',actionButtons:[],helpOpen:false,helpStep:0,tutorialSeen:false};active=a;a.ctx=a.canvas.getContext('2d');
- const top=el('div',null,root);top.className='fl-top';a.pause=button('Pause',top,()=>{a.paused=!a.paused;suspend(a);sync(a);});button('Map',top,()=>a.overview=!a.overview);button('Me',top,()=>{a.follow=true;a.overview=false;if(a.view)a.camera={'x':a.view['player']['x'],'y':a.view['player']['y']};});a.panelButton=button('World',top,()=>{a.panel.hidden=!a.panel.hidden;sync(a);if(!a.panel.hidden)renderPanel(a);});a.panelButton.setAttribute('aria-controls','figget-life-panel');a.helpButton=button('Help',top,()=>showHelp(a));a.helpButton.setAttribute('aria-haspopup','dialog');
- a.status=el('div',null,root);a.status.className='fl-status';const title=el('div','LEARN / INHERIT / ADAPT',root);title.className='fl-title';el('b','The living frontier',title);
+ const a={root,canvas:el('canvas',null,root),view:null,previous:null,received:0,camera:{'x':48,'y':48},follow:true,followBotId:null,overview:false,selected:null,paused:false,menu:false,suspended:false,worker:null,local:null,run:1,started:false,disposed:false,abort:new AbortController(),db:null,saved:null,saveStatus:'Loading local save…',lastSaved:0,initialCount:128,targetCount:128,auto:true,stepMs:0,paintMs:0,frameMs:33,nextProbe:performance.now()+10000,nextSave:performance.now()+15000,nextAction:0,nextPaint:0,lastPanel:0,tab:'activity',actionButtons:[],helpOpen:false,helpStep:0,tutorialSeen:false};active=a;a.ctx=a.canvas.getContext('2d');
+ const top=el('div',null,root);top.className='fl-top';a.pause=button('Pause',top,()=>{a.paused=!a.paused;suspend(a);sync(a);});button('Map',top,()=>{
+  if(a.followBotId!=null)playerCamera(a);
+  a.overview=!a.overview;sync(a);
+ });button('Me',top,()=>{playerCamera(a);sync(a);});a.panelButton=button('World',top,()=>{a.panel.hidden=!a.panel.hidden;sync(a);if(!a.panel.hidden)renderPanel(a);});a.panelButton.setAttribute('aria-controls','figget-life-panel');a.helpButton=button('Help',top,()=>showHelp(a));a.helpButton.setAttribute('aria-haspopup','dialog');
+ a.status=el('div',null,root);a.status.className='fl-status';
  a.panel=el('section',null,root);a.panel.id='figget-life-panel';a.panel.className='fl-panel';a.panel.hidden=true;const tabs=el('div',null,a.panel);tabs.className='fl-tabs';
  for(const [key,label]of [['activity','Activity'],['bots','Bots'],['rules','Rules']]){const b=button(label,tabs,()=>{a.tab=key;for(const n of tabs.children)n.setAttribute('aria-pressed',String(n===b));renderPanel(a);});b.setAttribute('aria-pressed',String(key===a.tab));}button('Close',tabs,()=>{a.panel.hidden=true;sync(a);});a.content=el('div',null,a.panel);
  a.dock=el('section',null,root);a.dock.className='fl-dock';a.dock.hidden=true;const directions=el('div',null,a.dock);directions.className='fl-directions';
  for(const [label,dx,dy,name]of [['',0,0,''],['↑',0,-1,'north'],['',0,0,''],['←',-1,0,'west'],['↓',0,1,'south'],['→',1,0,'east']]){if(!label){el('span',null,directions);continue;}const b=button(label,directions,()=>action(a,'move',{'dx':dx,'dy':dy}));b.setAttribute('aria-label','Move '+name);a.actionButtons.push(b);}
- a.tile=el('p',null,a.dock);a.message=el('p','Gather, build and survive. Select a bot to inspect it in World → Activity.',a.dock);a.message.className='fl-message';a.message.setAttribute('role','status');const actions=el('div',null,a.dock);actions.className='fl-controls';
+ a.mapControls=el('div',null,a.dock);a.mapControls.className='fl-map-controls';a.mapControls.hidden=true;
+ a.dock.insertBefore(a.mapControls,directions);
+ const layerLabel=el('label','Map layer',a.mapControls);
+ a.mapLayer=el('select',null,layerLabel);
+ for(const [value,name] of [['frontier','Frontier'],['food','Food and depots']]){
+  el('option',name,a.mapLayer).value=value;
+ }
+ const legend=el('small','Gold dots show food to gather. Filled squares have food. Outlined squares have none.',a.mapControls);
+ legend.hidden=true;
+ a.mapLayer.addEventListener('change',()=>{legend.hidden=a.mapLayer.value!=='food';sync(a);});
+ a.tile=el('p',null,a.dock);
+ a.followCard=el('section',null,a.dock);a.followCard.className='fl-follow';a.followCard.hidden=true;
+ a.followCard.setAttribute('aria-label','Followed bot');
+ a.stopFollowing=button('Stop following',a.followCard,()=>{playerCamera(a);sync(a);});
+ a.followHeader=el('strong',null,a.followCard);a.followState=el('small',null,a.followCard);a.followOutcomes=el('span',null,a.followCard);
+ a.message=el('p','Gather, build and survive. Select a bot to inspect it in World → Activity.',a.dock);a.message.className='fl-message';a.message.setAttribute('role','status');const actions=el('div',null,a.dock);actions.className='fl-controls';
  a.walk=button('Walk towards',actions,()=>{if(!a.view)return;const p=a.view['player'],t=target(a),dx=t['x']-p['x'],dy=t['y']-p['y'];action(a,'move',{'dx':Math.abs(dx)>=Math.abs(dy)?Math.sign(dx):0,'dy':Math.abs(dy)>Math.abs(dx)?Math.sign(dy):0});});
  a.gather=button('Gather',actions,()=>action(a,'gather',target(a)));a.build=button('Build depot',actions,()=>action(a,'build'));a.supply=button('Supply',actions,()=>action(a,'supply',target(a)));a.attack=button('Attack',actions,()=>action(a,'attack',Object.assign({},target(a),a.inspected?{'target':a.inspected['id']}:{})));a.eat=button('Eat',actions,()=>action(a,'eat'));a.actionButtons.push(a.walk,a.gather,a.build,a.supply,a.attack,a.eat);
  const caption=el('p','GOLD food · GREEN timber · VIOLET ore · SQUARE depots · COLOURED rival lineages',a.dock);caption.className='fl-caption';
  const inventory=el('details',null,a.dock);inventory.className='fl-inventory';el('summary','Inventory & depot',inventory);const material=el('select',null,inventory);material.setAttribute('aria-label','Inventory material');for(const kind of ['wood','food','ore']){const o=el('option',kind,material);o.value=kind;}
  const inventoryButtons=el('div',null,inventory);inventoryButtons.className='fl-controls';a.store=button('Store 5',inventoryButtons,()=>action(a,'store',Object.assign({'kind':material.value},target(a))));a.take=button('Take 5',inventoryButtons,()=>action(a,'take',Object.assign({'kind':material.value},target(a))));a.discard=button('Discard 5',inventoryButtons,()=>action(a,'discard',{'kind':material.value}));a.repair=button('Repair',inventoryButtons,()=>action(a,'repair',target(a)));a.actionButtons.push(a.store,a.take,a.discard,a.repair);
  a.help=el('dialog',null,root);a.help.className='fl-help';a.help.setAttribute('aria-labelledby','figget-help-title');a.helpCount=el('p',null,a.help);a.helpCount.className='fl-help-count';a.helpTitle=el('h2',null,a.help);a.helpTitle.id='figget-help-title';a.helpSymbols=el('div',null,a.help);a.helpSymbols.className='fl-help-symbols';a.helpSymbols.setAttribute('aria-hidden','true');a.helpBody=el('p',null,a.help);a.helpTip=el('p',null,a.help);a.helpTip.className='fl-help-tip';el('p','World paused while you read.',a.help).className='fl-help-paused';const helpNav=el('div',null,a.help);helpNav.className='fl-help-nav';button('Close tutorial',helpNav,()=>closeHelp(a));a.helpBack=button('Back',helpNav,()=>{a.helpStep--;renderHelp(a);});a.helpNext=button('Next',helpNav,()=>{if(a.helpStep===lessons.length-1)closeHelp(a);else{a.helpStep++;renderHelp(a);}});a.helpNext.className='fl-help-next';a.help.addEventListener('cancel',event=>{event.preventDefault();closeHelp(a);});
+ createGoal(a);
  a.loading=el('div','Waking the frontier…',root);a.loading.className='fl-loading';
- a.canvas.addEventListener('pointerdown',event=>{if(a.menu||!a.view||event.button!==0)return;event.preventDefault();const t=transform(a),r=a.canvas.getBoundingClientRect(),x=Math.floor((event.clientX-r.left-t.ox)/t.size),y=Math.floor((event.clientY-r.top-t.oy)/t.size);if(x<0||y<0||x>=model.SIZE||y>=model.SIZE)return;a.selected={'x':x,'y':y};a.inspectId=a.view['bots'].find(b=>b['x']===x&&b['y']===y)?.['id']??null;sync(a);if(!a.panel.hidden)renderPanel(a);});
+ a.canvas.addEventListener('pointerdown',event=>{if(a.menu||!a.view||event.button!==0)return;event.preventDefault();const t=transform(a),r=a.canvas.getBoundingClientRect(),x=Math.floor((event.clientX-r.left-t.ox)/t.size),y=Math.floor((event.clientY-r.top-t.oy)/t.size);if(x<0||y<0||x>=model.SIZE||y>=model.SIZE)return;a.followBotId=null;a.selected={'x':x,'y':y};a.inspectId=a.view['bots'].find(b=>b['x']===x&&b['y']===y)?.['id']??null;sync(a);if(!a.panel.hidden)renderPanel(a);});
  for(const type of ['touchmove','touchstart','click','pointerdown','pointerup'])root.addEventListener(type,event=>event.stopPropagation());
  window.addEventListener('keydown',event=>{if(a.menu||a.helpOpen||event.ctrlKey||event.metaKey||event.altKey||event.target?.closest?.('input,select,textarea')||(event.code==='Space'&&event.target?.closest?.('button')))return;
   const dir={'ArrowUp':[0,-1],'w':[0,-1],'ArrowDown':[0,1],'s':[0,1],'ArrowLeft':[-1,0],'a':[-1,0],'ArrowRight':[1,0],'d':[1,0]}[event.key];
@@ -196,7 +348,21 @@ function create(host){
  document.addEventListener('visibilitychange',()=>{suspend(a);if(document.hidden)send(a,{'type':'save'});},{signal:a.abort.signal});window.addEventListener('pagehide',()=>{suspend(a);send(a,{'type':'save'});},{signal:a.abort.signal});
  a.observer=new MutationObserver(()=>{if(!root.isConnected)dispose(a);});a.observer.observe(host,{childList:true});load(a).then(saved=>{if(a.disposed){a.db?.close();return;}if(!a.tutorialSeen)showHelp(a);start(a,saved);});return a;
 }
-function transform(a){const size=a.overview?Math.min((a.width-20)/model.SIZE,(a.height-175)/model.SIZE):a.width<600?24:30;return {size,ox:a.overview?(a.width-model.SIZE*size)/2:a.width/2-(a.camera['x']+.5)*size,oy:a.overview?150:a.height*.43-(a.camera['y']+.5)*size};}
+function transform(a){
+ if(!a.overview){
+  const size=a.width<600?24:30;
+  return {size,ox:a.width/2-(a.camera['x']+.5)*size,oy:a.height*.43-(a.camera['y']+.5)*size};
+ }
+ // Use the larger unobstructed square above or beside the controls.
+ const margin=8,top=a.status.offsetTop+a.status.offsetHeight+margin;
+ const dockRight=a.dock.offsetLeft+a.dock.offsetWidth+margin;
+ const above=Math.min(a.width-2*margin,a.dock.offsetTop-top-margin);
+ const beside=Math.min(a.width-dockRight-margin,a.height-top-margin);
+ const side=Math.max(1,above,beside);
+ const ox=beside>above?dockRight+(a.width-dockRight-margin-side)/2:(a.width-side)/2;
+ const bottom=beside>above?a.height-margin:a.dock.offsetTop-margin;
+ return {size:side/model.SIZE,ox,oy:top+(bottom-top-side)/2};
+}
 function draw(a){
  const c=a.ctx,w=a.width,h=a.height;c.fillStyle='#09201f';c.fillRect(0,0,w,h);if(!a.view)return;
  const v=a.view,t=transform(a),s=t.size,point=p=>({x:t.ox+(p['x']+.5)*s,y:t.oy+(p['y']+.5)*s});
@@ -205,11 +371,15 @@ function draw(a){
  for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){
   const r=model.region(x,y);c.fillStyle=r>.7?'#183b30':r<.3?'#182d29':'#102d2a';c.fillRect(t.ox+x*s,t.oy+y*s,s,s);if(s>6)c.strokeRect(t.ox+x*s,t.oy+y*s,s,s);
  }
+ const foodMap=a.overview&&a.mapLayer.value==='food';
  const home=point({'x':48,'y':48});c.fillStyle='#ecdfa21a';c.beginPath();c.arc(home.x,home.y,s*3.2,0,Math.PI*2);c.fill();c.strokeStyle='#e6df9b55';c.stroke();
- for(const n of v['nodes']){const p=point(n);if(p.x<0||p.y<0||p.x>w||p.y>h)continue;c.globalAlpha=n['stock']?(.4+.6*n['stock']/n['capacity']):.12;c.fillStyle=colors[n['kind']];c.beginPath();
+ for(const n of v['nodes']){
+  if(foodMap&&(n['kind']!=='food'||n['stock']===0))continue;
+  const p=point(n);if(p.x<0||p.y<0||p.x>w||p.y>h)continue;c.globalAlpha=n['stock']?(.4+.6*n['stock']/n['capacity']):.12;c.fillStyle=colors[n['kind']];c.beginPath();
   if(n['kind']==='wood'){c.moveTo(p.x,p.y-s*.23);c.lineTo(p.x+s*.18,p.y+s*.16);c.lineTo(p.x-s*.18,p.y+s*.16);c.closePath();}else if(n['kind']==='ore'){c.moveTo(p.x,p.y-s*.2);c.lineTo(p.x+s*.16,p.y);c.lineTo(p.x,p.y+s*.2);c.lineTo(p.x-s*.16,p.y);c.closePath();}else c.arc(p.x,p.y,Math.max(1.2,s*.13),0,Math.PI*2);c.fill();}
  c.globalAlpha=1;
- for(const b of v['buildings']){const p=point(b);if(p.x<-s||p.y<-s||p.x>w+s||p.y>h+s)continue;const color=b['owner']===0?'#f6ebbc':model.COLORS[(b['lineage']-1)%8];c.strokeStyle=color;c.fillStyle=color+'40';c.fillRect(p.x-s*.28,p.y-s*.28,s*.56,s*.56);c.strokeRect(p.x-s*.28,p.y-s*.28,s*.56,s*.56);if(s>12){c.font='9px monospace';c.textAlign='center';c.fillStyle=color;c.fillText(b['food'],p.x,p.y+3);}}
+ if(!foodMap)for(const b of v['buildings']){const p=point(b);if(p.x<-s||p.y<-s||p.x>w+s||p.y>h+s)continue;const color=b['owner']===0?'#f6ebbc':model.COLORS[(b['lineage']-1)%8];c.strokeStyle=color;c.fillStyle=color+'40';c.fillRect(p.x-s*.28,p.y-s*.28,s*.56,s*.56);c.strokeRect(p.x-s*.28,p.y-s*.28,s*.56,s*.56);if(s>12){c.font='9px monospace';c.textAlign='center';c.fillStyle=color;c.fillText(b['food'],p.x,p.y+3);}}
+ if(foodMap)c.globalAlpha=.55;
  const progress=Math.min(1,(performance.now()-a.received)/400),old=new Map((a.previous?.['bots']||[]).map(b=>[b['id'],b]));
  for(const b of v['bots']){
   const previous=old.get(b['id']),p=point(b);if(previous&&Math.abs(previous['x']-b['x'])+Math.abs(previous['y']-b['y'])<=2){p.x+=(previous['x']-b['x'])*s*(1-progress);p.y+=(previous['y']-b['y'])*s*(1-progress);}
@@ -217,8 +387,16 @@ function draw(a){
   c.fillStyle=colour(b);c.beginPath();c.arc(p.x,p.y,Math.max(1.5,s*.15),0,Math.PI*2);c.fill();
   if(s>16){c.strokeStyle=colour(b)+'65';c.beginPath();c.arc(p.x,p.y,s*.24,-Math.PI/2,-Math.PI/2+Math.PI*2*b['health']/100);c.stroke();if(b===a.inspected){c.font='9px monospace';c.textAlign='center';c.fillText('#'+b['id'],p.x,p.y-s*.35);}}
  }
- const p=point(v['player']);c.shadowColor='#e5edb7';c.shadowBlur=12;c.fillStyle='#f6ebbc';c.beginPath();c.moveTo(p.x,p.y-s*.24);c.lineTo(p.x+s*.2,p.y+s*.19);c.lineTo(p.x-s*.2,p.y+s*.19);c.closePath();c.fill();c.shadowBlur=0;if(s>12){c.font='10px monospace';c.textAlign='center';c.fillText('YOU',p.x,p.y-s*.4);}
- for(const e of v['events'].slice(-12)){if(v['time']-e['time']>5)continue;const p=point(e),r=s*(.3+(v['time']-e['time'])/5);c.strokeStyle='#e7c57c44';c.beginPath();c.arc(p.x,p.y,r,0,Math.PI*2);c.stroke();}
+ c.globalAlpha=1;
+ if(foodMap)for(const depot of v['buildings']){
+  const p=point(depot),side=Math.max(4,s*.9),x=p.x-side/2,y=p.y-side/2;
+  c.strokeStyle='#f7ebc3';c.lineWidth=1;
+  c.fillStyle=depot['food']>0?'#e9c778':'#132723';
+  c.fillRect(x,y,side,side);c.strokeRect(x,y,side,side);
+ }
+ const p=point(v['player']),marker=a.overview?Math.max(16,s):s;
+ c.shadowColor='#e5edb7';c.shadowBlur=12;c.fillStyle='#f6ebbc';c.beginPath();c.moveTo(p.x,p.y-marker*.24);c.lineTo(p.x+marker*.2,p.y+marker*.19);c.lineTo(p.x-marker*.2,p.y+marker*.19);c.closePath();c.fill();c.shadowBlur=0;if(s>12){c.font='10px monospace';c.textAlign='center';c.fillText('YOU',p.x,p.y-s*.4);}
+ if(!foodMap)for(const e of v['events'].slice(-12)){if(v['time']-e['time']>5)continue;const p=point(e),r=s*(.3+(v['time']-e['time'])/5);c.strokeStyle='#e7c57c44';c.beginPath();c.arc(p.x,p.y,r,0,Math.PI*2);c.stroke();}
  if(a.selected){const p=point(a.selected);c.strokeStyle='#f0d597';c.lineWidth=1.5;c.strokeRect(p.x-s*.48,p.y-s*.48,s*.96,s*.96);}
 }
 function frame(a,width,height,menu){

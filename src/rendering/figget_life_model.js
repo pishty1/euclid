@@ -232,6 +232,7 @@ function fresh(seed = 42, count = 128) {
     "totalUpdates": 0,
     "pressure": 1,
     "stats": null,
+    "depotGoal": {"depot": null, "stocked": false, "meal": null},
   };
   for (let y = 2; y < SIZE - 1; y += 3)
     for (let x = 2; x < SIZE - 1; x += 3) {
@@ -279,6 +280,7 @@ function setPopulation(w, count) {
     w["bots"].length = count;
   }
   rescale(w);
+  if (w["depotGoal"]) refreshDepotGoal(w);
   if (w["stats"] && before !== count) {
     w["stats"]["populationChanges"]++;
     event(
@@ -486,6 +488,71 @@ function build(w, a, idx) {
       "Depot built. Store any material here; repair it separately with timber.",
   };
 }
+// A tagged serving keeps its first player-owned source even if another bot moves it.
+function playerServing(origin) {
+  return origin?.["id"] === 0 &&
+    Number.isInteger(origin["depotX"]) && Number.isInteger(origin["depotY"]);
+}
+
+function refreshDepotGoal(w) {
+  const goal = w["depotGoal"];
+  if (goal["meal"]) return;
+  const owned = w["buildings"].find(b => b["owner"] === 0);
+  let serving;
+  if (owned || w["player"]["built"] > 0) {
+    for (const b of w["buildings"]) {
+      serving = b["foodOwners"].find(playerServing);
+      if (serving) break;
+    }
+    if (!serving) {
+      for (const bot of w["bots"]) {
+        serving = bot["foodOrigins"].find(playerServing);
+        if (serving) break;
+      }
+    }
+  }
+  goal["stocked"] = !!serving;
+  goal["depot"] = serving ? {"x": serving["depotX"], "y": serving["depotY"]} :
+    owned ? {"x": owned["x"], "y": owned["y"]} : null;
+}
+
+function restoreDepotGoal(w) {
+  const saved = w["depotGoal"], meal = saved?.["meal"];
+  if (meal && Number.isInteger(meal["actor"]) && meal["actor"] > 0 &&
+      Number.isFinite(meal["health"]) && meal["health"] > 0 && meal["health"] <= 30 &&
+      Number.isFinite(meal["time"]) && meal["time"] >= 0 && meal["time"] <= w["time"] &&
+      ["x", "y", "depotX", "depotY"].every(k => Number.isInteger(meal[k]) && meal[k] >= 0 && meal[k] < SIZE)) {
+    w["depotGoal"] = {"depot": {"x": meal["depotX"], "y": meal["depotY"]}, "stocked": true, "meal": meal};
+    return w;
+  }
+  if (!saved) {
+    // Old food records follow the latest depot. Recover the source only when
+    // the journal still identifies who built it and the original supply action.
+    const builders = new Map(), supplied = new Map();
+    for (const e of w["events"]) {
+      if (!e) continue;
+      const tile = key(e["x"], e["y"]);
+      if (e["text"] === "built a depot") builders.set(tile, e["actor"]);
+      if (e["actor"] === 0 && e["text"] === "stocked a depot" && builders.get(tile) === 0)
+        supplied.set(e["time"], e);
+    }
+    const batches = [...w["buildings"].map(b => b["foodOwners"]),
+      ...w["bots"].map(a => a["foodOrigins"]), w["player"]["foodOrigins"]];
+    for (const batch of batches) {
+      for (const origin of batch) {
+        const source = origin?.["id"] === 0 && supplied.get(origin["time"]);
+        if (source) {
+          origin["depotX"] = source["x"];
+          origin["depotY"] = source["y"];
+        }
+      }
+    }
+  }
+  w["depotGoal"] = {"depot": null, "stocked": false, "meal": null};
+  refreshDepotGoal(w);
+  return w;
+}
+
 function contribution(w, a, b = null) {
   return {
     "id": a["id"],
@@ -528,7 +595,12 @@ function transfer(w, a, b, kind, withdraw = false, amount = 5) {
     if (kind === "food")
       for (let i = 0; i < qty; i++) {
         const origin = a["foodOrigins"].shift() || contribution(w, a, b);
-        b["foodOwners"].push({ ...origin, "x": b["x"], "y": b["y"] });
+        const serving = { ...origin, "x": b["x"], "y": b["y"] };
+        if (a["id"] === 0 && b["owner"] === 0 && serving["id"] === 0 && !playerServing(serving)) {
+          serving["depotX"] = b["x"];
+          serving["depotY"] = b["y"];
+        }
+        b["foodOwners"].push(serving);
       }
   }
   return {
@@ -625,6 +697,12 @@ function eat(w, a, b, idx) {
   if (restored < 5) w["stats"]["smallMeals"]++;
   if (donor && donor["id"] !== a["id"]) {
     w["stats"]["services"]++;
+    if (playerServing(donor) && !w["depotGoal"]["meal"]) {
+      const meal = {"actor": a["id"], "health": restored, "time": w["time"],
+        "x": a["x"], "y": a["y"], "depotX": donor["depotX"], "depotY": donor["depotY"]};
+      w["depotGoal"] = {"depot": {"x": meal["depotX"], "y": meal["depotY"]}, "stocked": true, "meal": meal};
+      event(w, a, "recovered " + Math.round(restored) + " health from your food");
+    }
     if (!fromDepot) {
       if (Number.isInteger(donor["x"]) && Number.isInteger(donor["y"])) {
         const source = idx.buildings.get(key(donor["x"], donor["y"]));
@@ -1113,6 +1191,7 @@ function step(w) {
     if (w["history"].length > 120) w["history"].shift();
     w["nextHistory"] = w["time"] + 10;
   }
+  refreshDepotGoal(w);
   return w;
 }
 function playerAction(w, command) {
@@ -1160,6 +1239,7 @@ function playerAction(w, command) {
   a["last"] = w["time"];
   a["readyAt"] = w["time"] + (type === "move" ? 0.5 : 1);
   if (type !== "move") event(w, a, result["message"]);
+  refreshDepotGoal(w);
   return result["message"];
 }
 function view(w) {
@@ -1179,6 +1259,7 @@ function view(w) {
     "time": w["time"],
     "seed": w["seed"],
     "player": strip(w["player"]),
+    "depotGoal": { ...w["depotGoal"] },
     "bots": w["bots"].map(strip),
     "nodes": w["nodes"],
     "buildings": w["buildings"].map((b) => {
@@ -1348,7 +1429,7 @@ function validLegacy(w) {
   );
 }
 function restore(input) {
-  if (valid(input)) return input;
+  if (valid(input)) return restoreDepotGoal(input);
   if (!validLegacy(input)) return null;
   const w = structuredClone(input);
   w["version"] = 2;
@@ -1409,7 +1490,7 @@ function restore(input) {
     w["player"],
     "world upgraded: inventory tools, independent repairs and richer observations",
   );
-  return valid(w) ? w : null;
+  return valid(w) ? restoreDepotGoal(w) : null;
 }
 function valid(w) {
   if (
