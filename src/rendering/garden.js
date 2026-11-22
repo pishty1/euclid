@@ -76,7 +76,13 @@ function settingsUI(app){
 function syncRules(app){for(const [key,{slider,output}] of Object.entries(app.sliders)){slider.value=app.rule[key];output.textContent=app.rule[key].toFixed(key==='feed'||key==='decay'?4:2);}}
 function readSaves(){try{const value=JSON.parse(window.localStorage.getItem(storageKey)||'[]');return Array.isArray(value)?value.filter(item=>item && item['version']===1 && typeof item['name']==='string' && typeof item['cells']==='string').slice(0,3):[];}catch(_){return [];}}
 function refreshSaved(app){const items=readSaves();app.savedChoice.textContent='';for(let i=0;i<items.length;i++){const option=element('option','',items[i]['name'],app.savedChoice);option.value=String(i);}if(!items.length){const option=element('option','','No discoveries saved yet',app.savedChoice);option.value='';}app.restoreButton.disabled=!items.length;}
-async function currentField(app){return app.gpu?gpu.snapshot(app.gpu):new Float32Array(app.data);}
+async function currentField(app){
+  const renderer=app.gpu;
+  if(!renderer)return new Float32Array(app.data);
+  const [data]=await Promise.all([gpu.snapshot(renderer),renderer.frameDone]);
+  if(renderer.failed||renderer.lost)throw new Error('GPU unavailable');
+  return data;
+}
 async function save(app){
   if(app.busy)return;app.busy=true;app.saveButton.disabled=true;
   const epoch=app.epoch,rule={...app.rule},generation=app.generation;
@@ -89,23 +95,23 @@ async function save(app){
 }
 async function restore(app){
   const saved=readSaves()[Number(app.savedChoice.value)];if(!saved)return;
-  try {const data=decode(saved);await replaceField(app,data,saved['width'],saved['height']);app.rule=model.rules(saved['rule']||{});app.generation=Number.isFinite(saved['generation'])?saved['generation']:0;app.presetChoice.value='custom';syncRules(app);say(app,'Discovery restored: same cells and rules.');}
+  try {const data=decode(saved);const generation=Number.isFinite(saved['generation'])?saved['generation']:0;await replaceField(app,data,saved['width'],saved['height'],generation);app.rule=model.rules(saved['rule']||{});app.presetChoice.value='custom';syncRules(app);say(app,'Discovery restored: same cells and rules.');}
   catch(_){say(app,'This discovery could not be restored.');}
 }
-async function replaceField(app,data,width,height){
-  app.epoch++;app.data=data;app.scratch=new Float32Array(data.length);app.width=width;app.height=height;app.brushes=[];
+async function replaceField(app,data,width,height,generation=0){
+  app.epoch++;app.generation=generation;app.checkpointGeneration=generation;app.data=data;app.scratch=new Float32Array(data.length);app.width=width;app.height=height;app.brushes=[];
   if(app.gpu && (app.gpu.width!==width||app.gpu.height!==height)){gpu.dispose(app.gpu);app.gpu=null;app.gpuCanvas.hidden=true;app.backend='CPU';}
   if(app.gpu)gpu.upload(app.gpu,data);
   else if(!app.initializing&&!app.gpuAttempted)startGPU(app);
 }
-function resetField(app,empty){app.generation=0;replaceField(app,empty?model.field(app.width,app.height):model.seed(app.width,app.height),app.width,app.height);}
+function resetField(app,empty){replaceField(app,empty?model.field(app.width,app.height):model.seed(app.width,app.height),app.width,app.height);}
 async function startGPU(app){
   app.initializing=true;app.gpuAttempted=true;
   try {
     const r=await gpu.create(app.gpuCanvas,app.data,app.width,app.height);
     if(!r)return;
     if(app.stopped||r.width!==app.width||r.height!==app.height){gpu.dispose(r);return;}
-    gpu.upload(r,app.data);app.gpu=r;app.gpuCanvas.hidden=false;app.backend='WebGPU';app.speedSlider.max=16;
+    gpu.upload(r,app.data);app.checkpointGeneration=app.generation;app.gpu=r;app.gpuCanvas.hidden=false;app.backend='WebGPU';app.speedSlider.max=16;
   }catch(error){app.backend='CPU';app.gpuError=String(error.message);}
   finally{app.initializing=false;}
 }
@@ -172,10 +178,10 @@ function renderCPU(app,width,height){
 }
 function updateStats(app,now){
   if(now-app.lastStats<1500||app.measuring)return;app.lastStats=now;app.measuring=true;
-  const epoch=app.epoch;
+  const {epoch,generation,gpu:renderer}=app;
   currentField(app).then(data=>{
-    if(app.stopped||epoch!==app.epoch)return;
-    if(app.gpu)app.data=data; // Recovery checkpoint if GPU access is lost.
+    if(app.stopped||epoch!==app.epoch||renderer!==app.gpu||renderer?.failed||renderer?.lost)return;
+    if(renderer){app.data=data;app.checkpointGeneration=generation;}
     const stats=model.measure(data),coverage=Math.round(stats.coverage*100);
     app.status.textContent=`${app.backend} · ${app.width} × ${app.height} CELLS · ${app.generation.toLocaleString()} STEPS`;
     app.stateLabel.textContent=app.paused?'Paused · paint or adjust the rules':stats.coverage<0.001?'Quiet field · paint a seed or change the rules':`${coverage}% coverage · ${stats.activity<0.00002?'Settling':stats.activity<0.0004?'Slowly changing':'Growing & rearranging'}`;
@@ -185,7 +191,7 @@ function frame(app,width,height,menuOpen){
   if(!app||app.stopped)return;
   if(!app.root.isConnected){dispose(app);return;}
   app.menu=menuOpen;if(menuOpen){app.pointer=null;app.brushes=[];}
-  const now=performance.now();if(app.gpu?.pending)return;if(now-app.lastFrame<30)return;app.lastFrame=now;
+  const now=performance.now();if(app.gpu?.pending&&!app.gpu.failed&&!app.gpu.lost)return;if(now-app.lastFrame<30)return;app.lastFrame=now;
   if(app.canvas.width!==width||app.canvas.height!==height){app.canvas.width=width;app.canvas.height=height;app.gpuCanvas.width=width;app.gpuCanvas.height=height;}
   const paused=app.paused||menuOpen||document.hidden;
   const brushes=app.brushes.splice(0,96),steps=paused?0:Math.min(app.speed,app.gpu?16:6);
@@ -198,7 +204,7 @@ function frame(app,width,height,menuOpen){
       renderCPU(app,width,height);
     }
     app.generation+=steps;
-  }catch(error){app.gpuError=String(error.message)+(app.gpu?.error?' / '+app.gpu.error:'');gpu.dispose(app.gpu);app.gpu=null;app.gpuCanvas.hidden=true;app.backend='CPU';app.speedSlider.max=6;app.speed=Math.min(6,app.speed);app.speedSlider.value=app.speed;say(app,'GPU unavailable. Continuing from the last cell checkpoint.');renderCPU(app,width,height);}
+  }catch(error){if(!app.gpu)throw error;app.generation=app.checkpointGeneration;app.brushes.unshift(...brushes);app.gpuError=String(error.message)+(app.gpu?.error?' / '+app.gpu.error:'');gpu.dispose(app.gpu);app.gpu=null;app.gpuCanvas.hidden=true;app.backend='CPU';app.speedSlider.max=6;app.speed=Math.min(6,app.speed);app.speedSlider.value=app.speed;say(app,'GPU unavailable. Continuing from the last cell checkpoint.');renderCPU(app,width,height);}
   if(now>app.toastUntil)app.toast.hidden=true;updateStats(app,now);
 }
 module.exports={create,frame,dispose};

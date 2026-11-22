@@ -57,7 +57,8 @@ fn sampleField(uv:vec2f)->vec4f {
   let c=sampleField(v.uv);let ink=smoothstep(0.025,0.38,c.y);
   let base=vec3f(0.0235,0.055,0.063);
   var color=mix(base,vec3f(0.1,0.38,0.34),ink*0.7);
-  let membrane=exp(-pow((c.y-0.19)*16.,2.));
+  let offset=(c.y-0.19)*16.;
+  let membrane=exp(-(offset*offset));
   color+=membrane*vec3f(0.18,0.63,0.48)+smoothstep(0.25,0.55,c.y)*vec3f(0.75,0.55,0.26);
   let mode=u32(settings.extra.y);
   if(mode==1u){color=mix(base,vec3f(1.,0.48,0.25),clamp(c.z*150.,0.,1.));color+=ink*vec3f(0.02,0.08,0.09);}
@@ -92,14 +93,26 @@ async function create(canvas,data,width,height) {
     const buffers=[0,1].map(()=>device.createBuffer({size:data.byteLength,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC}));
     buffers.forEach(b=>device.queue.writeBuffer(b,0,data));
     const groups=buffers.map((b,i)=>device.createBindGroup({layout,entries:[{binding:0,resource:{buffer:uniform}},{binding:1,resource:{buffer:b}},{binding:2,resource:{buffer:buffers[1-i]}},{binding:3,resource:{buffer:brushBuffer}}]}));
-    const r={api,adapter,device,context,compute,paint,render,brushBuffer,buffers,groups,uniform,width,height,current:0,pending:false,stopped:false,lost:false};
+    const r={api,adapter,device,context,compute,paint,render,brushBuffer,buffers,groups,uniform,width,height,current:0,pending:false,stopped:false,lost:false,failed:false};
     device.lost.then(info=>{r.lost=true;r.error=info.message;});
-    device.addEventListener('uncapturederror',event=>{r.error=event.error.message;});
+    device.addEventListener('uncapturederror',event=>{r.failed=true;r.error=event.error.message;});
     return r;
   } catch(error){device.destroy();throw error;}
 }
 function frame(r,rule,steps,view,brushes=[]) {
-  if(r.stopped||r.lost)throw new Error('GPU unavailable');
+  if(r.stopped||r.lost||r.failed)throw new Error('GPU unavailable');
+  r.device.pushErrorScope('validation');
+  try {
+    submitFrame(r,rule,steps,view,brushes);
+  } finally {
+    const validation=r.device.popErrorScope();
+    r.pending=true;
+    r.frameDone=Promise.all([validation,r.device.queue.onSubmittedWorkDone()]).then(([error])=>{
+      if(error){r.failed=true;r.error=error.message;}
+    },()=>{r.lost=true;}).finally(()=>{r.pending=false;});
+  }
+}
+function submitFrame(r,rule,steps,view,brushes) {
   const tool={'seed':1,'erase':2,'feed':3,'wall':4};
   const values=new Float32Array([r.width,r.height,0,0,rule['feed'],rule['decay'],rule['spread'],rule['supply'],
     0,0,0,0,rule['growth'],view,0,brushes.length]);
@@ -120,7 +133,6 @@ function frame(r,rule,steps,view,brushes=[]) {
   const pass=encoder.beginRenderPass({colorAttachments:[{view:r.context.getCurrentTexture().createView(),loadOp:'clear',storeOp:'store',clearValue:{r:0,g:0,b:0,a:1}}]});
   pass.setPipeline(r.render);pass.setBindGroup(0,r.groups[r.current]);pass.draw(3);pass.end();
   r.device.queue.submit([encoder.finish()]);
-  r.pending=true;r.device.queue.onSubmittedWorkDone().then(()=>r.pending=false,()=>{r.pending=false;r.lost=true;});
 }
 async function snapshot(r) {
   const buffer=r.device.createBuffer({size:r.width*r.height*16,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
