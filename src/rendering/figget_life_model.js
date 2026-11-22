@@ -176,6 +176,54 @@ function initBrain(a) {
     a["q"][i + 9] = d["full"] ? 0.8 : 0.05;
   }
 }
+// Five cumulative minute samples let relatives be compared at the same age.
+const FAMILY_ARCHIVE_LIMIT = 256;
+function familyAtBirth(time) {
+  return {
+    "parentId": null, "bornAt": time,
+    "early": {"moves": 0, "gathers": 0, "healing": 0, "minutes": []},
+  };
+}
+function countEarly(a, metric, amount) {
+  const early = a["family"]?.["early"];
+  if (early && a["age"] <= 300 && early["minutes"].length < 5) early[metric] += amount;
+}
+function sampleFamily(w) {
+  for (const a of w["bots"]) {
+    const early = a["family"]?.["early"];
+    if (early && early["minutes"].length < 5 && a["age"] === (early["minutes"].length + 1) * 60)
+      early["minutes"].push([early["moves"], early["gathers"], early["healing"]]);
+  }
+}
+function retireFamily(w, a) {
+  w["familyArchive"].push({
+    "id": a["id"], "generation": a["generation"], "lineage": a["lineage"],
+    "retiredAt": w["time"], "family": a["family"],
+  });
+  if (w["familyArchive"].length > FAMILY_ARCHIVE_LIMIT) w["familyArchive"].shift();
+}
+function restoreFamily(w) {
+  const archive = Array.isArray(w["familyArchive"]) ? w["familyArchive"] : [];
+  w["familyArchive"] = archive.slice(-FAMILY_ARCHIVE_LIMIT).filter(a => a &&
+    Number.isInteger(a["id"]) && a["id"] > 0 && Number.isFinite(a["retiredAt"]));
+  for (const bot of [...w["bots"], ...w["familyArchive"]]) {
+    let family = bot["family"];
+    if (!family || typeof family !== "object") {
+      family = familyAtBirth(Math.max(0, w["time"] - (bot["age"] || 0)));
+      // Older saves lack early movement and service history.
+      if (bot["age"] !== 0) family["early"] = null;
+      bot["family"] = family;
+    }
+    if (!Number.isInteger(family["parentId"]) || family["parentId"] <= 0 || family["parentId"] >= bot["id"])
+      family["parentId"] = null;
+    const early = family["early"];
+    if (early && (!["moves","gathers","healing"].every(k => Number.isFinite(early[k]) && early[k] >= 0) ||
+        !Array.isArray(early["minutes"]) || early["minutes"].length > 5 ||
+        !early["minutes"].every(row => Array.isArray(row) && row.length === 3 && row.every(n => Number.isFinite(n) && n >= 0))))
+      family["early"] = null;
+  }
+  return w;
+}
 function spawn(w, id) {
   const clan = 1 + ((id - 1) % 8),
     angle = ((clan - 1) * Math.PI) / 4,
@@ -188,6 +236,7 @@ function spawn(w, id) {
     clamp(hy + Math.floor(random(w) * 13) - 6, 1, 94),
     clan,
   );
+  a["family"] = familyAtBirth(w["time"]);
   a["homeX"] = hx;
   a["homeY"] = hy;
   a["epsilon"] = 0.12 + random(w) * 0.2;
@@ -223,6 +272,7 @@ function fresh(seed = 42, count = 128) {
     "eventId": 0,
     "nextId": 1,
     "generation": 1,
+    "familyArchive": [],
     "nextEvolution": 180,
     "learning": true,
     "evolution": true,
@@ -232,6 +282,7 @@ function fresh(seed = 42, count = 128) {
     "totalUpdates": 0,
     "pressure": 1,
     "stats": null,
+    "retiredDepotLogs": [],
     "depotGoal": {"depot": null, "stocked": false, "meal": null},
   };
   for (let y = 2; y < SIZE - 1; y += 3)
@@ -274,8 +325,10 @@ function setPopulation(w, count) {
     for (const k of KINDS) book(w, "introduced", k, a[k]);
   }
   if (w["bots"].length > count) {
-    for (const a of w["bots"].slice(count))
+    for (const a of w["bots"].slice(count)) {
       for (const k of KINDS) book(w, "lost", k, a[k]);
+      retireFamily(w, a);
+    }
     w["retired"] += w["bots"].length - count;
     w["bots"].length = count;
   }
@@ -356,6 +409,7 @@ function move(w, a, dx, dy, idx) {
   }
   a["x"] = x;
   a["y"] = y;
+  countEarly(a, "moves", 1);
   dest.push(a);
   idx.agents.set(key(x, y), dest);
   return true;
@@ -433,6 +487,7 @@ function gather(w, a, n) {
   n["soil"] = Math.max(0.45, n["soil"] - 0.06);
   a[n["kind"]]++;
   a["gathers"]++;
+  countEarly(a, "gathers", 1);
   if (a["id"] !== 0 && a["gathers"] % 12 === 1)
     event(w, a, "gathered " + n["kind"]);
   if (n["kind"] === "ore") a["health"] -= 8;
@@ -442,16 +497,15 @@ function gather(w, a, n) {
       "Gathered " + n["kind"] + (n["kind"] === "ore" ? " · −8 health." : "."),
   };
 }
-function buildable(w, a, idx) {
-  return (
-    a["wood"] >= 6 &&
-    a["ore"] >= 1 &&
+function openDepotSite(idx, x, y) {
+  return x >= 0 && x < SIZE && y >= 0 && y < SIZE &&
+    Math.abs(x - 48) + Math.abs(y - 48) > 3 &&
+    !idx.nodes.has(key(x, y)) && !idx.buildings.has(key(x, y));
+}
+function buildable(w, a, idx, x = a["x"], y = a["y"]) {
+  return a["wood"] >= 6 && a["ore"] >= 1 && w["buildings"].length < 1024 &&
     w["buildings"].filter((b) => b["owner"] === a["id"]).length < 4 &&
-    w["buildings"].length < 1024 &&
-    Math.abs(a["x"] - 48) + Math.abs(a["y"] - 48) > 3 &&
-    !idx.nodes.has(key(a["x"], a["y"])) &&
-    !idx.buildings.has(key(a["x"], a["y"]))
-  );
+    openDepotSite(idx, x, y);
 }
 function build(w, a, idx) {
   if (!buildable(w, a, idx))
@@ -474,6 +528,8 @@ function build(w, a, idx) {
     "wood": 0,
     "ore": 0,
     "foodOwners": [],
+    "builtAt": w["time"],
+    "visits": [],
     "expires": w["time"] + 480,
     "generation": a["generation"],
     "lastUsed": -1000,
@@ -516,7 +572,68 @@ function refreshDepotGoal(w) {
     owned ? {"x": owned["x"], "y": owned["y"]} : null;
 }
 
+// A rebuilt depot occupies the same tile but has a distinct construction time.
+const VISITS_PER_DEPOT = 8, RETIRED_DEPOTS = 24;
+function depotSite(b) {
+  return {"x": b["x"], "y": b["y"], "builtAt": b["builtAt"] ?? -1};
+}
+function sameSite(a, b) {
+  return !!a && !!b && a["x"] === b["x"] && a["y"] === b["y"] &&
+    (a["builtAt"] ?? -1) === (b["builtAt"] ?? -1);
+}
+function visit(b, entry) {
+  const visits = b["visits"] || (b["visits"] = []);
+  visits.push(entry);
+  if (visits.length > VISITS_PER_DEPOT) visits.shift();
+}
+function archiveDepot(w, b) {
+  const site = {...depotSite(b), "visits": b["visits"] || [], "retired": true};
+  w["retiredDepotLogs"].push(site);
+  if (w["retiredDepotLogs"].length > RETIRED_DEPOTS) w["retiredDepotLogs"].shift();
+  return site;
+}
+function validSite(site) {
+  return site && ["x", "y"].every(k => Number.isInteger(site[k]) && site[k] >= 0 && site[k] < SIZE) &&
+    Number.isFinite(site["builtAt"]) && site["builtAt"] >= -1;
+}
+function restoreDepotLogs(w) {
+  const visits = b => (Array.isArray(b["visits"]) ? b["visits"].slice(-VISITS_PER_DEPOT) : []).filter(v =>
+    v && Number.isInteger(v["actor"]) && v["actor"] >= 0 && Number.isFinite(v["time"]) &&
+    ["x", "y"].every(k => Number.isInteger(v[k]) && v[k]>=0 && v[k]<SIZE) &&
+    (v["type"] === "meal" ? Number.isFinite(v["health"]) && v["health"]>0 && v["health"]<=30 :
+     ["deposit", "withdraw"].includes(v["type"]) && KINDS.includes(v["kind"]) && Number.isInteger(v["amount"]) && v["amount"]>0));
+  w["retiredDepotLogs"] = (Array.isArray(w["retiredDepotLogs"]) ? w["retiredDepotLogs"].slice(-RETIRED_DEPOTS) : [])
+    .filter(validSite).map(b => ({...depotSite(b), "retired": true, "visits": visits(b)}));
+  for (const b of w["buildings"]) {
+    if (!Number.isFinite(b["builtAt"])) b["builtAt"] = -1;
+    b["visits"] = visits(b);
+  }
+}
+function depotLogsByTile(w) {
+  const sites = {};
+  function append(b, retired) {
+    const k = key(b["x"], b["y"]);
+    (sites[k] || (sites[k] = [])).push({...depotSite(b), "retired": retired, "visits": b["visits"] || []});
+  }
+  for (const b of w["buildings"]) append(b, false);
+  for (let i=w["retiredDepotLogs"].length-1;i>=0;i--) append(w["retiredDepotLogs"][i], true);
+  return sites;
+}
+function recordDepotMeal(w, a, donor, direct, restored, idx) {
+  const entry = {"type": "meal", "actor": a["id"], "time": w["time"], "x": a["x"], "y": a["y"], "health": restored};
+  const first = donor?.["firstDepot"], last = direct || donor?.["lastDepot"];
+  function record(site) {
+    if (!validSite(site)) return;
+    const live = idx.buildings.get(key(site["x"], site["y"]));
+    const depot = sameSite(live, site) ? live :
+      w["retiredDepotLogs"].find(b => sameSite(b, site)) || archiveDepot(w, site);
+    visit(depot, entry);
+  }
+  record(first);
+  if (last && !sameSite(first, last)) record(depotSite(last));
+}
 function restoreDepotGoal(w) {
+  restoreDepotLogs(w);
   const saved = w["depotGoal"], meal = saved?.["meal"];
   if (meal && Number.isInteger(meal["actor"]) && meal["actor"] > 0 &&
       Number.isFinite(meal["health"]) && meal["health"] > 0 && meal["health"] <= 30 &&
@@ -584,18 +701,23 @@ function transfer(w, a, b, kind, withdraw = false, amount = 5) {
         ? "No room in your pack, or this store is empty."
         : "No material to store, or this depot is full.",
     };
+  const site = depotSite(b);
+  visit(b, {"type": withdraw ? "withdraw" : "deposit", "actor": a["id"], "time": w["time"],
+    "x": a["x"], "y": a["y"], "kind": kind, "amount": qty});
   if (withdraw) {
     b[kind] -= qty;
     a[kind] += qty;
     if (kind === "food")
-      a["foodOrigins"].push(...b["foodOwners"].splice(0, qty));
+      for (const origin of b["foodOwners"].splice(0, qty)) {
+        a["foodOrigins"].push({...origin, "firstDepot": origin?.["firstDepot"] || site, "lastDepot": site});
+      }
   } else {
     a[kind] -= qty;
     b[kind] += qty;
     if (kind === "food")
       for (let i = 0; i < qty; i++) {
         const origin = a["foodOrigins"].shift() || contribution(w, a, b);
-        const serving = { ...origin, "x": b["x"], "y": b["y"] };
+        const serving = { ...origin, "x": b["x"], "y": b["y"], "firstDepot": origin["firstDepot"] || site };
         if (a["id"] === 0 && b["owner"] === 0 && serving["id"] === 0 && !playerServing(serving)) {
           serving["depotX"] = b["x"];
           serving["depotY"] = b["y"];
@@ -695,7 +817,8 @@ function eat(w, a, b, idx) {
   w["stats"]["meals"]++;
   w["stats"]["healing"] += restored;
   if (restored < 5) w["stats"]["smallMeals"]++;
-  if (donor && donor["id"] !== a["id"]) {
+  recordDepotMeal(w, a, donor, fromDepot ? b : null, restored, idx);
+  if (Number.isInteger(donor?.["id"]) && donor["id"] !== a["id"]) {
     w["stats"]["services"]++;
     if (playerServing(donor) && !w["depotGoal"]["meal"]) {
       const meal = {"actor": a["id"], "health": restored, "time": w["time"],
@@ -715,6 +838,7 @@ function eat(w, a, b, idx) {
     const provider = idx.byId.get(donor["id"]);
     if (provider) {
       provider["serviceHealth"] += restored;
+      countEarly(provider, "healing", restored);
       if (
         w["learning"] &&
         provider["q"] &&
@@ -1067,6 +1191,7 @@ function evolve(w) {
     child["x"] = site["x"];
     child["y"] = site["y"];
     child["generation"] = parent["generation"] + 1;
+    child["family"]["parentId"] = parent["id"];
     child["epsilon"] = clamp(
       parent["epsilon"] + (random(w) - 0.5) * 0.04,
       0.05,
@@ -1080,6 +1205,7 @@ function evolve(w) {
     for (let i = 0; i < child["q"].length; i++)
       if (random(w) < 0.02)
         child["q"][i] = clamp(child["q"][i] + (random(w) - 0.5) * 0.2, -20, 20);
+    retireFamily(w, old);
     w["bots"][w["bots"].indexOf(old)] = child;
     born++;
   }
@@ -1114,6 +1240,7 @@ function step(w) {
   }
   w["buildings"] = w["buildings"].filter((b) => {
     if (b["expires"] > w["time"]) return true;
+    if (b["visits"]?.length) archiveDepot(w, b);
     for (const k of KINDS) book(w, "lost", k, b[k]);
     return false;
   });
@@ -1175,6 +1302,7 @@ function step(w) {
         : null;
     a["fitness"] = fitness(a);
   }
+  sampleFamily(w);
   if (w["time"] >= w["nextEvolution"]) {
     evolve(w);
     w["nextEvolution"] += 180;
@@ -1258,12 +1386,14 @@ function view(w) {
     "version": 2,
     "time": w["time"],
     "seed": w["seed"],
+    "familyArchive": w["familyArchive"],
     "player": strip(w["player"]),
     "depotGoal": { ...w["depotGoal"] },
+    "depotLogs": depotLogsByTile(w),
     "bots": w["bots"].map(strip),
     "nodes": w["nodes"],
     "buildings": w["buildings"].map((b) => {
-      const { "foodOwners": owners, ...rest } = b;
+      const { "foodOwners": owners, "visits": visits, ...rest } = b;
       return rest;
     }),
     "events": w["events"],
@@ -1429,7 +1559,7 @@ function validLegacy(w) {
   );
 }
 function restore(input) {
-  if (valid(input)) return restoreDepotGoal(input);
+  if (valid(input)) return restoreFamily(restoreDepotGoal(input));
   if (!validLegacy(input)) return null;
   const w = structuredClone(input);
   w["version"] = 2;
@@ -1490,7 +1620,7 @@ function restore(input) {
     w["player"],
     "world upgraded: inventory tools, independent repairs and richer observations",
   );
-  return valid(w) ? restoreDepotGoal(w) : null;
+  return valid(w) ? restoreFamily(restoreDepotGoal(w)) : null;
 }
 function valid(w) {
   if (
@@ -1657,6 +1787,8 @@ module.exports = {
   fresh,
   step,
   playerAction,
+  buildable,
+  openDepotSite,
   setPopulation,
   setPressure,
   view,

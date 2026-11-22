@@ -1,4 +1,7 @@
 const model=require('./figget_life_model.js');
+const family=require('./figget_family.js');
+const depotLog=require('./figget_depot_log.js');
+const {createExperiment}=require('./figget_experiment.js');
 const workerSource=require('./figget_worker_source.js');
 let active=null,closing=Promise.resolve();
 const DB='figget-life-v1',KEY='world-v2';
@@ -8,12 +11,13 @@ const css=`
 .fl-root{position:absolute;inset:0;z-index:2;color:#e3eee3;font:12px/1.5 system-ui,-apple-system,sans-serif;pointer-events:none}.fl-root *{box-sizing:border-box}.fl-root>canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;touch-action:none}.fl-root button,.fl-root select,.fl-root input{font:inherit}.fl-root button,.fl-root select{min-height:38px;padding:7px 11px;border:1px solid #acc6ab38;border-radius:9px;color:#dfeadc;background:#18332fec;cursor:pointer;touch-action:manipulation}.fl-root button:hover{border-color:#c6dc9a88}.fl-root :focus-visible{outline:2px solid #edce82;outline-offset:2px}.fl-root button:disabled{opacity:.4;cursor:default}.fl-root [hidden]{display:none!important}.fl-top{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));display:flex;gap:6px;pointer-events:auto}.fl-status{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 56px);left:18px;font:11px/1.7 monospace;white-space:pre-line;color:#a9c8bc;text-shadow:0 2px 5px #031a17}.fl-status strong{color:#f3ddb0}.fl-dock{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));width:min(390px,calc(100% - 24px));max-height:40%;overflow:auto;overscroll-behavior:contain;pointer-events:auto;border:1px solid #a1be9e40;border-radius:15px;padding:12px;background:#0b2424ec;backdrop-filter:blur(12px)}.fl-dock p{margin:0 0 7px}.fl-message{color:#ead3a1;min-height:18px}.fl-controls{display:flex;gap:5px;flex-wrap:wrap}.fl-controls button{font-size:11px;min-height:36px;padding:6px 9px}.fl-directions{float:right;display:grid;grid-template-columns:repeat(3,36px);gap:4px;margin-left:10px;margin-bottom:8px}.fl-directions button{padding:4px}.fl-inventory{clear:both;margin-top:8px}.fl-inventory summary{cursor:pointer;color:#d5d9b5}.fl-inventory select{margin:6px 0;max-width:130px}.fl-caption{clear:both;color:#8dada0;font:9px/1.5 monospace;margin-top:8px!important;margin-bottom:0!important}.fl-panel{position:absolute;z-index:3;right:max(12px,env(safe-area-inset-right));top:calc(max(12px,env(safe-area-inset-top)) + 53px);width:min(355px,calc(100% - 24px));max-height:calc(100% - 78px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;padding:16px;border:1px solid #abc19b3d;border-radius:15px;background:#102a27f8;pointer-events:auto;box-shadow:0 18px 60px #0005}.fl-panel h2{font:26px Georgia,serif;margin:8px 0}.fl-panel p{font-size:11px;color:#afc5b5}.fl-tabs{position:sticky;top:-16px;background:#102a27;display:flex;gap:4px;padding:8px 0;z-index:1}.fl-tabs button{padding:6px 9px;font-size:11px}.fl-tabs button[aria-pressed=true]{border-color:#e2c88b;color:#ead6a1}.fl-item{display:block;text-align:left;width:100%;margin:5px 0}.fl-item small{display:block;font:10px/1.6 monospace;color:#9ab6a3}.fl-panel label{display:block;margin:14px 0;color:#cfddc7}.fl-panel select{display:block;margin-top:6px;width:100%}.fl-panel input[type=checkbox]{accent-color:#e2c88b;width:18px;height:18px;vertical-align:middle}.fl-panel .fl-chart{width:100%;height:72px;background:#071e1c;border:1px solid #a1ba9626;border-radius:8px}.fl-alert{color:#edba87!important}.fl-inspect{border-left:2px solid #c8d798;padding-left:10px;margin-bottom:12px}.fl-bar{height:4px;background:#28433b;margin:5px 0}.fl-bar i{display:block;height:100%;background:#d3d88c}.fl-loading{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font:26px Georgia,serif;color:#d7dec8;max-width:80%;text-align:center}
 .fl-follow{clear:both;margin:8px 0;padding:8px 10px;background:#162f2c;border-left:3px solid #c8d798}.fl-follow button{float:right;min-height:32px;font-size:11px;padding:4px 8px;margin-left:8px}.fl-follow strong,.fl-follow small,.fl-follow span{display:block}.fl-follow small{color:#b2cbbc}.fl-follow span{clear:both;color:#dece9f;font-size:11px;padding-top:3px}
 .fl-map-controls{margin-bottom:8px}.fl-map-controls label{display:inline-flex;align-items:center;gap:6px}.fl-map-controls small{display:block;margin-top:4px;color:#c5d1ad}
+.fl-tabs{flex-wrap:wrap}.fl-experiment{border-block:1px solid #a1be9e40;padding:5px 0 10px;margin:10px 0}.fl-experiment summary{cursor:pointer;min-height:40px;display:list-item;align-content:center;color:#e4dabb}.fl-experiment table{width:100%;text-align:left;font-variant-numeric:tabular-nums}.fl-experiment th,.fl-experiment td{padding:4px}.fl-experiment progress{width:100%}.fl-panel table{border-collapse:collapse}.fl-panel th,.fl-panel td{padding:4px;overflow-wrap:anywhere}.fl-family table{width:100%;text-align:left;font-variant-numeric:tabular-nums}.fl-family button{margin:3px 4px 2px 0}
 .fl-help{position:fixed;inset:0;margin:auto;width:min(460px,calc(100% - 24px));max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;border:1px solid #abc19b65;border-radius:20px;padding:22px;background:#102a27;color:#e3eee3;pointer-events:auto;box-shadow:0 20px 100px #0008}.fl-help::backdrop{background:#021411b8;backdrop-filter:blur(5px)}.fl-help h2{font:30px Georgia,serif;margin:12px 0}.fl-help p{font-size:14px;line-height:1.65;color:#c4d6c7}.fl-help .fl-help-count{font:11px monospace;color:#e8c780;letter-spacing:.1em}.fl-help .fl-help-tip{padding:12px;border-left:2px solid #e8c780;background:#ffffff07}.fl-help-nav{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:20px;flex-wrap:wrap}.fl-help-nav button{min-height:44px}.fl-help-next{background:#d8dda2!important;color:#102a27!important}.fl-help-symbols{font:24px monospace;letter-spacing:12px;color:#f6ebbc;padding:8px 0}.fl-help-paused{font-size:11px!important;color:#93b3a1!important}
 @media(max-width:600px){.fl-top{top:calc(max(12px,env(safe-area-inset-top)) + 54px)}.fl-top button{font-size:11px;padding:6px 9px}.fl-status{top:calc(max(12px,env(safe-area-inset-top)) + 101px);font-size:10px;left:14px}.fl-panel{top:calc(max(12px,env(safe-area-inset-top)) + 103px);max-height:calc(100% - 125px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}.fl-dock{left:8px;bottom:calc(8px + env(safe-area-inset-bottom));width:calc(100% - 16px);padding:10px;font-size:11px;max-height:35%}.fl-directions{grid-template-columns:repeat(3,34px);gap:4px}.fl-directions button{min-height:34px}.fl-controls button{font-size:10px;min-height:34px}.fl-caption{font-size:8px}.fl-message{min-height:16px}}
 .fl-goal{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 108px);left:max(14px,env(safe-area-inset-left));max-width:min(290px,calc(100% - 28px));padding:7px 11px;border:1px solid #b8cd8d60;border-radius:11px;color:#dee9cd;background:#112922ef;pointer-events:auto}
-.fl-dock .fl-goal{position:static;margin-bottom:8px;max-width:100%}.fl-goal small{display:block;color:#adbea0;font:10px/1.4 monospace}.fl-goal summary{cursor:pointer;min-height:26px;line-height:26px;font-weight:600}.fl-goal p{margin:4px 0 8px;color:#b5cdb9}.fl-goal-actions{display:flex;flex-wrap:wrap;gap:5px}.fl-goal-actions button{min-height:32px;font-size:11px}
-@media(max-width:600px){.fl-goal{top:calc(max(12px,env(safe-area-inset-top)) + 148px);padding:4px 9px}}
-@media(max-height:500px) and (min-width:601px){.fl-goal{left:auto;right:12px;top:calc(max(12px,env(safe-area-inset-top)) + 56px);max-height:calc(100% - 85px);overflow:auto}}
+.fl-dock .fl-goal{position:static;margin-bottom:8px;max-width:100%}.fl-goal small{display:block;color:#adbea0;font:10px/1.4 monospace}.fl-next-step{display:block;font-weight:400;font-size:11px;line-height:1.4;margin-top:2px}.fl-root>.fl-goal{max-height:calc(60% - 134px);overflow-y:auto}.fl-goal summary{cursor:pointer;min-height:26px;line-height:26px;font-weight:600}.fl-goal p{margin:4px 0 8px;color:#b5cdb9}.fl-goal-actions{display:flex;flex-wrap:wrap;gap:5px}.fl-goal-actions button{min-height:32px;font-size:11px}
+@media(max-width:600px){.fl-root>.fl-goal{max-height:calc(65% - 178px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}.fl-goal{top:calc(max(12px,env(safe-area-inset-top)) + 148px);padding:4px 9px}}
+@media(max-height:500px) and (min-width:601px){.fl-root>.fl-goal{left:auto;right:12px;top:calc(max(12px,env(safe-area-inset-top)) + 56px);max-height:calc(100% - 85px);overflow:auto}}
 
 `;
 function el(tag,text,parent){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(parent)parent.appendChild(n);return n;}
@@ -132,20 +136,29 @@ function snapshot(a,v){
    playerCamera(a);
   }
  }else if(a.follow)a.camera={'x':v['player']['x'],'y':v['player']['y']};
- a.loading.hidden=true;a.dock.hidden=false;updateGoal(a);
+ a.loading.hidden=true;a.dock.hidden=false;
  sync(a);
  // Keep the focused entry in place while a keyboard user navigates the bot or event list.
- if(!a.panel.hidden&&a.tab!=='rules'&&performance.now()-a.lastPanel>1000&&!a.content.contains(document.activeElement))renderPanel(a);
+ if(!a.panel.hidden&&a.tab!=='rules'&&a.tab!=='family'&&performance.now()-a.lastPanel>1000&&!a.content.contains(document.activeElement))renderPanel(a);
 }
 function createGoal(a){
  const card=el('details',null,a.root);
  card.className='fl-goal';card.hidden=true;
  const summary=el('summary',null,card);
- el('small','First shared meal · optional goal',card);
+ el('small','Optional goal · Share a meal',summary);
  const status=el('span',null,summary);
  status.className='fl-goal-status';status.setAttribute('aria-live','polite');
+ const next=el('span',null,summary);next.className='fl-next-step';
  const hint=el('p',null,card),actions=el('div',null,card);
  actions.className='fl-goal-actions';
+ const mark=button('Mark tile',actions,()=>{
+  const tile=a.goalUI.markTile;
+  if(!tile)return;
+  playerCamera(a);
+  a.selected={'x':tile['x'],'y':tile['y']};
+  card.open=false;
+  sync(a);
+ });
  const recipient=button('Follow recipient',actions,()=>{
   const meal=a.view['depotGoal']['meal'];
   if(a.view['bots'].some(bot=>bot['id']===meal['actor']))followBot(a,meal['actor']);
@@ -168,16 +181,58 @@ function createGoal(a){
  });
  a.panel.insertBefore(reopen,a.content);
  reopen.hidden=true;
- a.goalUI={card,status,hint,recipient,depot,reopen};
+ a.goalUI={card,status,next,hint,mark,recipient,depot,reopen};
+}
+function tileDistance(a,b){
+ return Math.abs(a['x']-b['x'])+Math.abs(a['y']-b['y']);
+}
+function resourceStep(a,kind,missing){
+ const v=a.view,p=v['player'];
+ const symbol={'wood':'green triangle','ore':'violet diamond','food':'gold circle'}[kind];
+ const need=`Gather ${missing} more ${kind}.`;
+ if(p['wood']+p['ore']+p['food']>=30)return {text:'Your pack is full. Open Inventory & depot to store or discard extra materials.'};
+ let nearest=null,dist=Infinity;
+ for(const n of v['nodes']){
+  if(n['kind']!==kind||n['stock']<1)continue;
+  if(a.selected&&tileDistance(n,a.selected)===0){nearest=n;break;}
+  const d=tileDistance(p,n);
+  if(d<dist){nearest=n;dist=d;}
+ }
+ if(!nearest)return {text:`Waiting for ${kind} to regrow. Explore or take some from a stocked depot.`};
+ const xy=`${nearest['x']}, ${nearest['y']}`,near=tileDistance(p,nearest)<=1;
+ if(a.selected&&tileDistance(a.selected,nearest)===0)
+  return {text:need+(near?' Press Gather.':` Press Walk towards to step closer to ${xy}.`)};
+ return {text:`${need} Select the ${symbol} at ${xy}, then ${near?'Gather':'Walk towards'}.`,
+         tile:nearest,button:'Mark '+kind};
+}
+function depotSiteStep(a){
+ const v=a.view,p=v['player'],idx=model.index(v);
+ const valid=(x,y)=>model.openDepotSite(idx,x,y);
+ if(model.buildable(v,p,idx))return {text:'You have the materials. Press Build depot on this tile.'};
+ // Resources and depots occupy a small fraction of the map. Search nearby rings first.
+ let tile=a.selected&&valid(a.selected['x'],a.selected['y'])?a.selected:null;
+ for(let r=1;!tile&&r<model.SIZE*2;r++){
+  for(let dx=-r;dx<=r&&!tile;dx++){
+   const x=p['x']+dx,dy=r-Math.abs(dx);
+   for(const y of [p['y']-dy,p['y']+dy]){
+    if(valid(x,y)){tile={'x':x,'y':y};break;}
+   }
+  }
+ }
+ if(!tile||!model.buildable(v,p,idx,tile['x'],tile['y']))return {text:'The depot limit has been reached. Wait for space to open.'};
+ const xy=`${tile['x']}, ${tile['y']}`;
+ if(a.selected&&tileDistance(tile,a.selected)===0)return {text:`Walk towards ${xy}. Build on open ground outside the sanctuary.`};
+ return {text:`Choose open ground outside the sanctuary, such as ${xy}. Walk onto it to build.`,tile,button:'Mark build site'};
 }
 function updateGoal(a){
  const goal=a.view?.['depotGoal'];
  if(!goal)return;
- const {card,status,hint,recipient,depot,reopen}=a.goalUI;
+ const {card,status,next,hint,mark,recipient,depot,reopen}=a.goalUI;
  const meal=goal['meal'],site=goal['depot'];
  card.hidden=!!a.goalHidden;
  reopen.hidden=!a.goalHidden;
- let title,description;
+ if(a.goalHidden)return;
+ let title,description,step;
  if(meal){
   title=`Bot ${meal['actor']} recovered ${Math.round(meal['health']*10)/10} health from your food`;
   description=`First shared meal · food from your depot at ${meal['depotX']}, ${meal['depotY']}.`;
@@ -191,11 +246,24 @@ function updateGoal(a){
   description='Keep exploring. The goal updates when a rival heals with your food.';
  }else if(site){
   title='Stock your depot';
-  description=`Stand beside your depot at ${site['x']}, ${site['y']}, select its tile and choose Supply to leave food for a rival.`;
+  const p=a.view['player'],xy=`${site['x']}, ${site['y']}`;
+  if(p['food']<1)step=resourceStep(a,'food',1);
+  else if(tileDistance(p,site)>1)step={text:`Select your depot at ${xy}, then Walk towards it.`,tile:site,button:'Mark depot'};
+  else if(tileDistance(target(a),site)!==0)step={text:`Select your depot at ${xy}, then press Supply.`,tile:site,button:'Mark depot'};
+  else step={text:'Press Supply to leave one food for a rival.'};
+  description='A rival completes the goal by eating food you left in your depot.';
  }else{
   title='Build a depot';
-  description='For your first shared meal, gather 6 wood and 1 ore. Choose Build depot on open ground outside the sanctuary.';
+  const p=a.view['player'];
+  step=p['wood']<6?resourceStep(a,'wood',6-p['wood']):p['ore']<1?resourceStep(a,'ore',1):depotSiteStep(a);
+  description=`A depot costs 6 wood and 1 ore. You carry ${p['wood']} wood, ${p['ore']} ore and ${p['food']} food. Stock it so a rival can heal, or hide this goal to explore freely.`;
  }
+ const instruction=step?.text||'';
+ if(next.textContent!==instruction)next.textContent=instruction;
+ next.hidden=!instruction;
+ a.goalUI.markTile=step?.tile;
+ mark.hidden=!step?.tile;
+ if(step?.button&&mark.textContent!==step.button)mark.textContent=step.button;
  if(status.textContent!==title)status.textContent=title;
  if(hint.textContent!==description)hint.textContent=description;
  recipient.hidden=!meal;
@@ -220,12 +288,14 @@ function start(a,saved){
   a.worker.onmessage=event=>{const d=event.data;if(a.disposed||d['run']!==a.run)return;
    if(d['type']==='view'){a.stepMs=d['stepMs'];if(d['message'])a.message.textContent=d['message'];snapshot(a,d['view']);}
    else if(d['type']==='save')persist(a,d['world']);
+   else if(d['type']==='experiment-snapshot')a.experiment.receive(d['requestId'],d['world']);
   };
   a.worker.onerror=event=>{event.preventDefault();if(!a.disposed)fallback(a,a.saved,'Worker unavailable · local fallback kept your world and recovered the latest checkpoint.');};
   a.worker.postMessage({'type':'init','run':a.run,'world':valid?saved:null,'seed':42,'count':count,'paused':a.paused||a.menu||a.helpOpen||document.hidden});
  }catch(_){fallback(a,valid?saved:null,'Worker unavailable · local fallback kept the world. Larger populations may run slowly.');}
 }
 function fallback(a,saved,message){
+ a.experiment.reset();
  if(a.worker){a.worker.terminate();a.worker=null;}a.local=model.restore(saved)?structuredClone(model.restore(saved)):model.fresh(42,a.initialCount);
  a.targetCount=a.local['bots'].length;a.suspended=a.paused||a.menu||a.helpOpen||document.hidden;a.pendingTime=0;a.lastFrame=null;a.message.textContent=message;snapshot(a,model.view(a.local));
 }
@@ -234,9 +304,12 @@ function sync(a){
  const n=v['nodes'].find(n=>n['x']===t['x']&&n['y']===t['y']),b=v['buildings'].find(b=>b['x']===t['x']&&b['y']===t['y']),actors=v['bots'].filter(b=>b['x']===t['x']&&b['y']===t['y']);a.inspected=(a.inspectId==null?actors[0]:v['bots'].find(b=>b['id']===a.inspectId))||null;
  a.status.textContent=`${v['bots'].length} RIVALS · GENERATION ${v['generation']} · ${Math.floor(v['time']/60)}m ${Math.floor(v['time']%60)}s\nHealth ${Math.ceil(p['health'])} · Wood ${p['wood']} / Food ${p['food']} / Ore ${p['ore']} · Shots ${p['charges']}${a.paused||a.helpOpen?' · PAUSED':''}`;
  a.tile.textContent=`${t['x']}, ${t['y']} · ${n?`${n['kind']} ${n['stock']}/${n['capacity']}`:b?`Depot · F${b['food']} W${b['wood']} O${b['ore']} · ${b['expires']-v['time']<60?Math.max(0,Math.ceil(b['expires']-v['time']))+'s':Math.ceil((b['expires']-v['time'])/60)+'m'} left · ${b['owner']===0?'your building':b['owner']>0?'built by Bot '+b['owner']:'earlier Bot '+(-b['owner']-1)}`:'Open ground'}${actors.length?' · '+actors.map(botName).join(', '):''}`;
+ family.update(a.familyUI,v,a.followBotId);
+ a.logButton.hidden=!(b||v['depotLogs']?.[t['y']*model.SIZE+t['x']]);
  a.followCard.hidden=a.followBotId==null;
  a.mapControls.hidden=!a.overview;
  if(a.goalUI){
+  updateGoal(a);
   const card=a.goalUI.card;
   const inDock=a.overview||(a.width<=600&&a.height<=500);
   if(inDock&&card.parentNode!==a.dock)a.dock.insertBefore(card,a.mapControls);
@@ -254,11 +327,15 @@ function renderPanel(a){
  if(!a.view)return;a.lastPanel=performance.now();const content=a.content,v=a.view,scroll=a.panel.scrollTop;content.replaceChildren();
  if(a.tab==='activity'){
   el('h2','The living frontier',content);el('p',`${v['updates'].toLocaleString()} learning updates · ${v['stats']['services']} shared meals · ${v['stats']['meals']?Math.round(v['stats']['healing']/v['stats']['meals']):0}/30 average healing · ${a.saveStatus}`,content);
+  const selected=target(a);
+  depotLog.renderDepotLog(content,v,selected['x'],selected['y']);
   if(a.inspected){const b=a.inspected,box=el('div',null,content);box.className='fl-inspect';el('strong',botName(b),box);el('p',`${names[b['intent']]} · ${Math.ceil(b['health'])} health · ${b['updates']} learned transitions · ${b['gathers']} gathered · ${b['delivered']} deliveries · ${b['kills']} kills / ${b['deaths']} deaths`,box);if(a.followBotId!==b['id'])button('Follow bot',box,()=>followBot(a,b['id']));}
   el('p','Select an event to visit its location. Latest 100 events; the world pauses when you leave this sketch.',content);
   for(const e of [...v['events']].reverse()){
    const b=button(`${e['actor']===0?'You':'Bot '+e['actor']} · ${e['text']}`,content,()=>locate(a,e,e['actor']));b.className='fl-item';el('small',`${age(e['time'],v['time'])} · ${e['x']}, ${e['y']}`,b);
   }
+ }else if(a.tab==='family'){
+  family.render(a.familyUI,content,v,a.followBotId??a.inspectId);
  }else if(a.tab==='bots'){
   el('h2','Rival lineages',content);el('p','Each bot learns independently. Colour identifies its lineage; descendants can cooperate through public depots and avoid attacking their own lineage.',content);
   const groups=new Map();for(const b of v['bots'])groups.set(b['lineage'],(groups.get(b['lineage'])||0)+1);
@@ -267,7 +344,7 @@ function renderPanel(a){
   for(const b of sorted.slice(0,80)){const n=button(`Follow ${botName(b)} · ${names[b['intent']]}`,content,()=>followBot(a,b['id']));n.className='fl-item';n.style.borderLeftColor=colour(b);n.style.borderLeftWidth='3px';el('small',`${b['x']}, ${b['y']} · fitness ${b['fitness'].toFixed(1)} · ${b['updates']} updates · ${b['gathers']} gathered`,n);}
   if(sorted.length>80)el('p','Showing the top 80 learners. All bots remain visible on the map.',content);
  }else{
-  el('h2','Shape the world',content);
+  el('h2','Shape the world',content);content.appendChild(a.experiment.element);
   const label=el('label','Rival population',content),select=el('select',null,label);select.setAttribute('aria-label','Rival population');
   for(const value of ['32','64','128','256','512']){const n=el('option',value,select);n.value=value;}select.value=String(a.targetCount);
   select.addEventListener('change',()=>{a.targetCount=Number(select.value);send(a,{'type':'population','count':a.targetCount});});
@@ -278,14 +355,14 @@ function renderPanel(a){
   el('p',`${a.worker?'Worker simulation':'Main-thread fallback'} · ${a.stepMs.toFixed(1)}ms/step. Adaptive rendering reduces drawing frequency when necessary, without retiring bots.`,content);
   for(const text of ['Move with arrows/WASD or the direction pad. Movement takes half a second; work and attacks take one second. Select a tile, then Walk towards to take one step. Your pack holds 30 units.', 'Open Inventory to store or take any material at a public depot, or discard five unwanted items to free space. A depot costs 6 wood + 1 ore. Supply adds food; Repair spends 1 timber to add four minutes, even when all stores are full. Repair is available when four minutes or less remain.', 'Food heals 30. Eat when missing at least 25 health, or 10 with a vulnerable rival nearby. Suppliers gain credit for useful meals others actually eat, not for filling unused stores. Health slowly drains over time, including in sanctuary. Pause when away. Mining costs 8 health.', 'One ore loads three shots; each shot deals 20 damage. Attacks take one second for you and bots. Movement remains quicker for you. Kills loot up to two of each carried item, within pack space. Death loses all carried ore and loaded shots, plus half your food and wood; sanctuary and respawn protection prevent attacks.', 'Rich and poor regions differ in density and regrowth. Resource capacity scales with the population. Resource pressure lets you choose scarcity independently of your device performance.', 'Each bot uses 576 local observations and ten behaviour choices. Pack capacity, ore and timber availability affect its observations. Unavailable actions are masked. Decisions value useful supplies, health, actual public meals and maintaining working depots. Stored food grants credit to its original supplier only when used.', 'Every three simulated minutes, mature low-performing bots can be replaced by resource-funded descendants of successful parents. Parents provide the child’s materials and consume food for reproduction. Children have unique identities; old depots remain public monuments to their original builders. Learning and evolution can be controlled separately.', 'World and policy saves stay on this device. Earlier worlds are migrated with inventories, buildings and learned preferences preserved; the original save is kept. Hidden tabs and menus pause time. No server or WordPress plugin is used.'])el('p',text,content);
   const chart=el('canvas',null,content);chart.className='fl-chart';chart.width=300;chart.height=72;const ctx=chart.getContext('2d'),history=v['history'];if(history.length>1){const max=Math.max(1,...history.map(p=>p['healing']||0));ctx.strokeStyle='#d5d496';ctx.beginPath();history.forEach((p,i)=>{const x=i/(history.length-1)*300,y=65-(p['healing']||0)/max*60;if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);});ctx.stroke();}el('p','Useful healing over the last 20 simulated minutes.',content);
-  const reset=button('New local world',content,()=>{const was=a.paused;a.paused=true;suspend(a);if(window.confirm('Replace this local world and its learned bot population? Earlier solo saves are kept.')){a.run++;a.saved=null;a.view=null;playerCamera(a);a.paused=was;
+  const reset=button('New local world',content,()=>{const was=a.paused;a.paused=true;suspend(a);if(window.confirm('Replace this local world and its learned bot population? Earlier solo saves are kept.')){a.experiment.reset();family.reset(a.familyUI);a.run++;a.saved=null;a.view=null;playerCamera(a);a.paused=was;
    if(a.worker)a.worker.postMessage({'type':'reset','run':a.run,'seed':42,'count':a.targetCount,'paused':a.paused||a.menu||a.helpOpen||document.hidden});else{a.local=model.fresh(42,a.targetCount);snapshot(a,model.view(a.local));persist(a,structuredClone(a.local));}
   }else a.paused=was;suspend(a);});reset.className='fl-item';
  }
  a.panel.scrollTop=scroll;
 }
 const lessons=[
- ['Meet the living frontier','You are the glowing cream triangle marked YOU. This is a persistent world: gather supplies, build public depots and survive alongside rival bots. There is no timed match or final wave.','Start small: find food, collect timber, then build your first depot.','▲  ●  □'],
+ ['Meet the living frontier','You are the glowing cream triangle marked YOU. This is a persistent world: gather supplies, build public depots and survive alongside rival bots. Explore freely, or help a rival heal by stocking your first depot.','You start with 4 wood, 1 ore and 2 food. Gather 2 more wood for your first depot. The goal on the map marks a nearby timber tile.','▲  ●  □'],
  ['Move & gather','Move one tile with the direction arrows or WASD. On a phone, use the arrow pad. Tap a map tile to select it, then Walk towards to take one step toward it.','Gold circles are food, green triangles are timber, violet diamonds are ore. Stand on or beside a resource, select it and press Gather. Dim resources need time to regrow.','●  ▲  ◆'],
  ['Keep yourself alive','Watch Health and Food at the top. Health slowly falls, even in sanctuary. Food restores up to 30 health; Eat becomes available at 75 health or below, or 90 near a vulnerable rival. Mining costs 8 health.','Your pack holds 30 items in total. Open Inventory & depot to discard unwanted items if you run out of space. Move takes half a second; other actions take one second.','♥  ●'],
  ['Build something useful','Collect 6 wood and 1 ore. Stand on open ground outside the central sanctuary and press Build depot. Square depots are public: you and bots can use any of them.','Select a nearby depot. Supply deposits food; Inventory & depot lets you Store or Take materials. Depots last 8 minutes. With 4 minutes or less left, Repair spends 1 wood to extend their life. Open the depot goal on the map to track your first shared meal.','□  ◆  ▲'],
@@ -306,13 +383,17 @@ function create(host){
  if(!document.getElementById('figget-life-style')){const s=el('style',css,document.head);s.id='figget-life-style';}
  const root=el('section',null,host);root.className='fl-root';root.setAttribute('aria-label','Figget-A-Balls evolving world');
  const a={root,canvas:el('canvas',null,root),view:null,previous:null,received:0,camera:{'x':48,'y':48},follow:true,followBotId:null,overview:false,selected:null,paused:false,menu:false,suspended:false,worker:null,local:null,run:1,started:false,disposed:false,abort:new AbortController(),db:null,saved:null,saveStatus:'Loading local save…',lastSaved:0,initialCount:128,targetCount:128,auto:true,stepMs:0,paintMs:0,frameMs:33,nextProbe:performance.now()+10000,nextSave:performance.now()+15000,nextAction:0,nextPaint:0,lastPanel:0,tab:'activity',actionButtons:[],helpOpen:false,helpStep:0,tutorialSeen:false};active=a;a.ctx=a.canvas.getContext('2d');
+ a.experiment=createExperiment(id=>{
+  if(a.worker)send(a,{'type':'experiment-snapshot','requestId':id});
+  else if(a.local)a.experiment.receive(id,a.local);
+ });
  const top=el('div',null,root);top.className='fl-top';a.pause=button('Pause',top,()=>{a.paused=!a.paused;suspend(a);sync(a);});button('Map',top,()=>{
   if(a.followBotId!=null)playerCamera(a);
   a.overview=!a.overview;sync(a);
  });button('Me',top,()=>{playerCamera(a);sync(a);});a.panelButton=button('World',top,()=>{a.panel.hidden=!a.panel.hidden;sync(a);if(!a.panel.hidden)renderPanel(a);});a.panelButton.setAttribute('aria-controls','figget-life-panel');a.helpButton=button('Help',top,()=>showHelp(a));a.helpButton.setAttribute('aria-haspopup','dialog');
  a.status=el('div',null,root);a.status.className='fl-status';
  a.panel=el('section',null,root);a.panel.id='figget-life-panel';a.panel.className='fl-panel';a.panel.hidden=true;const tabs=el('div',null,a.panel);tabs.className='fl-tabs';
- for(const [key,label]of [['activity','Activity'],['bots','Bots'],['rules','Rules']]){const b=button(label,tabs,()=>{a.tab=key;for(const n of tabs.children)n.setAttribute('aria-pressed',String(n===b));renderPanel(a);});b.setAttribute('aria-pressed',String(key===a.tab));}button('Close',tabs,()=>{a.panel.hidden=true;sync(a);});a.content=el('div',null,a.panel);
+ for(const [key,label]of [['activity','Activity'],['bots','Bots'],['family','Family'],['rules','Rules']]){const b=button(label,tabs,()=>{a.tab=key;for(const n of tabs.children)n.setAttribute('aria-pressed',String(n===b));renderPanel(a);});b.setAttribute('data-tab',key);b.setAttribute('aria-pressed',String(key===a.tab));}button('Close',tabs,()=>{a.panel.hidden=true;sync(a);});a.content=el('div',null,a.panel);
  a.dock=el('section',null,root);a.dock.className='fl-dock';a.dock.hidden=true;const directions=el('div',null,a.dock);directions.className='fl-directions';
  for(const [label,dx,dy,name]of [['',0,0,''],['↑',0,-1,'north'],['',0,0,''],['←',-1,0,'west'],['↓',0,1,'south'],['→',1,0,'east']]){if(!label){el('span',null,directions);continue;}const b=button(label,directions,()=>action(a,'move',{'dx':dx,'dy':dy}));b.setAttribute('aria-label','Move '+name);a.actionButtons.push(b);}
  a.mapControls=el('div',null,a.dock);a.mapControls.className='fl-map-controls';a.mapControls.hidden=true;
@@ -326,10 +407,18 @@ function create(host){
  legend.hidden=true;
  a.mapLayer.addEventListener('change',()=>{legend.hidden=a.mapLayer.value!=='food';sync(a);});
  a.tile=el('p',null,a.dock);
+ a.logButton=button('Visitor log',a.dock,()=>{
+  const activity=tabs.querySelector('[data-tab="activity"]');
+  a.panel.hidden=false;activity.click();sync(a);activity.focus();
+  const heading=a.content.querySelector('.fl-depot-log');
+  if(heading)heading.scrollIntoView({block:'nearest'});
+ });
+ a.logButton.hidden=true;
  a.followCard=el('section',null,a.dock);a.followCard.className='fl-follow';a.followCard.hidden=true;
  a.followCard.setAttribute('aria-label','Followed bot');
  a.stopFollowing=button('Stop following',a.followCard,()=>{playerCamera(a);sync(a);});
  a.followHeader=el('strong',null,a.followCard);a.followState=el('small',null,a.followCard);a.followOutcomes=el('span',null,a.followCard);
+ a.familyUI=family.create(a.followCard,id=>followBot(a,id));
  a.message=el('p','Gather, build and survive. Select a bot to inspect it in World → Activity.',a.dock);a.message.className='fl-message';a.message.setAttribute('role','status');const actions=el('div',null,a.dock);actions.className='fl-controls';
  a.walk=button('Walk towards',actions,()=>{if(!a.view)return;const p=a.view['player'],t=target(a),dx=t['x']-p['x'],dy=t['y']-p['y'];action(a,'move',{'dx':Math.abs(dx)>=Math.abs(dy)?Math.sign(dx):0,'dy':Math.abs(dy)>Math.abs(dx)?Math.sign(dy):0});});
  a.gather=button('Gather',actions,()=>action(a,'gather',target(a)));a.build=button('Build depot',actions,()=>action(a,'build'));a.supply=button('Supply',actions,()=>action(a,'supply',target(a)));a.attack=button('Attack',actions,()=>action(a,'attack',Object.assign({},target(a),a.inspected?{'target':a.inspected['id']}:{})));a.eat=button('Eat',actions,()=>action(a,'eat'));a.actionButtons.push(a.walk,a.gather,a.build,a.supply,a.attack,a.eat);
@@ -413,6 +502,7 @@ function frame(a,width,height,menu){
 }
 function dispose(a){
  if(!a||a.disposed)return;
+ a.experiment?.reset();
  const worker=a.worker,db=a.db;
  a.disposed=true;a.abort.abort();a.observer.disconnect();a.root.remove();if(active===a)active=null;
  if(worker){

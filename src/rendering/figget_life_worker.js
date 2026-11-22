@@ -20,8 +20,47 @@ function publish(message = "") {
 function checkpoint(requestId) {
   self.postMessage({ type: "save", run: run, world: world, "requestId": requestId });
 }
+// This command runs in a separate, disposable worker. postMessage already
+// cloned the snapshot on entry; clone it once more before changing either arm.
+function compareWorlds(data) {
+  const seconds = data["seconds"];
+  const pressures = data["pressures"];
+  if (![60, 180, 300].includes(seconds) || !Array.isArray(pressures) ||
+      pressures.length !== 2 || !pressures.every(p => [0.75, 1, 1.5].includes(p))) {
+    throw new Error("Unknown experiment settings");
+  }
+  const first = data["world"];
+  const forks = [first, structuredClone(first)];
+  const initialMeals = first["stats"]["services"];
+  const initialDeaths = first["stats"]["deaths"];
+  const startTime = first["time"];
+  for (let i = 0; i < forks.length; i++) {
+    if (pressures[i] !== forks[i]["pressure"]) engine.setPressure(forks[i], pressures[i]);
+  }
+  const steps = seconds / engine.DT;
+  for (let n = 1; n <= steps; n++) {
+    for (const fork of forks) engine.step(fork);
+    if (n % (steps / 10) === 0) self.postMessage({"type": "progress", "value": n / steps});
+  }
+  self.postMessage({
+    "type": "results",
+    "startTime": startTime,
+    "seconds": seconds,
+    "worlds": forks.map(fork => ({
+      "meals": fork["stats"]["services"] - initialMeals,
+      "deaths": fork["stats"]["deaths"] - initialDeaths,
+      "lineages": new Set(fork["bots"].map(bot => bot["lineage"])).size
+    }))
+  });
+}
+
 self.onmessage = function (event) {
   const data = event.data;
+  if (data["type"] === "compare") {
+    if (world) return;
+    compareWorlds(data);
+    return;
+  }
   if (data["type"] === "init" || data["type"] === "reset") {
     run = data["run"];
     world =
@@ -56,6 +95,10 @@ self.onmessage = function (event) {
     return;
   }
   if (!world || data["run"] !== run) return;
+  if (data["type"] === "experiment-snapshot") {
+    self.postMessage({"type":"experiment-snapshot", "run":run, "requestId":data["requestId"], "world":world});
+    return;
+  }
   if (data["type"] === "close") {
     paused = true;
     checkpoint(data["requestId"]);

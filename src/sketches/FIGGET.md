@@ -7,6 +7,11 @@ WordPress plugin is used.
 
 ## Play and materials
 
+A new player starts with 4 wood, 1 ore and 2 food. For a first delivery,
+expand the goal and choose **Mark wood**. Use **Walk towards** until you are
+beside the timber, then **Gather** twice. The guide updates as you move, points
+out open ground for a depot and shows when to press **Supply**.
+
 Move with arrows/WASD or the on-screen directions. Select a tile to inspect it;
 Walk towards takes one cardinal step toward it. Movement takes half a second;
 work and attacks take one second. Bots make one decision per second. Humans can
@@ -37,6 +42,23 @@ In **World → Bots**, choose a rival to follow its movements, health, intent an
 recent activity. **Me** returns the camera to your character.
 Use **Map → Map layer → Food and depots** to find food to gather and see which
 depots have food available. Selecting a tile shows its current stock.
+
+While following a bot, choose **Follow offspring** when it has a child.
+**World → Family** lets you trace parents and offspring, including the 256 most
+recent retirements. Comparisons report tiles travelled, supplies gathered and
+health supplied per simulated minute. Both relatives are measured through the
+same minute of life, up to their fifth minute. Older saves begin collecting
+new records on upgrade.
+
+Select a depot tile and choose **Visitor log** to see its eight most recent
+deposits, withdrawals and meals. Meals include where the food was eaten and
+how far that tile was from the depot. The world keeps up to 24 former depot
+logs, including separate records when a depot is rebuilt on the same tile.
+
+In **World → Rules → Paired experiment**, choose a pressure for each copy of
+the current world and run both for one, three or five simulated minutes. The
+results compare shared meals, deaths and the number of surviving lineages.
+Experiments run in a separate Web Worker and can be cancelled.
 
 One ore loads three shots, each causing 20 damage. Protection prevents both
 incoming and outgoing attacks in sanctuary or shortly after respawn. An attack
